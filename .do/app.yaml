@@ -1,0 +1,45 @@
+# DigitalOcean App Platform spec (Infrastructure-as-Code).
+# Deploy with: doctl apps create --spec .do/app.yaml   (or update)
+# Secrets are set in the App Platform UI / doctl, never committed here.
+name: csharp-media
+region: nyc
+services:
+  - name: api
+    dockerfile_path: Dockerfile
+    source_dir: /
+    github:
+      # repo: your-org/csharp-media
+      branch: main
+      deploy_on_push: true
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    health_check:
+      http_path: /health
+    envs:
+      - key: ConnectionStrings__Postgres
+        scope: RUN_TIME
+        type: SECRET
+      - key: Jwt__SigningKey
+        scope: RUN_TIME
+        type: SECRET
+      - key: Storage__AccountId
+        scope: RUN_TIME
+        type: SECRET
+      - key: Storage__AccessKey
+        scope: RUN_TIME
+        type: SECRET
+      - key: Storage__SecretKey
+        scope: RUN_TIME
+        type: SECRET
+      - key: Storage__Bucket
+        scope: RUN_TIME
+        value: media
+      # Leave Storage__ServiceUrl unset in prod so the R2 endpoint is derived from AccountId.
+
+# Managed Postgres. Attach an existing DB cluster or let App Platform provision a dev DB.
+databases:
+  - name: media-db
+    engine: PG
+    version: "16"
+    production: false

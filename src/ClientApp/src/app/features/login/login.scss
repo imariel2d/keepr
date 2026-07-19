@@ -1,0 +1,73 @@
+.auth {
+  display: grid;
+  place-items: center;
+  min-height: calc(100vh - 8rem);
+  padding: 1rem 0;
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  padding: 2.25rem 2rem 1.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.head {
+  text-align: center;
+  margin-bottom: 1.75rem;
+
+  .mark {
+    display: inline-grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    margin-bottom: 1rem;
+    border-radius: 15px;
+    color: var(--accent-contrast);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+
+  h1 { margin: 0 0 0.4rem; font-size: 1.45rem; }
+  .sub { margin: 0; color: var(--muted); font-size: 0.9rem; }
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.btn.block { width: 100%; padding: 0.75rem; font-size: 0.95rem; }
+
+.error {
+  margin: -0.3rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--r-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 0.83rem;
+}
+
+.switch {
+  margin: 1.5rem 0 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+
+  button {
+    margin-left: 0.25rem;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+
+    &:hover { text-decoration: underline; }
+  }
+}

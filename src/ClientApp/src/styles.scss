@@ -1,0 +1,147 @@
+/* ------------------------------------------------------------------ *
+ * Global design system — tokens, theming, resets, shared primitives.
+ * ------------------------------------------------------------------ */
+
+:root {
+  /* Brand */
+  --accent: #6366f1;
+  --accent-2: #8b5cf6;
+  --accent-strong: #4f46e5;
+  --accent-contrast: #ffffff;
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+
+  /* Neutrals (light) */
+  --bg: #f4f5fb;
+  --bg-grad: radial-gradient(1200px 600px at 15% -10%, #eae7ff 0%, transparent 55%),
+             radial-gradient(1000px 500px at 110% 10%, #e6f0ff 0%, transparent 50%);
+  --surface: #ffffff;
+  --surface-2: #fafbff;
+  --border: #e6e8f2;
+  --text: #1c2033;
+  --muted: #6b7180;
+  --muted-2: #9aa0b0;
+  --danger: #e5484d;
+  --danger-soft: color-mix(in srgb, var(--danger) 12%, transparent);
+  --success: #2fa66f;
+
+  /* Shape & depth */
+  --r-lg: 18px;
+  --r: 13px;
+  --r-sm: 9px;
+  --shadow-sm: 0 1px 2px rgba(20, 22, 40, 0.06), 0 1px 3px rgba(20, 22, 40, 0.05);
+  --shadow: 0 4px 12px rgba(20, 22, 40, 0.07), 0 12px 32px rgba(20, 22, 40, 0.06);
+  --shadow-lg: 0 12px 40px rgba(30, 25, 90, 0.16);
+  --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d0f16;
+    --bg-grad: radial-gradient(1200px 600px at 15% -10%, #1c1a3a 0%, transparent 55%),
+               radial-gradient(1000px 500px at 110% 10%, #10233f 0%, transparent 50%);
+    --surface: #161925;
+    --surface-2: #1b1f2d;
+    --border: #272c3b;
+    --text: #e8eaf2;
+    --muted: #99a0b2;
+    --muted-2: #6b7182;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--bg);
+  background-image: var(--bg-grad);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  line-height: 1.5;
+}
+
+h1, h2, h3 { line-height: 1.2; letter-spacing: -0.015em; }
+
+button { font-family: inherit; }
+
+/* ---- Shared primitives ---- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.05rem;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  font-size: 0.9rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition: transform 0.06s ease, background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+
+  &:active { transform: translateY(1px); }
+  &:disabled { opacity: 0.55; cursor: default; }
+  &:focus-visible { outline: none; box-shadow: var(--ring); }
+}
+
+.btn-primary {
+  color: var(--accent-contrast);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 35%, transparent);
+  &:hover:not(:disabled) { box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 45%, transparent); }
+}
+
+.btn-ghost {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border);
+  &:hover:not(:disabled) { background: var(--surface-2); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+}
+
+.btn-danger {
+  color: var(--danger);
+  background: transparent;
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--border));
+  &:hover:not(:disabled) { background: var(--danger-soft); }
+}
+
+.btn.sm { padding: 0.45rem 0.8rem; font-size: 0.82rem; }
+.btn.block { width: 100%; padding: 0.75rem; font-size: 0.95rem; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-sm);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+
+  label { font-size: 0.8rem; font-weight: 500; color: var(--muted); }
+
+  input {
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 0.95rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+
+    &::placeholder { color: var(--muted-2); }
+    &:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring); background: var(--surface); }
+  }
+}

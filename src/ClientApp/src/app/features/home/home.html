@@ -1,0 +1,82 @@
+@if (usage(); as u) {
+  <section class="quota card">
+    <div class="quota-top">
+      <div>
+        <span class="label">Storage used</span>
+        <span class="figures">
+          <strong>{{ u.usedBytes | bytes }}</strong>
+          <span class="of">of {{ u.quotaBytes | bytes }}</span>
+        </span>
+      </div>
+      <span class="pct" [class.warn]="usedPercent() >= 90">{{ usedPercent() }}%</span>
+    </div>
+    <div class="meter">
+      <div class="fill" [class.warn]="usedPercent() >= 90" [style.width.%]="usedPercent()"></div>
+    </div>
+    <span class="remaining">{{ u.remainingBytes | bytes }} remaining</span>
+  </section>
+}
+
+<section
+  class="dropzone"
+  [class.active]="dragging()"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave($event)"
+  (drop)="onDrop($event)">
+  <input id="file-input" type="file" multiple hidden (change)="onFilesSelected($event)" />
+  <div class="dz-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+    </svg>
+  </div>
+  <p class="dz-title">Drag &amp; drop files here</p>
+  <p class="dz-sub">or <label for="file-input" class="dz-browse">browse to upload</label> · any file type</p>
+</section>
+
+@if (uploads.tasks().length) {
+  <section class="tasks">
+    @for (t of uploads.tasks(); track t.id) {
+      <div class="task" [class.error]="t.status === 'error'" [class.done]="t.status === 'done'">
+        <div class="task-row">
+          <span class="tname">{{ t.fileName }}</span>
+          <span class="tstate">{{ t.status }}</span>
+        </div>
+        <div class="meter thin">
+          <div class="fill"
+               [style.width.%]="t.totalBytes ? (t.uploadedBytes / t.totalBytes) * 100 : 0"></div>
+        </div>
+        @if (t.error) { <p class="terr">{{ t.error }}</p> }
+      </div>
+    }
+  </section>
+}
+
+<section class="library">
+  <h2>Your files @if (files().length) { <span class="count">{{ files().length }}</span> }</h2>
+
+  @if (loading()) {
+    <p class="muted">Loading…</p>
+  } @else if (files().length === 0) {
+    <div class="empty">
+      <span class="empty-glyph" aria-hidden="true">📦</span>
+      <p>No files yet — drop something above to get started.</p>
+    </div>
+  } @else {
+    <ul class="file-list">
+      @for (f of files(); track f.id) {
+        <li class="file card">
+          <span class="ficon" aria-hidden="true">{{ icon(f.contentType) }}</span>
+          <div class="fmeta">
+            <span class="fname">{{ f.originalName }}</span>
+            <span class="fsub">{{ f.sizeBytes | bytes }} · {{ f.contentType || 'unknown' }}</span>
+          </div>
+          <div class="factions">
+            <button type="button" class="btn btn-ghost sm" (click)="download(f)">Download</button>
+            <button type="button" class="btn btn-danger sm" (click)="remove(f)">Delete</button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</section>
