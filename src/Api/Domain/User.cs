@@ -1,4 +1,4 @@
-namespace Media.Api.Domain;
+namespace Keepr.Api.Domain;
 
 /// <summary>
 /// An account. <see cref="UsedBytes"/> is a maintained running total (fast path for the

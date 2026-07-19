@@ -1,4 +1,4 @@
-namespace Media.Api.Services;
+namespace Keepr.Api.Services;
 
 /// <summary>Thrown when an operation would push a user over their storage quota.</summary>
 public class QuotaExceededException(long requested, long remaining)

@@ -1,12 +1,12 @@
-using Media.Api.Data;
-using Media.Api.Domain;
-using Media.Api.Services;
-using Media.Api.Storage;
+using Keepr.Api.Data;
+using Keepr.Api.Domain;
+using Keepr.Api.Services;
+using Keepr.Api.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace Media.Api.Features.Uploads;
+namespace Keepr.Api.Features.Uploads;
 
 // ---- DTOs ------------------------------------------------------------------
 public record InitUploadRequest(string OriginalName, long SizeBytes, string? ContentType);

@@ -1,7 +1,7 @@
-using Media.Api.Domain;
+using Keepr.Api.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace Media.Api.Data;
+namespace Keepr.Api.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {

@@ -1,4 +1,4 @@
-namespace Media.Api.Domain;
+namespace Keepr.Api.Domain;
 
 /// <summary>Lifecycle of a media file. See docs/ai-design-decisions.md (D2, D9).</summary>
 public enum MediaStatus

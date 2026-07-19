@@ -125,7 +125,7 @@ The single most important consequence: **App Platform is stateless**, so persist
 ## 4. Proposed repository layout
 
 ```
-csharp-media/
+keepr/
 ├─ docs/
 │  ├─ ai-design-decisions.md   ← this file
 │  └─ my-decisions.md

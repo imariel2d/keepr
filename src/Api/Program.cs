@@ -1,8 +1,8 @@
 using System.Text;
-using Media.Api.Data;
-using Media.Api.Features.Auth;
-using Media.Api.Services;
-using Media.Api.Storage;
+using Keepr.Api.Data;
+using Keepr.Api.Features.Auth;
+using Keepr.Api.Services;
+using Keepr.Api.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;

@@ -1,7 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
-namespace Media.Api.Services;
+namespace Keepr.Api.Services;
 
 public static class ClaimsPrincipalExtensions
 {

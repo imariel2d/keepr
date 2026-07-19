@@ -1,10 +1,10 @@
-using Media.Api.Data;
-using Media.Api.Services;
+using Keepr.Api.Data;
+using Keepr.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace Media.Api.Features.Me;
+namespace Keepr.Api.Features.Me;
 
 public record UsageResponse(long QuotaBytes, long UsedBytes, long RemainingBytes);
 

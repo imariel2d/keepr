@@ -1,4 +1,4 @@
-namespace Media.Api.Services;
+namespace Keepr.Api.Services;
 
 /// <summary>
 /// Detects a file's real content type from its leading "magic bytes" rather than trusting the

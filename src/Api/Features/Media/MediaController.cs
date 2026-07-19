@@ -1,12 +1,12 @@
-using Media.Api.Data;
-using Media.Api.Domain;
-using Media.Api.Services;
-using Media.Api.Storage;
+using Keepr.Api.Data;
+using Keepr.Api.Domain;
+using Keepr.Api.Services;
+using Keepr.Api.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace Media.Api.Features.Media;
+namespace Keepr.Api.Features.Media;
 
 public record MediaListItem(Guid Id, string OriginalName, string? ContentType, long SizeBytes, DateTimeOffset CreatedAt);
 public record DownloadUrlResponse(string Url);

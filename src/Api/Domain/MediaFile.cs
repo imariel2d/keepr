@@ -1,4 +1,4 @@
-namespace Media.Api.Domain;
+namespace Keepr.Api.Domain;
 
 /// <summary>
 /// Metadata ledger row for one uploaded object. The bytes live in R2; this is the source of

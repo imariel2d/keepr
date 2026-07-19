@@ -1,14 +1,14 @@
 # DigitalOcean App Platform spec (Infrastructure-as-Code).
 # Deploy with: doctl apps create --spec .do/app.yaml   (or update)
 # Secrets are set in the App Platform UI / doctl, never committed here.
-name: csharp-media
+name: keepr
 region: nyc
 services:
   - name: api
     dockerfile_path: Dockerfile
     source_dir: /
     github:
-      # repo: your-org/csharp-media
+      repo: imariel2d/Keepr
       branch: main
       deploy_on_push: true
     http_port: 8080

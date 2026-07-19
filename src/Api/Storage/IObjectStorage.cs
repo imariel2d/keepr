@@ -1,4 +1,4 @@
-namespace Media.Api.Storage;
+namespace Keepr.Api.Storage;
 
 /// <summary>
 /// Storage abstraction over the S3 API. Backed by Cloudflare R2 in prod and MinIO locally,

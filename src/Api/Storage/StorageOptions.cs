@@ -1,4 +1,4 @@
-namespace Media.Api.Storage;
+namespace Keepr.Api.Storage;
 
 /// <summary>Bound from the "Storage" config section. See docs/ai-design-decisions.md (D1, D8).</summary>
 public class StorageOptions

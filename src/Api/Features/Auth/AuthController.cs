@@ -1,11 +1,11 @@
-using Media.Api.Data;
-using Media.Api.Domain;
-using Media.Api.Services;
+using Keepr.Api.Data;
+using Keepr.Api.Domain;
+using Keepr.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
-namespace Media.Api.Features.Auth;
+namespace Keepr.Api.Features.Auth;
 
 public record RegisterRequest(string Email, string Password);
 public record LoginRequest(string Email, string Password);

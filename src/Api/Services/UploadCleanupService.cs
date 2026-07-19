@@ -1,10 +1,10 @@
-using Media.Api.Data;
-using Media.Api.Domain;
-using Media.Api.Storage;
+using Keepr.Api.Data;
+using Keepr.Api.Domain;
+using Keepr.Api.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
-namespace Media.Api.Services;
+namespace Keepr.Api.Services;
 
 public class CleanupOptions
 {

@@ -1,10 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Media.Api.Domain;
+using Keepr.Api.Domain;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Media.Api.Services;
+namespace Keepr.Api.Services;
 
 public class JwtOptions
 {

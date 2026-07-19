@@ -2,7 +2,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Options;
 
-namespace Media.Api.Storage;
+namespace Keepr.Api.Storage;
 
 /// <summary>
 /// S3-API implementation targeting Cloudflare R2 (or MinIO in dev). Path-style addressing and

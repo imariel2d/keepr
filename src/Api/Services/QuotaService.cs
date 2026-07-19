@@ -1,8 +1,8 @@
-using Media.Api.Data;
-using Media.Api.Domain;
+using Keepr.Api.Data;
+using Keepr.Api.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace Media.Api.Services;
+namespace Keepr.Api.Services;
 
 /// <summary>
 /// Quota accounting: reserve-on-start, reconcile-on-complete, release-on-abort/delete.

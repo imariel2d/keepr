@@ -1,4 +1,4 @@
-# csharp-media
+# Keepr
 
 Media upload service — **ASP.NET Core + Angular monolith**, deployed on **DigitalOcean App
 Platform** via Docker, with files in **Cloudflare R2** (S3-compatible, zero egress).
