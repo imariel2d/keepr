@@ -41,10 +41,12 @@ public class QuotaService(AppDbContext db)
     }
 
     // Postgres row lock so concurrent uploads serialize on the user row.
+    // The table is schema-qualified because raw SQL (unlike EF's generated queries) does not pick
+    // up the model's default schema. {0} is a parameter; the schema name is a trusted constant.
     private async Task<User> LockUserAsync(Guid userId, CancellationToken ct)
     {
         var user = await db.Users
-            .FromSqlInterpolated($"SELECT * FROM \"Users\" WHERE \"Id\" = {userId} FOR UPDATE")
+            .FromSqlRaw($"SELECT * FROM {AppDbContext.Schema}.\"Users\" WHERE \"Id\" = {{0}} FOR UPDATE", userId)
             .SingleAsync(ct);
         return user;
     }

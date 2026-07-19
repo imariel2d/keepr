@@ -5,6 +5,12 @@ namespace Keepr.Api.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
+    /// <summary>
+    /// Single source of truth for the DB schema name. Used by the model, the migrations-history
+    /// table, and any hand-written SQL (which must schema-qualify explicitly).
+    /// </summary>
+    public const string Schema = "keepr";
+
     public DbSet<User> Users => Set<User>();
     public DbSet<MediaFile> MediaFiles => Set<MediaFile>();
 
@@ -14,7 +20,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         // Managed Postgres (e.g. DO) locks down CREATE on "public", but the DB owner can create
         // its own schema — so migrations succeed without any manual GRANT. Migrations emit
         // CREATE SCHEMA IF NOT EXISTS "keepr" automatically.
-        b.HasDefaultSchema("keepr");
+        b.HasDefaultSchema(Schema);
 
         b.Entity<User>(e =>
         {
