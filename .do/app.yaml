@@ -39,12 +39,13 @@ services:
         value: media
       # Leave Storage__ServiceUrl unset in prod so the R2 endpoint is derived from AccountId.
 
-# Managed Postgres cluster. `production: true` provisions a dedicated managed database whose
-# bound user has full privileges on its database — avoiding the "permission denied for schema
-# public" that the free dev database hits. The component name (keepr-db) is what the
+# Postgres. `production: false` is the free bundled dev database — fine here because the app
+# creates and uses its own "keepr" schema (see AppDbContext.HasDefaultSchema), so it never needs
+# CREATE on the locked-down "public" schema. Flip to `production: true` for a dedicated managed
+# cluster with backups when you go live. The component name (keepr-db) is what the
 # ${keepr-db.DATABASE_URL} binding above refers to.
 databases:
   - name: keepr-db
     engine: PG
     version: "16"
-    production: true
+    production: false

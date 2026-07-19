@@ -10,6 +10,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        // Put every object (tables + __EFMigrationsHistory) in our own schema instead of "public".
+        // Managed Postgres (e.g. DO) locks down CREATE on "public", but the DB owner can create
+        // its own schema — so migrations succeed without any manual GRANT. Migrations emit
+        // CREATE SCHEMA IF NOT EXISTS "keepr" automatically.
+        b.HasDefaultSchema("keepr");
+
         b.Entity<User>(e =>
         {
             e.HasKey(x => x.Id);

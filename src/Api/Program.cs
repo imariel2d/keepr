@@ -19,7 +19,10 @@ builder.Services.Configure<CleanupOptions>(builder.Configuration.GetSection(Clea
 // Accept either an Npgsql key-value string or a postgres:// URI (e.g. DO's DATABASE_URL).
 var pgConnection = PostgresConnectionString.Normalize(
     builder.Configuration.GetConnectionString("Postgres"));
-builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(pgConnection));
+builder.Services.AddDbContext<AppDbContext>(o =>
+    o.UseNpgsql(pgConnection, npg =>
+        // Keep the migrations-history table in our schema too, not "public".
+        npg.MigrationsHistoryTable("__EFMigrationsHistory", "keepr")));
 
 // ---- Storage + services ----------------------------------------------------
 builder.Services.AddSingleton<IObjectStorage, R2ObjectStorage>();
@@ -54,6 +57,9 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    // Ensure our schema exists before the migrations-history table is created in it. The DB
+    // owner can create a schema even when CREATE on "public" is denied (managed Postgres).
+    db.Database.ExecuteSqlRaw("CREATE SCHEMA IF NOT EXISTS \"keepr\"");
     db.Database.Migrate();
 }
 

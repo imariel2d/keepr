@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Keepr.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260719165808_InitialCreate")]
+    [Migration("20260719203137_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,6 +20,7 @@ namespace Keepr.Api.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("keepr")
                 .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -72,7 +73,7 @@ namespace Keepr.Api.Data.Migrations
 
                     b.HasIndex("OwnerId", "Status");
 
-                    b.ToTable("MediaFiles");
+                    b.ToTable("MediaFiles", "keepr");
                 });
 
             modelBuilder.Entity("Keepr.Api.Domain.User", b =>
@@ -104,7 +105,7 @@ namespace Keepr.Api.Data.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", "keepr");
                 });
 
             modelBuilder.Entity("Keepr.Api.Domain.MediaFile", b =>

@@ -17,6 +17,7 @@ namespace Keepr.Api.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("keepr")
                 .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -69,7 +70,7 @@ namespace Keepr.Api.Data.Migrations
 
                     b.HasIndex("OwnerId", "Status");
 
-                    b.ToTable("MediaFiles");
+                    b.ToTable("MediaFiles", "keepr");
                 });
 
             modelBuilder.Entity("Keepr.Api.Domain.User", b =>
@@ -101,7 +102,7 @@ namespace Keepr.Api.Data.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", "keepr");
                 });
 
             modelBuilder.Entity("Keepr.Api.Domain.MediaFile", b =>

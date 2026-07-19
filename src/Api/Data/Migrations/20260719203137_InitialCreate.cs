@@ -11,8 +11,12 @@ namespace Keepr.Api.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.EnsureSchema(
+                name: "keepr");
+
             migrationBuilder.CreateTable(
                 name: "Users",
+                schema: "keepr",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -29,6 +33,7 @@ namespace Keepr.Api.Data.Migrations
 
             migrationBuilder.CreateTable(
                 name: "MediaFiles",
+                schema: "keepr",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -49,6 +54,7 @@ namespace Keepr.Api.Data.Migrations
                     table.ForeignKey(
                         name: "FK_MediaFiles_Users_OwnerId",
                         column: x => x.OwnerId,
+                        principalSchema: "keepr",
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -56,17 +62,20 @@ namespace Keepr.Api.Data.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_MediaFiles_OwnerId_Status",
+                schema: "keepr",
                 table: "MediaFiles",
                 columns: new[] { "OwnerId", "Status" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_MediaFiles_StorageKey",
+                schema: "keepr",
                 table: "MediaFiles",
                 column: "StorageKey",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_Email",
+                schema: "keepr",
                 table: "Users",
                 column: "Email",
                 unique: true);
@@ -76,10 +85,12 @@ namespace Keepr.Api.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "MediaFiles");
+                name: "MediaFiles",
+                schema: "keepr");
 
             migrationBuilder.DropTable(
-                name: "Users");
+                name: "Users",
+                schema: "keepr");
         }
     }
 }
