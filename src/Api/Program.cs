@@ -18,6 +18,10 @@ builder.Services.Configure<CleanupOptions>(builder.Configuration.GetSection(Clea
 // ---- Persistence -----------------------------------------------------------
 // Resolve from ConnectionStrings:Postgres (key-value or postgres:// URI) or discrete Db:* fields.
 var pgConnection = PostgresConnectionString.Resolve(builder.Configuration);
+if (string.IsNullOrWhiteSpace(pgConnection))
+    throw new InvalidOperationException(
+        "No Postgres connection configured. Set ConnectionStrings__Postgres, or the discrete " +
+        "Db__Host / Db__Port / Db__Name / Db__Username / Db__Password env vars.");
 builder.Services.AddDbContext<AppDbContext>(o =>
     o.UseNpgsql(pgConnection, npg =>
         // Keep the migrations-history table in our schema too, not "public".
