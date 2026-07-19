@@ -28,6 +28,17 @@ builder.Services.AddDbContext<AppDbContext>(o =>
         npg.MigrationsHistoryTable("__EFMigrationsHistory", "keepr")));
 
 // ---- Storage + services ----------------------------------------------------
+// Fail fast with a clear message if R2 credentials are missing (otherwise the AWS SDK throws a
+// cryptic null-credential error on the first request that touches storage).
+var storageCfg = builder.Configuration.GetSection(StorageOptions.SectionName);
+if (string.IsNullOrWhiteSpace(storageCfg["AccessKey"]) || string.IsNullOrWhiteSpace(storageCfg["SecretKey"]))
+    throw new InvalidOperationException(
+        "Object storage credentials are missing. Set Storage__AccessKey and Storage__SecretKey " +
+        "(and Storage__AccountId for R2, or Storage__ServiceUrl for a custom S3 endpoint).");
+if (string.IsNullOrWhiteSpace(storageCfg["AccountId"]) && string.IsNullOrWhiteSpace(storageCfg["ServiceUrl"]))
+    throw new InvalidOperationException(
+        "Object storage endpoint is missing. Set Storage__AccountId (R2) or Storage__ServiceUrl (custom S3).");
+
 builder.Services.AddSingleton<IObjectStorage, R2ObjectStorage>();
 builder.Services.AddScoped<QuotaService>();
 builder.Services.AddScoped<JwtTokenService>();
