@@ -16,9 +16,8 @@ builder.Services.Configure<QuotaOptions>(builder.Configuration.GetSection(QuotaO
 builder.Services.Configure<CleanupOptions>(builder.Configuration.GetSection(CleanupOptions.SectionName));
 
 // ---- Persistence -----------------------------------------------------------
-// Accept either an Npgsql key-value string or a postgres:// URI (e.g. DO's DATABASE_URL).
-var pgConnection = PostgresConnectionString.Normalize(
-    builder.Configuration.GetConnectionString("Postgres"));
+// Resolve from ConnectionStrings:Postgres (key-value or postgres:// URI) or discrete Db:* fields.
+var pgConnection = PostgresConnectionString.Resolve(builder.Configuration);
 builder.Services.AddDbContext<AppDbContext>(o =>
     o.UseNpgsql(pgConnection, npg =>
         // Keep the migrations-history table in our schema too, not "public".

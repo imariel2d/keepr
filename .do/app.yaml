@@ -17,11 +17,24 @@ services:
     health_check:
       http_path: /health
     envs:
-      # Auto-wired from the managed DB below. The app normalizes this postgres:// URI to the
-      # key-value form Npgsql needs (see PostgresConnectionString.Normalize).
-      - key: ConnectionStrings__Postgres
+      # Postgres as discrete fields (set the real values as SECRETs in the DO dashboard).
+      # SslMode defaults to Require in code, so Db__SslMode is optional.
+      # Alternatively set a single ConnectionStrings__Postgres (key-value or postgres:// URI).
+      - key: Db__Host
         scope: RUN_TIME
-        value: ${keepr-db.DATABASE_URL}
+        type: SECRET
+      - key: Db__Port
+        scope: RUN_TIME
+        value: "25060"
+      - key: Db__Name
+        scope: RUN_TIME
+        type: SECRET
+      - key: Db__Username
+        scope: RUN_TIME
+        type: SECRET
+      - key: Db__Password
+        scope: RUN_TIME
+        type: SECRET
       - key: Jwt__SigningKey
         scope: RUN_TIME
         type: SECRET
@@ -39,13 +52,12 @@ services:
         value: media
       # Leave Storage__ServiceUrl unset in prod so the R2 endpoint is derived from AccountId.
 
-# Postgres. `production: false` is the free bundled dev database — fine here because the app
-# creates and uses its own "keepr" schema (see AppDbContext.HasDefaultSchema), so it never needs
-# CREATE on the locked-down "public" schema. Flip to `production: true` for a dedicated managed
-# cluster with backups when you go live. The component name (keepr-db) is what the
-# ${keepr-db.DATABASE_URL} binding above refers to.
-databases:
-  - name: keepr-db
-    engine: PG
-    version: "16"
-    production: false
+# Using a standalone DO Managed Postgres cluster (connected via the Db__* env vars above with an
+# admin user), so no database component is provisioned here.
+#
+# IMPORTANT: on the managed database, add this App Platform app as a **Trusted Source** (DO
+# dashboard -> Database -> Settings -> Trusted Sources), or connections will be refused even with
+# correct credentials.
+#
+# To let App Platform provision/manage the DB instead, add a `databases:` block and bind
+# ConnectionStrings__Postgres to ${<name>.DATABASE_URL} (the app normalizes that URI form).
