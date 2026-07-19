@@ -23,6 +23,11 @@ RUN dotnet publish src/Api/Api.csproj -c Release -o /app /p:UseAppHost=false
 
 # ---- Stage 3: runtime ------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+# libgssapi is what Npgsql tries (and fails) to load for Kerberos auth negotiation;
+# installing it silences the "cannot open shared object" warnings on Postgres connects.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=api /app ./
 ENV ASPNETCORE_URLS=http://+:8080

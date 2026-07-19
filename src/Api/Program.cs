@@ -16,8 +16,10 @@ builder.Services.Configure<QuotaOptions>(builder.Configuration.GetSection(QuotaO
 builder.Services.Configure<CleanupOptions>(builder.Configuration.GetSection(CleanupOptions.SectionName));
 
 // ---- Persistence -----------------------------------------------------------
-builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
+// Accept either an Npgsql key-value string or a postgres:// URI (e.g. DO's DATABASE_URL).
+var pgConnection = PostgresConnectionString.Normalize(
+    builder.Configuration.GetConnectionString("Postgres"));
+builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(pgConnection));
 
 // ---- Storage + services ----------------------------------------------------
 builder.Services.AddSingleton<IObjectStorage, R2ObjectStorage>();

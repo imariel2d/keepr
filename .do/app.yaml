@@ -17,9 +17,11 @@ services:
     health_check:
       http_path: /health
     envs:
+      # Auto-wired from the managed DB below. The app normalizes this postgres:// URI to the
+      # key-value form Npgsql needs (see PostgresConnectionString.Normalize).
       - key: ConnectionStrings__Postgres
         scope: RUN_TIME
-        type: SECRET
+        value: ${keepr-db.DATABASE_URL}
       - key: Jwt__SigningKey
         scope: RUN_TIME
         type: SECRET
@@ -37,9 +39,12 @@ services:
         value: media
       # Leave Storage__ServiceUrl unset in prod so the R2 endpoint is derived from AccountId.
 
-# Managed Postgres. Attach an existing DB cluster or let App Platform provision a dev DB.
+# Managed Postgres cluster. `production: true` provisions a dedicated managed database whose
+# bound user has full privileges on its database — avoiding the "permission denied for schema
+# public" that the free dev database hits. The component name (keepr-db) is what the
+# ${keepr-db.DATABASE_URL} binding above refers to.
 databases:
-  - name: media-db
+  - name: keepr-db
     engine: PG
     version: "16"
-    production: false
+    production: true
