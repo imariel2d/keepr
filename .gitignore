@@ -21,6 +21,9 @@ npm-debug.log*
 .vscode/*
 !.vscode/extensions.json
 
+# Claude Code — local machine settings only (keep launch.json shared)
+.claude/settings.local.json
+
 # OS
 .DS_Store
 Thumbs.db

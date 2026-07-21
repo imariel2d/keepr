@@ -1,0 +1,5 @@
+@import './tokens.css';
+html, body { margin: 0; background: var(--surface-app); color: var(--text-primary); font-family: var(--font-body); }
+* { box-sizing: border-box; }
+a { color: var(--text-link); text-decoration: none; }
+a:hover { text-decoration: underline; }

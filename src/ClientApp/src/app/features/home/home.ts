@@ -2,11 +2,18 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MediaService } from '../../core/media.service';
 import { UploadService } from '../../core/upload.service';
 import { BytesPipe } from '../../core/bytes.pipe';
-import { MediaListItem, Usage } from '../../core/models';
+import { MediaListItem, Usage, UploadTask } from '../../core/models';
+import { ButtonComponent } from '../../cove/lib/button/button.component';
+import { IconComponent } from '../../cove/lib/icon/icon.component';
+import { IconButtonComponent } from '../../cove/lib/icon-button/icon-button.component';
+import { ProgressBarComponent } from '../../cove/lib/progress-bar/progress-bar.component';
+import { FileType, TYPE_META } from '../../cove/lib/files/file-type-meta';
+
+type Tone = 'accent' | 'success' | 'warning' | 'danger';
 
 @Component({
   selector: 'app-home',
-  imports: [BytesPipe],
+  imports: [BytesPipe, ButtonComponent, IconComponent, IconButtonComponent, ProgressBarComponent],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })
@@ -28,6 +35,10 @@ export class Home implements OnInit {
   async ngOnInit(): Promise<void> {
     await this.refresh();
     this.loading.set(false);
+  }
+
+  protected onBrowse(): void {
+    document.getElementById('file-input')?.click();
   }
 
   protected async onFilesSelected(event: Event): Promise<void> {
@@ -64,15 +75,38 @@ export class Home implements OnInit {
     await this.refresh();
   }
 
-  /** A category label + emoji glyph for a file, from its content type. */
-  protected icon(contentType: string | null): string {
+  /** Map a MIME type to a Cove file-type, then to its icon + accent colour. */
+  protected fileType(contentType: string | null): FileType {
     const t = contentType ?? '';
-    if (t.startsWith('image/')) return '🖼️';
-    if (t.startsWith('video/')) return '🎬';
-    if (t.startsWith('audio/')) return '🎵';
-    if (t === 'application/pdf') return '📄';
-    if (t.includes('zip') || t.includes('compressed')) return '🗜️';
-    return '📁';
+    if (t.startsWith('image/')) return 'image';
+    if (t.startsWith('video/')) return 'video';
+    if (t.startsWith('audio/')) return 'audio';
+    if (t === 'application/pdf') return 'pdf';
+    if (t.includes('zip') || t.includes('compressed') || t.includes('tar')) return 'archive';
+    if (t.includes('word') || t.includes('document')) return 'doc';
+    if (t.includes('sheet') || t.includes('excel') || t.includes('csv')) return 'sheet';
+    return 'default';
+  }
+
+  protected typeMeta(contentType: string | null): { icon: string; color: string } {
+    return TYPE_META[this.fileType(contentType)];
+  }
+
+  /** e.g. "Jul 12, 2026" for the modified column. */
+  protected formatDate(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  protected taskTone(task: UploadTask): Tone {
+    if (task.status === 'error' || task.status === 'aborted') return 'danger';
+    if (task.status === 'done') return 'success';
+    return 'accent';
+  }
+
+  protected taskPercent(task: UploadTask): number {
+    return task.totalBytes ? Math.round((task.uploadedBytes / task.totalBytes) * 100) : 0;
   }
 
   private async uploadAll(files: File[]): Promise<void> {

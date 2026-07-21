@@ -1,11 +1,13 @@
 import { Component, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { ButtonComponent } from '../../cove/lib/button/button.component';
+import { InputComponent } from '../../cove/lib/input/input.component';
+import { IconComponent } from '../../cove/lib/icon/icon.component';
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule],
+  imports: [ButtonComponent, InputComponent, IconComponent],
   templateUrl: './login.html',
   styleUrl: './login.scss',
 })
@@ -24,7 +26,8 @@ export class Login {
     this.error.set(null);
   }
 
-  protected async submit(): Promise<void> {
+  protected async submit(event?: Event): Promise<void> {
+    event?.preventDefault();
     this.error.set(null);
     this.busy.set(true);
     try {

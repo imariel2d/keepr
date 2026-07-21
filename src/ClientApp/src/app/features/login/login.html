@@ -1,12 +1,8 @@
 <section class="auth">
-  <div class="card">
+  <div class="auth-card">
     <div class="head">
       <span class="mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 16.5V6a2 2 0 0 1 2-2h5l2 2.5H18a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/>
-          <path d="m9 13 2 2 4-4"/>
-        </svg>
+        <cove-icon name="cloud" [size]="26" color="var(--text-on-brand)"></cove-icon>
       </span>
       <h1>{{ mode() === 'register' ? 'Create your account' : 'Welcome back' }}</h1>
       <p class="sub">
@@ -16,28 +12,41 @@
       </p>
     </div>
 
-    <form (ngSubmit)="submit()">
+    <form (submit)="submit($event)">
       <div class="field">
         <label for="email">Email</label>
-        <input id="email" type="email" name="email" autocomplete="email" required
-               placeholder="you@example.com"
-               [ngModel]="email()" (ngModelChange)="email.set($event)" />
+        <cove-input
+          icon="mail"
+          type="email"
+          name="email"
+          autocomplete="email"
+          placeholder="you@example.com"
+          [value]="email()"
+          (valueChange)="email.set($event)" />
       </div>
 
       <div class="field">
         <label for="password">Password</label>
-        <input id="password" type="password" name="password" autocomplete="current-password" required
-               placeholder="••••••••"
-               [ngModel]="password()" (ngModelChange)="password.set($event)" />
+        <cove-input
+          icon="lock"
+          type="password"
+          name="password"
+          autocomplete="current-password"
+          placeholder="••••••••"
+          [value]="password()"
+          (valueChange)="password.set($event)" />
       </div>
 
       @if (error()) {
-        <p class="error" role="alert">{{ error() }}</p>
+        <p class="error" role="alert">
+          <cove-icon name="alert-circle" [size]="15"></cove-icon>
+          {{ error() }}
+        </p>
       }
 
-      <button type="submit" class="btn btn-primary block" [disabled]="busy()">
+      <cove-button variant="primary" size="lg" [disabled]="busy()" class="submit">
         {{ busy() ? 'Please wait…' : (mode() === 'register' ? 'Create account' : 'Sign in') }}
-      </button>
+      </cove-button>
     </form>
 
     <p class="switch">

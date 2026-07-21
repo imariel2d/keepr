@@ -1,0 +1,180 @@
+/* Cove — type import must precede all rules (CSS requires @import first). */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+/* Cove — color tokens. Warm, consumer-friendly palette: cream/paper base, terracotta accent, teal secondary. */
+:root {
+  /* base neutrals — warm gray scale */
+  --gray-0: #FFFFFF;
+  --gray-25: #FBF9F6;
+  --gray-50: #F5F1EB;
+  --gray-100: #EDE7DD;
+  --gray-200: #DDD4C4;
+  --gray-300: #C4B8A2;
+  --gray-400: #A3937A;
+  --gray-500: #857562;
+  --gray-600: #695D4E;
+  --gray-700: #4F463B;
+  --gray-800: #362F28;
+  --gray-900: #221D18;
+  --gray-950: #16120F;
+
+  /* brand — terracotta */
+  --brand-50: #FDEEE7;
+  --brand-100: #FAD9C8;
+  --brand-300: #F2A582;
+  --brand-500: #E8703A;
+  --brand-600: #D65A24;
+  --brand-700: #B04519;
+  --brand-800: #7E3113;
+
+  /* secondary — teal (folders, success, links in dark mode) */
+  --teal-50: #E9F5F2;
+  --teal-300: #7FC4B7;
+  --teal-500: #2A9D8F;
+  --teal-600: #1F7E73;
+  --teal-700: #17605A;
+
+  /* semantic — amber (warnings/quota), red (danger/delete) */
+  --amber-500: #E0A526;
+  --amber-600: #B7830F;
+  --red-50: #FBEAE7;
+  --red-500: #D0473A;
+  --red-600: #AE3427;
+
+  /* surfaces & text — light theme (default) */
+  --surface-app: var(--gray-25);
+  --surface-canvas: var(--gray-50);
+  --surface-card: var(--gray-0);
+  --surface-card-hover: var(--gray-50);
+  --surface-sunken: var(--gray-100);
+  --surface-overlay: var(--gray-0);
+  --surface-scrim: rgba(34, 29, 24, 0.4);
+
+  --border-subtle: var(--gray-100);
+  --border-default: var(--gray-200);
+  --border-strong: var(--gray-300);
+
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-600);
+  --text-tertiary: var(--gray-400);
+  --text-on-brand: #FFFFFF;
+  --text-link: var(--teal-600);
+
+  --accent: var(--brand-500);
+  --accent-hover: var(--brand-600);
+  --accent-active: var(--brand-700);
+  --accent-subtle: var(--brand-50);
+  --accent-subtle-text: var(--brand-700);
+
+  --focus-ring: var(--brand-500);
+  --danger: var(--red-500);
+  --danger-hover: var(--red-600);
+  --danger-subtle: var(--red-50);
+  --success: var(--teal-600);
+  --warning: var(--amber-600);
+}
+
+[data-theme="dark"] {
+  --surface-app: var(--gray-950);
+  --surface-canvas: var(--gray-900);
+  --surface-card: var(--gray-800);
+  --surface-card-hover: #3E362D;
+  --surface-sunken: var(--gray-900);
+  --surface-overlay: var(--gray-800);
+  --surface-scrim: rgba(0, 0, 0, 0.6);
+
+  --border-subtle: #3A322A;
+  --border-default: #4A4038;
+  --border-strong: #5C4F44;
+
+  --text-primary: #F4EFE7;
+  --text-secondary: #C4B8A2;
+  --text-tertiary: #857562;
+  --text-on-brand: #1C1611;
+  --text-link: var(--teal-300);
+
+  --accent: #FF8B5E;
+  --accent-hover: #FFA073;
+  --accent-active: #F2A582;
+  --accent-subtle: #3D2A20;
+  --accent-subtle-text: #F2A582;
+
+  --focus-ring: #FF8B5E;
+  --danger: #E8695B;
+  --danger-hover: #F0897C;
+  --danger-subtle: #3A211D;
+  --success: var(--teal-300);
+  --warning: var(--amber-500);
+}
+
+/* Cove — type system. Sora (display/UI headings) + Manrope (body/UI text).
+   The Google Fonts @import lives at the top of this file (CSS requires @import first). */
+:root {
+  --font-display: 'Sora', system-ui, sans-serif;
+  --font-body: 'Manrope', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Menlo', monospace;
+
+  /* scale */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 36px;
+  --text-4xl: 48px;
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+}
+
+/* Cove — spacing, radius, shadow, motion. Clean & spacious: generous whitespace, larger touch targets. */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  --control-height-sm: 32px;
+  --control-height-md: 40px;
+  --control-height-lg: 48px;
+
+  --shadow-xs: 0 1px 2px rgba(34, 29, 24, 0.06);
+  --shadow-sm: 0 2px 6px rgba(34, 29, 24, 0.08);
+  --shadow-md: 0 8px 24px rgba(34, 29, 24, 0.10);
+  --shadow-lg: 0 16px 40px rgba(34, 29, 24, 0.14);
+  --shadow-focus: 0 0 0 3px var(--accent-subtle);
+
+  --ease-standard: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 280ms;
+}
+
+[data-theme="dark"] {
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
