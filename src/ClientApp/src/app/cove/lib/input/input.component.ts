@@ -15,6 +15,7 @@ type Size = 'sm' | 'md' | 'lg';
              [attr.autocomplete]="autocomplete" [attr.name]="name" [attr.required]="required || null"
              (input)="valueChange.emit(input.value)" #input
              (focus)="focus = true" (blur)="focus = false" [ngStyle]="inputStyle" />
+      <ng-content select="[trailing]"></ng-content>
     </div>`,
 })
 export class InputComponent {

@@ -29,12 +29,26 @@
         <label for="password">Password</label>
         <cove-input
           icon="lock"
-          type="password"
+          [type]="showPassword() ? 'text' : 'password'"
           name="password"
           autocomplete="current-password"
           placeholder="••••••••"
           [value]="password()"
-          (valueChange)="password.set($event)" />
+          (valueChange)="password.set($event)">
+          <button
+            trailing
+            type="button"
+            class="reveal"
+            [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+            [attr.aria-pressed]="showPassword()"
+            (click)="showPassword.set(!showPassword())">
+            @if (showPassword()) {
+              <cove-icon name="eye-off" [size]="16"></cove-icon>
+            } @else {
+              <cove-icon name="eye" [size]="16"></cove-icon>
+            }
+          </button>
+        </cove-input>
       </div>
 
       @if (error()) {

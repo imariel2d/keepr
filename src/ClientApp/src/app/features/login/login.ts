@@ -17,6 +17,7 @@ export class Login {
 
   protected readonly email = signal('');
   protected readonly password = signal('');
+  protected readonly showPassword = signal(false);
   protected readonly mode = signal<'login' | 'register'>('login');
   protected readonly error = signal<string | null>(null);
   protected readonly busy = signal(false);
