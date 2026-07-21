@@ -1,0 +1,43 @@
+# Overlay that adds the API to the local stack, so the whole backend
+# (API + Postgres + MinIO) runs in Docker while the Angular SPA stays on the
+# host with `npm start` for hot reload.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.api.yml up -d --build
+#
+# The API hot-reloads too: src/Api is bind-mounted and the container runs
+# `dotnet watch` (see src/Api/Dockerfile.dev).
+services:
+  api:
+    build:
+      context: ./src/Api
+      dockerfile: Dockerfile.dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5080
+      # Reach Postgres/MinIO by their compose service names over the shared network.
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=media;Username=media;Password=media"
+      Storage__AccessKey: minioadmin
+      Storage__SecretKey: minioadmin
+      Storage__Bucket: media
+      # IMPORTANT: this host string is baked into the presigned URLs the browser uses,
+      # so it must resolve to MinIO from BOTH the container and your host. Add to /etc/hosts:
+      #   127.0.0.1 minio
+      Storage__ServiceUrl: "http://minio:9000"
+    ports:
+      - "5080:5080"
+    volumes:
+      # Bind-mount the source for hot reload; keep container-built bin/obj isolated
+      # from the host (different arch) via anonymous volumes.
+      - ./src/Api:/src
+      - /src/bin
+      - /src/obj
+      # Persist the NuGet cache so restores after `down` stay fast.
+      - nuget:/root/.nuget/packages
+
+volumes:
+  nuget:

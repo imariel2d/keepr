@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1
+# Dev-only image for the API: runs `dotnet watch` so backend edits hot-reload
+# inside the container. The source is bind-mounted (see docker-compose.api.yml);
+# this image only needs the SDK plus a warm restore of the NuGet packages.
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+
+WORKDIR /src
+
+# Restore against the csproj alone so the layer caches until dependencies change.
+COPY Api.csproj ./
+RUN dotnet restore Api.csproj
+
+# libgssapi silences Npgsql's Kerberos "cannot open shared object" warnings.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# File watching across the macOS <-> Docker VM boundary needs polling.
+ENV DOTNET_USE_POLLING_FILE_WATCHER=1 \
+    DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1 \
+    ASPNETCORE_URLS=http://+:5080
+
+EXPOSE 5080
+ENTRYPOINT ["dotnet", "watch", "run", "--no-launch-profile", "--urls", "http://+:5080"]
