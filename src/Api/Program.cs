@@ -42,7 +42,10 @@ if (string.IsNullOrWhiteSpace(storageCfg["AccountId"]) && string.IsNullOrWhiteSp
 builder.Services.AddSingleton<IObjectStorage, R2ObjectStorage>();
 builder.Services.AddScoped<QuotaService>();
 builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddScoped<FolderService>();
+builder.Services.AddScoped<TrashService>();
 builder.Services.AddHostedService<UploadCleanupService>();
+builder.Services.AddHostedService<TrashPurgeService>();
 
 // ---- Auth ------------------------------------------------------------------
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()!;

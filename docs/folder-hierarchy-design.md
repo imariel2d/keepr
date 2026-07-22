@@ -1,7 +1,7 @@
 # Folder Hierarchy — Data Model Design
 
 > Feature #2 in [feature-status.md](feature-status.md) (Tier 1), and the folder half of #4
-> (file/folder metadata). Status: **designed, not implemented.**
+> (file/folder metadata). Status: **implemented** (backend) — see §Q-H for the one deviation.
 >
 > This doc covers the **data model only** — entities, keys, indexes, invariants, and the
 > migration. API endpoints and UI are sketched at the end for context but are a separate step.
@@ -10,9 +10,12 @@
 > populated tree and which rows change on create, rename, and move. The sections above it
 > explain *why* the model is shaped that way.
 >
-> 🔄 **Under revision:** [Q-H](#-q-h--should-pathdepth-exist-at-all-raised-by-ariel-2026-07-21)
-> concludes the `Path`/`Depth` denormalization should be dropped in favour of a pure adjacency
-> list. §§2–5 and §8 still describe the `Path` design. Read Q-H before implementing.
+> ✅ **Built, with one change from this doc:** [Q-H](#-q-h--should-pathdepth-exist-at-all-raised-by-ariel-2026-07-21)
+> was resolved in favour of a **pure adjacency list** — `Path` and `Depth` were dropped and never
+> implemented. §§2–5 and §8 still describe the superseded `Path` design and are kept for the
+> rationale; **the code is the adjacency-list version**. Subtree and ancestor walks are recursive
+> CTEs in `src/Api/Services/FolderService.cs`. See
+> [api-changes-frontend.md](api-changes-frontend.md) for the shipped API.
 
 ---
 
@@ -541,8 +544,11 @@ one backfill CTE and no risk of loss. The case that would justify it later — `
 composing into a paginated "search anywhere under this folder", or per-request ancestor
 permission checks once sharing (#6) lands — is speculative and not Tier 1.
 
-*Status: revision agreed in principle; §§2–5 and §8 still describe the `Path` design and need
-rewriting to match.*
+*Status: **implemented as adjacency-only** (2026-07-22). `Folder` has `ParentId` and no
+`Path`/`Depth`; move is a one-row update; cycle checks, breadcrumbs, subtree scans, and the trash
+cascade are `WITH RECURSIVE` CTEs. Q-D's cap of 32 survives as `FolderService.MaxDepth`, now an
+application guard rather than a column-width constraint. §§2–5 and §8 are retained as the record
+of the alternative that was considered and rejected.*
 
 ---
 

@@ -1,6 +1,12 @@
 # Trash / Soft Delete — Design
 
-> Feature #8 in [feature-status.md](feature-status.md). Status: **designed, not implemented.**
+> Feature #8 in [feature-status.md](feature-status.md). Status: **implemented** (backend).
+> Code: `src/Api/Services/TrashService.cs`, `TrashPurgeService.cs`,
+> `src/Api/Features/Trash/TrashController.cs`. Shipped API:
+> [api-changes-frontend.md](api-changes-frontend.md).
+>
+> One deviation from this doc: the subtree cascade uses a recursive CTE over `ParentId` rather
+> than a `Path LIKE` prefix, because Q-H dropped the materialized path. Same semantics.
 >
 > **This overrides Q9 (hard delete)** in [my-decisions.md](my-decisions.md). Decided by Ariel,
 > 2026-07-21: deleting moves an item to Trash; after **10 days** it is permanently purged.

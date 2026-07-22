@@ -110,4 +110,17 @@ public sealed class R2ObjectStorage : IObjectStorage
 
     public Task DeleteAsync(string key, CancellationToken ct = default) =>
         _s3.DeleteObjectAsync(_opt.Bucket, key, ct);
+
+    public async Task DeleteManyAsync(IReadOnlyList<string> keys, CancellationToken ct = default)
+    {
+        // S3/R2 cap DeleteObjects at 1000 keys per request.
+        const int chunkSize = 1000;
+
+        for (var i = 0; i < keys.Count; i += chunkSize)
+        {
+            var chunk = keys.Skip(i).Take(chunkSize).Select(k => new KeyVersion { Key = k }).ToList();
+            await _s3.DeleteObjectsAsync(
+                new DeleteObjectsRequest { BucketName = _opt.Bucket, Objects = chunk }, ct);
+        }
+    }
 }

@@ -13,6 +13,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<User> Users => Set<User>();
     public DbSet<MediaFile> MediaFiles => Set<MediaFile>();
+    public DbSet<Folder> Folders => Set<Folder>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -36,12 +37,77 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.StorageKey).IsUnique();
             e.HasIndex(x => new { x.OwnerId, x.Status });
             e.Property(x => x.StorageKey).IsRequired();
-            e.Property(x => x.OriginalName).HasMaxLength(1024).IsRequired();
+            // 255, not 1024: the uniqueness index below carries the name, and a wider column can
+            // push a composite index entry past Postgres's ~2704-byte tuple limit once multibyte
+            // characters are involved. 255 also matches every mainstream filesystem's own limit.
+            e.Property(x => x.OriginalName).HasMaxLength(255).IsRequired();
+            e.Property(x => x.OriginalNameLower).HasMaxLength(255).IsRequired();
             e.Property(x => x.Status).HasConversion<string>();
             e.HasOne(x => x.Owner)
                 .WithMany(u => u.Files)
                 .HasForeignKey(x => x.OwnerId)
                 .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Folder)
+                .WithMany(f => f.Files)
+                .HasForeignKey(x => x.FolderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Folder-scoped listing.
+            e.HasIndex(x => new { x.OwnerId, x.FolderId, x.Status });
+
+            // No two *live* files in one folder share a name (case-insensitively).
+            //  - NULLS NOT DISTINCT so the rule also holds at the root, where FolderId is null.
+            //  - Failed excluded, or an abandoned upload would reserve its filename forever.
+            //  - Pending included, so a collision surfaces at init rather than after the user has
+            //    waited through an entire upload.
+            //  - Trashed excluded, so deleting a file frees its name for reuse.
+            e.HasIndex(x => new { x.OwnerId, x.FolderId, x.OriginalNameLower })
+                .IsUnique()
+                .AreNullsDistinct(false)
+                .HasFilter($"\"{nameof(MediaFile.Status)}\" <> 'Failed' AND \"{nameof(MediaFile.DeletedAt)}\" IS NULL");
+
+            // Drives the retention sweeper, which scans by age across all users.
+            e.HasIndex(x => x.DeletedAt)
+                .HasFilter($"\"{nameof(MediaFile.DeletedAt)}\" IS NOT NULL");
+
+            // Soft delete is invisible by default: every query anywhere in the app sees live rows
+            // only, and the three places that need trashed rows opt out with IgnoreQueryFilters().
+            e.HasQueryFilter(x => x.DeletedAt == null);
+        });
+
+        b.Entity<Folder>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(255).IsRequired();
+            e.Property(x => x.NameLower).HasMaxLength(255).IsRequired();
+
+            e.HasOne(x => x.Owner)
+                .WithMany()
+                .HasForeignKey(x => x.OwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Restrict, not Cascade: letting the database delete a subtree would drop rows while
+            // their objects stayed in R2 and their bytes stayed charged to the user's quota.
+            // Subtrees are drained by TrashService/TrashPurgeService instead.
+            e.HasOne(x => x.Parent)
+                .WithMany(f => f.Children)
+                .HasForeignKey(x => x.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Listing a folder's children — also the index the recursive CTEs walk.
+            e.HasIndex(x => new { x.OwnerId, x.ParentId });
+
+            // Sibling names are unique per owner, case-insensitively; see the MediaFile index
+            // above for why NULLS NOT DISTINCT and the trashed-row exclusion are both needed.
+            e.HasIndex(x => new { x.OwnerId, x.ParentId, x.NameLower })
+                .IsUnique()
+                .AreNullsDistinct(false)
+                .HasFilter($"\"{nameof(Folder.DeletedAt)}\" IS NULL");
+
+            e.HasIndex(x => x.DeletedAt)
+                .HasFilter($"\"{nameof(Folder.DeletedAt)}\" IS NOT NULL");
+
+            e.HasQueryFilter(x => x.DeletedAt == null);
         });
     }
 }
