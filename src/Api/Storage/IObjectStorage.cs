@@ -26,6 +26,13 @@ public interface IObjectStorage
     Task<byte[]> ReadHeadBytesAsync(string key, int count, CancellationToken ct = default);
 
     Task DeleteAsync(string key, CancellationToken ct = default);
+
+    /// <summary>
+    /// Delete many objects, chunked into the provider's per-request limit. Used by the trash
+    /// purge, where one folder can hold thousands of files. Idempotent: deleting a key that is
+    /// already gone succeeds, so a partially-completed purge is safe to retry.
+    /// </summary>
+    Task DeleteManyAsync(IReadOnlyList<string> keys, CancellationToken ct = default);
 }
 
 public readonly record struct CompletedPart(int PartNumber, string ETag);

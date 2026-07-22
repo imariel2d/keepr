@@ -21,15 +21,22 @@ src/app/
     auth.interceptor.ts attaches Bearer to /api calls only
     auth.guard.ts       route guard
     upload.service.ts   presigned S3 multipart engine
-    media.service.ts    list / download-url / delete / usage
+    media.service.ts    list / download-url / rename / move / trash / usage
+    folder.service.ts   folder contents / create / rename / move / delete
+    trash.service.ts    trash list / restore / purge / empty
+    usage.store.ts      shared quota signal for the sidebar meter
+    file-type.ts        MIME -> Cove file-type + date formatting
     bytes.pipe.ts       human-readable sizes
   features/
     login/              register + sign in
-    home/               quota meter, uploader, file library
+    files/              folder browser: breadcrumbs, cards, upload, rename/move/delete
+      move-dialog.ts    "Move to..." destination picker
+    trash/              trashed items, restore, purge, empty
 ```
 
 ## How uploads work (matches the API)
-1. `POST /api/uploads/init { originalName, sizeBytes, contentType }` → `{ mediaId, uploadId, partSize }`
+1. `POST /api/uploads/init { originalName, sizeBytes, contentType, folderId }` →
+   `{ mediaId, uploadId, partSize, originalName }`
 2. For each `partSize` slice: `GET /api/uploads/{id}/part-url?partNumber=N`, then **`fetch` PUT**
    the slice straight to storage and read the `ETag` response header. `fetch` (not HttpClient)
    is used so the auth interceptor never adds an `Authorization` header to the signed URL.
@@ -42,3 +49,25 @@ src/app/
 ## Build for production
 `npm run build` → `dist/ClientApp/browser/`. The root [Dockerfile](../../Dockerfile) copies that
 directory into the API's `wwwroot` so the SPA ships inside the same image.
+
+## Three API behaviours the UI depends on
+
+Full contract: [docs/api-changes-frontend.md](../../docs/api-changes-frontend.md).
+
+1. **The server may store a different name than you sent.** Collisions inside a folder are
+   auto-suffixed (`report.pdf` -> `report (2).pdf`) on create, rename, move, *and upload* —
+   never rejected. Always render the name from the response. The upload progress row is patched
+   from `init.originalName` for exactly this reason.
+2. **Delete means "move to trash".** Items are recoverable for 10 days and keep consuming quota
+   until purged, which is why the sidebar shows a separate "in Trash" line.
+3. **`folderId: null` is the root**, not a missing value.
+
+## Running against the dockerized API
+
+`docker compose -f docker-compose.yml -f docker-compose.api.yml up -d` publishes the API on
+:5080, which `proxy.conf.json` already targets — so `npm start` works against it.
+
+Uploads work in that configuration because the API is configured with two storage endpoints:
+`Storage__ServiceUrl=http://minio:9000` for its own calls, and `Storage__PublicUrl=http://localhost:9000`
+for the presigned URLs handed to the browser. Without the second one the direct-to-storage PUT
+fails with `ERR_NAME_NOT_RESOLVED`, since `minio` only resolves inside the Docker network.

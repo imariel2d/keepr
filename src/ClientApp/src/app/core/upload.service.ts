@@ -12,7 +12,7 @@ import {
  * Presigned S3 multipart upload, browser -> R2 directly. See docs/ai-design-decisions.md (D2).
  *
  * Flow per file:
- *   1. POST /api/uploads/init            -> { mediaId, uploadId, partSize }
+ *   1. POST /api/uploads/init            -> { mediaId, uploadId, partSize, originalName }
  *   2. per part: GET .../part-url        -> presigned PUT URL
  *      then fetch(PUT) the slice to storage, read the ETag response header
  *   3. POST .../complete { parts }       -> reconciles quota, marks ready
@@ -28,7 +28,10 @@ export class UploadService {
   /** Live list of upload tasks for the UI to render. */
   readonly tasks = signal<UploadTask[]>([]);
 
-  async upload(file: File): Promise<void> {
+  /**
+   * @param folderId Destination folder; null uploads to the root.
+   */
+  async upload(file: File, folderId: string | null = null): Promise<void> {
     const task: UploadTask = {
       id: crypto.randomUUID(),
       fileName: file.name,
@@ -45,8 +48,16 @@ export class UploadService {
           originalName: file.name,
           sizeBytes: file.size,
           contentType: file.type || 'application/octet-stream',
+          folderId,
         })
       );
+
+      // The server may have stored a different name: a collision inside the destination folder
+      // is auto-suffixed rather than rejected. Show what was actually stored, or the progress
+      // row lies for the whole upload and disagrees with the list afterwards.
+      if (init.originalName !== file.name) {
+        this.patch(task.id, { fileName: init.originalName });
+      }
 
       const parts = await this.uploadParts(file, init, task);
 

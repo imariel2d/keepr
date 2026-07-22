@@ -11,6 +11,16 @@ public class CleanupOptions
     public const string SectionName = "Cleanup";
     public int IntervalMinutes { get; set; } = 30;
     public int PendingMaxAgeHours { get; set; } = 24;
+
+    /// <summary>
+    /// How long a trashed item is recoverable before it is permanently purged. Lowering this
+    /// takes effect immediately for items already past the new threshold, because the sweep
+    /// compares against the absolute DeletedAt.
+    /// </summary>
+    public int TrashRetentionDays { get; set; } = 10;
+
+    /// <summary>Files purged per batch, so one huge trash doesn't load into memory at once.</summary>
+    public int PurgeBatchSize { get; set; } = 500;
 }
 
 /// <summary>

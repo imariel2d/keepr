@@ -2,11 +2,11 @@
 
 Tracking the planned feature set against what is actually implemented in the codebase.
 
-Keepr is currently an **MVP personal media store**: flat (no folders), single-owner (no
-sharing), hard-delete only. Of the 25 planned features, **3 are fully done**, 2 are partial,
-and 20 are not started.
+Keepr is a **personal media store** with a folder hierarchy, rename, and a 10-day trash:
+single-owner (no sharing yet). Of the 25 planned features, **7 are complete** (backend + UI)
+and 18 are not started.
 
-**Legend:** ✅ Done · 🟡 Partial · ❌ Not started
+**Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
 ---
 
@@ -15,10 +15,10 @@ and 20 are not started.
 | # | Feature | Status | Evidence / gap |
 |---|---------|--------|----------------|
 | 1 | Upload/download files | ✅ | Presigned S3 multipart upload (`src/Api/Features/Uploads/UploadsController.cs`) + presigned GET download (`src/Api/Features/Media/MediaController.cs`) |
-| 2 | Folder hierarchy (create, nested, move) | ❌ | No `Folder` entity; storage is flat `{ownerId}/{uuid}` keys |
+| 2 | Folder hierarchy (create, nested, move) | ✅ | Backend: `Folder` entity (adjacency list), recursive-CTE subtree/breadcrumbs, cycle + depth guards, auto-suffix naming. UI: `src/ClientApp/src/app/features/files/` — breadcrumb nav, card grid, drag-and-drop + "Move to…" picker. Storage stays flat `{ownerId}/{uuid}` (FD1) |
 | 3 | Authentication | ✅ | JWT register/login (`src/Api/Features/Auth/AuthController.cs`) |
-| 4 | File/folder metadata storage | 🟡 | File metadata done (name, size, type, owner, timestamps in `src/Api/Domain/MediaFile.cs`); folder metadata absent |
-| 5 | Rename/delete | 🟡 | Hard delete done (`MediaController.cs`); rename has no endpoint |
+| 4 | File/folder metadata storage | ✅ | File metadata (`src/Api/Domain/MediaFile.cs`) + folder metadata (`src/Api/Domain/Folder.cs`) |
+| 5 | Rename/delete | ✅ | Rename via `PATCH /api/media/{id}` + `PATCH /api/folders/{id}`, exposed in the card context menu. Delete is now soft (#8) |
 
 ## Tier 2 — Makes it usable as a product
 
@@ -26,7 +26,7 @@ and 20 are not started.
 |---|---------|--------|-------|
 | 6 | Sharing with specific users (view/edit) | ❌ | No share/permission model; everything is owner-scoped |
 | 7 | Shareable links | ❌ | Download URLs are short-TTL internal presigns, not user-facing links |
-| 8 | Trash / soft delete with restore | ❌ | Delete is hard-only; `MediaStatus.Failed` exists but no trash/restore |
+| 8 | Trash / soft delete with restore | ✅ | `DeletedAt`/`DeletedRootId`, EF global query filters, `TrashController`, `TrashPurgeService` sweeper at 10 days. UI: `features/trash/` with restore, purge, empty, and a "in Trash" line on the quota meter. **Overrides Q9 hard delete** |
 | 9 | Search by file name | ❌ | List endpoint has no search/filter |
 | 10 | In-browser preview (images, PDFs) | ❌ | No preview UI (download-url could feed one, but nothing built) |
 
@@ -64,12 +64,34 @@ and 20 are not started.
 
 ## Summary
 
-- **Done (3):** file upload/download, auth, quota tracking.
-- **Partial (2):** metadata (files ✅ / folders ❌), rename-delete (delete ✅ / rename ❌).
-- **Not started (20):** everything else.
+- **Done (7):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
+  rename/delete, trash.
+- **Not started (18):** everything else. **Tier 1 is complete.**
 
-### Suggested next steps to finish Tier 1
+### Next: Tier 2
 
-1. Add **rename** (`PATCH /api/media/{id}`) — closes #5.
-2. Add a **`Folder` entity** + parent-folder FK on `MediaFile`, with create/move endpoints —
-   closes #2 and the #4 folder-metadata gap.
+The cheapest next wins, in order:
+
+1. **#9 search by file name** — a flat `OriginalNameLower LIKE` query; the column already exists
+   and is indexed, and `GET /api/media` (unscoped) is already the all-files endpoint a search
+   view would filter.
+2. **#10 in-browser preview** — `download-url` already returns a presigned GET; images and PDFs
+   need only a viewer component.
+3. **#14 starred** — one boolean on `MediaFile` plus a sidebar view.
+
+**#6 sharing** is the big one, and per [my-decisions.md](my-decisions.md) Q5 it is the trigger
+for revisiting malware scanning and content moderation — those become required before sharing
+ships, not after.
+
+### Known follow-ups
+
+- **Sweeper leasing (Q-F).** `UploadCleanupService` and `TrashPurgeService` are both
+  single-instance-safe only. Two instances would double-release quota — add
+  `pg_try_advisory_lock` before scaling past one instance.
+- ~~Browser uploads against the dockerized API don't work.~~ **Fixed 2026-07-22** by splitting
+  `Storage:ServiceUrl` (what the API calls) from `Storage:PublicUrl` (the host baked into
+  presigned URLs). The dockerised stack now uses `minio:9000` internally and `localhost:9000`
+  for the browser.
+- **Trashed-file downloads (Q-G).** Currently 404 via the global query filter — the recommended
+  behaviour, but never explicitly decided.
+- **Retention configurability (Q-E).** `Cleanup:TrashRetentionDays` defaults to 10.
