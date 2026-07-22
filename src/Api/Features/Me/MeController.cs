@@ -20,6 +20,8 @@ public class MeController(AppDbContext db, TrashService trash) : ControllerBase
 {
     /// <summary>Powers the always-visible "space remaining" meter.</summary>
     [HttpGet("usage")]
+    [ProducesResponseType<UsageResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UsageResponse>> Usage(CancellationToken ct)
     {
         var userId = User.UserId();

@@ -31,6 +31,7 @@ public class MediaController(
     /// Trashed files are excluded automatically by the soft-delete query filter.
     /// </summary>
     [HttpGet]
+    [ProducesResponseType<IReadOnlyList<MediaListItem>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<MediaListItem>>> List(
         [FromQuery] Guid? folderId, [FromQuery] bool scoped, CancellationToken ct)
     {
@@ -51,6 +52,8 @@ public class MediaController(
 
     /// <summary>Short-TTL presigned GET so the private object can be viewed/downloaded.</summary>
     [HttpGet("{id:guid}/download-url")]
+    [ProducesResponseType<DownloadUrlResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DownloadUrlResponse>> DownloadUrl(Guid id, CancellationToken ct)
     {
         var media = await OwnedReady(id, ct);
@@ -63,6 +66,9 @@ public class MediaController(
     /// is resolved by suffixing ("report.pdf" → "report (2).pdf"), so use the response value.
     /// </summary>
     [HttpPatch("{id:guid}")]
+    [ProducesResponseType<MediaListItem>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<MediaListItem>> Rename(
         Guid id, RenameMediaRequest req, CancellationToken ct)
     {
@@ -93,6 +99,8 @@ public class MediaController(
 
     /// <summary>Move a file to another folder, or to the root with a null folderId.</summary>
     [HttpPost("{id:guid}/move")]
+    [ProducesResponseType<MediaListItem>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<MediaListItem>> Move(Guid id, MoveMediaRequest req, CancellationToken ct)
     {
         var userId = User.UserId();
@@ -124,6 +132,8 @@ public class MediaController(
     /// freed when the retention window expires (or on an explicit purge).
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         try

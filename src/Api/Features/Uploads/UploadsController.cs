@@ -39,6 +39,10 @@ public class UploadsController(
 
     /// <summary>Step 1: reserve quota, open a multipart upload, create a pending row.</summary>
     [HttpPost("init")]
+    [ProducesResponseType<InitUploadResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status413PayloadTooLarge)]
     public async Task<ActionResult<InitUploadResponse>> Init(InitUploadRequest req, CancellationToken ct)
     {
         if (req.SizeBytes <= 0) return BadRequest(new { error = "SizeBytes must be positive." });
@@ -113,6 +117,9 @@ public class UploadsController(
 
     /// <summary>Step 2: presigned URL for one part. Client calls this per part (or batches).</summary>
     [HttpGet("{id:guid}/part-url")]
+    [ProducesResponseType<PartUrlResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PartUrlResponse>> PartUrl(Guid id, [FromQuery] int partNumber, CancellationToken ct)
     {
         if (partNumber < 1) return BadRequest(new { error = "partNumber is 1-based." });
@@ -125,6 +132,9 @@ public class UploadsController(
 
     /// <summary>Step 3: assemble parts, verify real size, reconcile quota, mark ready.</summary>
     [HttpPost("{id:guid}/complete")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Complete(Guid id, CompleteUploadRequest req, CancellationToken ct)
     {
         var media = await OwnedPending(id, ct);
@@ -157,6 +167,8 @@ public class UploadsController(
 
     /// <summary>Abort an in-flight upload; release the reserved quota.</summary>
     [HttpPost("{id:guid}/abort")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Abort(Guid id, CancellationToken ct)
     {
         var media = await OwnedPending(id, ct);

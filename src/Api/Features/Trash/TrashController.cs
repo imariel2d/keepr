@@ -29,6 +29,7 @@ public class TrashController(
     /// <c>purgesAt</c> is computed server-side so the client never has to know the retention rule.
     /// </summary>
     [HttpGet]
+    [ProducesResponseType<IReadOnlyList<TrashItemResponse>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<TrashItemResponse>>> List(CancellationToken ct)
     {
         var entries = await trash.ListAsync(User.UserId(), RetentionDays, ct);
@@ -42,6 +43,9 @@ public class TrashController(
     /// than refused. An item whose folder is gone comes back to the root.
     /// </summary>
     [HttpPost("{id:guid}/restore")]
+    [ProducesResponseType<RestoreResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<RestoreResponse>> Restore(Guid id, CancellationToken ct)
     {
         try
@@ -56,6 +60,8 @@ public class TrashController(
 
     /// <summary>Permanently delete one item now, without waiting out the retention window.</summary>
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Purge(Guid id, CancellationToken ct)
     {
         try
@@ -71,6 +77,7 @@ public class TrashController(
 
     /// <summary>Permanently delete everything in the trash. This is what frees quota immediately.</summary>
     [HttpDelete]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> EmptyTrash(CancellationToken ct)
     {
         var userId = User.UserId();

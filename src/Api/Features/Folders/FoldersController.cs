@@ -45,6 +45,8 @@ public class FoldersController(
     /// <paramref name="folderId"/> for the root. One call so the UI can render a whole view.
     /// </summary>
     [HttpGet("contents")]
+    [ProducesResponseType<FolderContents>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<FolderContents>> Contents(
         [FromQuery] Guid? folderId, CancellationToken ct)
     {
@@ -82,6 +84,10 @@ public class FoldersController(
     }
 
     [HttpPost]
+    [ProducesResponseType<FolderItem>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<FolderItem>> Create(CreateFolderRequest req, CancellationToken ct)
     {
         try
@@ -100,6 +106,10 @@ public class FoldersController(
     /// suffixing rather than by failing, so always use the name in the response.
     /// </summary>
     [HttpPatch("{id:guid}")]
+    [ProducesResponseType<FolderItem>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<FolderItem>> Rename(Guid id, RenameFolderRequest req, CancellationToken ct)
     {
         try
@@ -114,6 +124,9 @@ public class FoldersController(
 
     /// <summary>Move to another folder, or to the root with a null parentId.</summary>
     [HttpPost("{id:guid}/move")]
+    [ProducesResponseType<FolderItem>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<FolderItem>> Move(Guid id, MoveFolderRequest req, CancellationToken ct)
     {
         try
@@ -131,6 +144,8 @@ public class FoldersController(
     /// transaction, no object-storage calls, fully reversible until the retention window expires.
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         try

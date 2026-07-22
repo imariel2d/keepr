@@ -6,6 +6,11 @@
 >
 > All JSON is camelCase. All endpoints require `Authorization: Bearer <token>` unless noted.
 > Errors are RFC7807 problem+json — the human-readable message is in **`detail`**.
+>
+> 💡 **Try any of this live:** run the API and open **http://localhost:5080/swagger**. Log in via
+> `POST /api/auth/login`, paste the `accessToken` into **Authorize**, then use "Try it out" on
+> any endpoint. The OpenAPI document is at `/openapi/v1.json` if you want to generate a typed
+> client instead of hand-writing the services.
 
 ---
 

@@ -1,6 +1,7 @@
 using System.Text;
 using Keepr.Api.Data;
 using Keepr.Api.Features.Auth;
+using Keepr.Api.OpenApi;
 using Keepr.Api.Services;
 using Keepr.Api.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -67,6 +68,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddKeeprOpenApi();
 
 var app = builder.Build();
 
@@ -80,7 +82,13 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+// OpenAPI spec at /openapi/v1.json and Swagger UI at /swagger (Development only).
+app.UseKeeprOpenApi();
+
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
+   .WithSummary("Liveness probe.")
+   .WithTags("Health")
+   .AllowAnonymous();
 
 app.UseAuthentication();
 app.UseAuthorization();

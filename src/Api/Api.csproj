@@ -7,18 +7,35 @@
     <RootNamespace>Keepr.Api</RootNamespace>
     <!-- Angular build output is copied here by the Dockerfile and served as static files -->
     <SpaRoot>wwwroot</SpaRoot>
+    <!--
+      Emit the XML doc file so Microsoft.AspNetCore.OpenApi can lift the <summary>/<param>
+      comments off controllers and DTOs into the OpenAPI document. CS1591 is disabled because
+      requiring a doc comment on every public member (including every DTO property) would be
+      noise, not documentation.
+    -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <!--
+      Explicit, though only used transitively by Microsoft.AspNetCore.OpenApi: that package
+      pulls 2.0.0, which carries GHSA-v5pm-xwqc-g5wc (circular schema references can terminate
+      parsing). Patched in 2.7.5. Only affects parsing untrusted documents — we generate rather
+      than parse — but a direct reference overrides the transitive one for free.
+    -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.6" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
     <PackageReference Include="AWSSDK.S3" Version="4.0.101.3" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.3" />
   </ItemGroup>
 
 </Project>

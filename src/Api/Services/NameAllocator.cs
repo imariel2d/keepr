@@ -22,6 +22,8 @@ public static partial class NameAllocator
     /// First free name for <paramref name="desired"/> given the names already used in the
     /// destination (compared lowercased).
     /// </summary>
+    /// <param name="desired">The name the caller asked for.</param>
+    /// <param name="takenLower">Lowercased names already used in the destination.</param>
     /// <param name="isFile">
     /// True to keep the extension on the end: "report.pdf" → "report (2).pdf", never
     /// "report.pdf (2)", which would break the type the UI infers from the extension.
