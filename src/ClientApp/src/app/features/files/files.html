@@ -1,0 +1,191 @@
+<header class="head">
+  <!-- Breadcrumbs double as drop targets: dragging a card onto an ancestor moves it up. -->
+  <nav class="trail" aria-label="Breadcrumb">
+    <button
+      type="button"
+      class="crumb"
+      [class.drop]="dropTarget() === 'crumb:root'"
+      (click)="navigateTo(null)"
+      (dragover)="onCrumbDragOver($event, 'crumb:root')"
+      (dragleave)="onFolderDragLeave('crumb:root')"
+      (drop)="onCrumbDrop($event, null)">
+      <cove-icon name="hard-drive" [size]="15" />
+      <span>My Files</span>
+    </button>
+
+    @for (c of breadcrumbs(); track c.id; let last = $last) {
+      <cove-icon name="chevron-right" [size]="14" color="var(--text-tertiary)" />
+      <button
+        type="button"
+        class="crumb"
+        [class.current]="last"
+        [class.drop]="dropTarget() === 'crumb:' + c.id"
+        (click)="navigateTo(c.id)"
+        (dragover)="onCrumbDragOver($event, 'crumb:' + c.id)"
+        (dragleave)="onFolderDragLeave('crumb:' + c.id)"
+        (drop)="onCrumbDrop($event, c.id)">
+        {{ c.name }}
+      </button>
+    }
+  </nav>
+
+  <div class="head-actions">
+    <cove-button variant="ghost" icon="folder-plus" (click)="openCreate()">New folder</cove-button>
+    <cove-button variant="primary" icon="upload-cloud" (click)="onBrowse()">Upload</cove-button>
+  </div>
+</header>
+
+@if (notice(); as n) {
+  <div class="banner banner--info">
+    <cove-icon name="info" [size]="16" />
+    <span>{{ n }}</span>
+    <button type="button" class="banner-x" (click)="notice.set(null)" aria-label="Dismiss">×</button>
+  </div>
+}
+
+@if (error(); as e) {
+  <div class="banner banner--error">
+    <cove-icon name="alert-circle" [size]="16" />
+    <span>{{ e }}</span>
+    <button type="button" class="banner-x" (click)="error.set(null)" aria-label="Dismiss">×</button>
+  </div>
+}
+
+<section
+  class="dropzone"
+  [class.active]="draggingFiles()"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave($event)"
+  (drop)="onDrop($event)">
+  <input id="file-input" type="file" multiple hidden (change)="onFilesSelected($event)" />
+  <cove-icon name="upload-cloud" [size]="26" color="var(--accent)" />
+  <p class="dz-title">Drop files to upload to <strong>{{ contents()?.folder?.name ?? 'My Files' }}</strong></p>
+</section>
+
+@if (uploads.tasks().length) {
+  <section class="tasks">
+    @for (t of uploads.tasks(); track t.id) {
+      <div class="task">
+        <div class="task-row">
+          <span class="tname">{{ t.fileName }}</span>
+          <span class="tstate" [class.error]="taskTone(t) === 'danger'" [class.done]="t.status === 'done'">
+            {{ t.status }}
+          </span>
+        </div>
+        <cove-progress-bar [value]="taskPercent(t)" [tone]="taskTone(t)" [height]="6" />
+        @if (t.error) { <p class="terr">{{ t.error }}</p> }
+      </div>
+    }
+  </section>
+}
+
+@if (loading()) {
+  <p class="muted">Loading…</p>
+} @else if (isEmpty()) {
+  <div class="empty">
+    <cove-icon name="folder-open" [size]="34" color="var(--text-tertiary)" />
+    <p>This folder is empty — drop files above or create a subfolder.</p>
+  </div>
+} @else {
+  @if (folders().length) {
+    <h2 class="section-title">Folders</h2>
+    <div class="grid">
+      @for (f of folders(); track f.id) {
+        <div
+          class="cell"
+          [class.drop]="dropTarget() === f.id"
+          draggable="true"
+          (dragstart)="onItemDragStart($event, { kind: 'folder', id: f.id, name: f.name })"
+          (dragover)="onFolderDragOver($event, f.id)"
+          (dragleave)="onFolderDragLeave(f.id)"
+          (drop)="onFolderDrop($event, f.id)">
+          <cove-folder-card
+            [name]="f.name"
+            (openItem)="openFolder(f)"
+            (menu)="folderMenu($event, f)" />
+        </div>
+      }
+    </div>
+  }
+
+  @if (files().length) {
+    <h2 class="section-title">Files</h2>
+    <div class="grid">
+      @for (f of files(); track f.id) {
+        <div
+          class="cell"
+          draggable="true"
+          (dragstart)="onItemDragStart($event, { kind: 'file', id: f.id, name: f.originalName })">
+          <cove-file-card
+            [name]="f.originalName"
+            [type]="fileType(f.contentType)"
+            [modified]="(f.sizeBytes | bytes) + ' · ' + formatDate(f.createdAt)"
+            (openItem)="download(f)"
+            (menu)="fileMenu($event, f)" />
+        </div>
+      }
+    </div>
+  }
+}
+
+<cove-context-menu
+  [open]="menuOpen()"
+  [x]="menuX()"
+  [y]="menuY()"
+  [items]="menuItems()"
+  (closed)="menuOpen.set(false)" />
+
+<!-- New folder -->
+<cove-modal [open]="createOpen()" title="New folder" [width]="420" (close)="createOpen.set(false)">
+  <cove-input
+    placeholder="Folder name"
+    [value]="createName()"
+    (valueChange)="createName.set($event)" />
+  <div class="foot">
+    <cove-button variant="ghost" (click)="createOpen.set(false)">Cancel</cove-button>
+    <cove-button variant="primary" (click)="submitCreate()">Create</cove-button>
+  </div>
+</cove-modal>
+
+<!-- Rename -->
+<cove-modal
+  [open]="renameOpen()"
+  [title]="'Rename ' + (renameTarget()?.name ?? '')"
+  [width]="420"
+  (close)="renameOpen.set(false)">
+  <cove-input
+    placeholder="New name"
+    [value]="renameValue()"
+    (valueChange)="renameValue.set($event)" />
+  <div class="foot">
+    <cove-button variant="ghost" (click)="renameOpen.set(false)">Cancel</cove-button>
+    <cove-button variant="primary" (click)="submitRename()">Rename</cove-button>
+  </div>
+</cove-modal>
+
+<!-- Delete confirmation. Folders take their whole contents with them, so say so. -->
+<cove-modal
+  [open]="confirmOpen()"
+  [title]="'Delete ' + (confirmTarget()?.name ?? '') + '?'"
+  [width]="460"
+  (close)="confirmOpen.set(false)">
+  <p class="confirm-body">
+    @if (confirmTarget()?.kind === 'folder') {
+      <strong>{{ confirmTarget()?.name }}</strong> and everything inside it will be moved to the Trash.
+    } @else {
+      <strong>{{ confirmTarget()?.name }}</strong> will be moved to the Trash.
+    }
+    You can restore it for 10 days; it keeps using storage until then.
+  </p>
+  <div class="foot">
+    <cove-button variant="ghost" (click)="confirmOpen.set(false)">Cancel</cove-button>
+    <cove-button variant="danger" (click)="confirmDelete()">Move to Trash</cove-button>
+  </div>
+</cove-modal>
+
+<app-move-dialog
+  [open]="moveOpen()"
+  [item]="moveTarget()"
+  [sourceFolderId]="folderId()"
+  (confirm)="onMoveConfirmed($event)"
+  (cancel)="moveOpen.set(false)" />

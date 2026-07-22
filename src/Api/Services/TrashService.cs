@@ -50,10 +50,14 @@ public class TrashService(
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
+        // Failed rows are abandoned uploads whose quota was already released. Sweeping them into
+        // the trash would put dead rows in front of the user and inflate the folder's restorable
+        // size; the upload sweeper owns their cleanup.
         await db.Database.ExecuteSqlRawAsync($"""
             UPDATE {FilesTable}
                SET "DeletedAt" = @p0, "DeletedRootId" = @p1, "UpdatedAt" = @p0
              WHERE "OwnerId" = @p2 AND "FolderId" = ANY(@p3) AND "DeletedAt" IS NULL
+               AND "Status" <> 'Failed'
             """, [now, folderId, ownerId, subtree.ToArray()], ct);
 
         await db.Database.ExecuteSqlRawAsync($"""
@@ -97,9 +101,12 @@ public class TrashService(
             .ToListAsync(ct);
 
         // Bytes held by each trashed folder, so the UI can explain what "Empty Trash" would free.
+        // Ready only: those are the bytes that are actually still charged to the quota, so this
+        // figure agrees with TrashedBytesAsync and with what purging would give back.
         var folderIds = trashedFolders.Select(f => f.Id).ToList();
         var folderSizes = await db.MediaFiles.IgnoreQueryFilters()
             .Where(m => m.OwnerId == ownerId && m.DeletedRootId != null
+                        && m.Status == MediaStatus.Ready
                         && folderIds.Contains(m.DeletedRootId.Value))
             .GroupBy(m => m.DeletedRootId!.Value)
             .Select(g => new { RootId = g.Key, Bytes = g.Sum(m => m.SizeBytes) })

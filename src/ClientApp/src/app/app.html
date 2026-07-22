@@ -18,6 +18,26 @@
   </div>
 </header>
 
-<main class="content">
-  <router-outlet />
-</main>
+@if (auth.isAuthenticated()) {
+  <div class="shell">
+    <nav class="side">
+      <cove-sidebar
+        brand="Keepr"
+        [items]="navItems"
+        [active]="section()"
+        [showUpload]="false"
+        [quotaUsed]="usedPercent()"
+        [quotaTotal]="100"
+        [quotaLabel]="quotaLabel()"
+        [quotaNote]="quotaNote()"
+        (navigate)="navigate($event)" />
+    </nav>
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+} @else {
+  <main class="content content--centered">
+    <router-outlet />
+  </main>
+}

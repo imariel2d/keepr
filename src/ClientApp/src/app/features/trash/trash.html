@@ -1,0 +1,105 @@
+<header class="head">
+  <div>
+    <h1 class="title">Trash</h1>
+    <p class="sub">
+      Items stay here for 10 days, then are deleted permanently.
+      <strong>They still use your storage until then.</strong>
+    </p>
+  </div>
+
+  @if (items().length) {
+    <cove-button variant="danger" icon="trash-2" [disabled]="busy()" (click)="emptyOpen.set(true)">
+      Empty Trash
+    </cove-button>
+  }
+</header>
+
+@if (notice(); as n) {
+  <div class="banner banner--info">
+    <cove-icon name="info" [size]="16" />
+    <span>{{ n }}</span>
+    <button type="button" class="banner-x" (click)="notice.set(null)" aria-label="Dismiss">×</button>
+  </div>
+}
+
+@if (error(); as e) {
+  <div class="banner banner--error">
+    <cove-icon name="alert-circle" [size]="16" />
+    <span>{{ e }}</span>
+    <button type="button" class="banner-x" (click)="error.set(null)" aria-label="Dismiss">×</button>
+  </div>
+}
+
+@if (loading()) {
+  <p class="muted">Loading…</p>
+} @else if (items().length === 0) {
+  <div class="empty">
+    <cove-icon name="trash-2" [size]="34" color="var(--text-tertiary)" />
+    <p>Trash is empty.</p>
+  </div>
+} @else {
+  <p class="summary">
+    {{ items().length }} item{{ items().length === 1 ? '' : 's' }} ·
+    {{ totalBytes() | bytes }} recoverable
+  </p>
+
+  <ul class="list">
+    @for (item of items(); track item.id) {
+      <li class="row">
+        <span class="ricon" aria-hidden="true">
+          <cove-icon [name]="iconOf(item).icon" [size]="20" [color]="iconOf(item).color" />
+        </span>
+
+        <div class="rmeta">
+          <span class="rname">{{ item.name }}</span>
+          <span class="rsub">
+            @if (item.kind === 'folder') { Folder · } {{ item.sizeBytes | bytes }} ·
+            deleted {{ formatDate(item.deletedAt) }}
+          </span>
+        </div>
+
+        <!-- purgesAt comes from the server, so the retention rule lives in one place. -->
+        <cove-badge [tone]="daysLeft(item) <= 2 ? 'danger' : 'neutral'">
+          {{ purgeLabel(item) }}
+        </cove-badge>
+
+        <div class="ractions">
+          <cove-button variant="ghost" size="sm" icon="rotate-ccw" [disabled]="busy()" (click)="restore(item)">
+            Restore
+          </cove-button>
+          <cove-button variant="ghost" size="sm" icon="x" [disabled]="busy()" (click)="purgeTarget.set(item)">
+            Delete forever
+          </cove-button>
+        </div>
+      </li>
+    }
+  </ul>
+}
+
+<!-- Permanent deletion is the one irreversible action in the app; both paths confirm. -->
+<cove-modal
+  [open]="purgeTarget() !== null"
+  [title]="'Delete ' + (purgeTarget()?.name ?? '') + ' forever?'"
+  [width]="460"
+  (close)="purgeTarget.set(null)">
+  <p class="confirm-body">
+    This cannot be undone. <strong>{{ purgeTarget()?.name }}</strong>
+    @if (purgeTarget()?.kind === 'folder') { and everything inside it }
+    will be permanently deleted and the storage freed immediately.
+  </p>
+  <div class="foot">
+    <cove-button variant="ghost" (click)="purgeTarget.set(null)">Cancel</cove-button>
+    <cove-button variant="danger" (click)="confirmPurge()">Delete forever</cove-button>
+  </div>
+</cove-modal>
+
+<cove-modal [open]="emptyOpen()" title="Empty the Trash?" [width]="460" (close)="emptyOpen.set(false)">
+  <p class="confirm-body">
+    All {{ items().length }} item{{ items().length === 1 ? '' : 's' }} will be permanently deleted
+    and {{ totalBytes() | bytes }} of storage freed. This cannot be undone.
+  </p>
+  <div class="foot">
+    <cove-button variant="ghost" (click)="emptyOpen.set(false)">Cancel</cove-button>
+    <cove-button variant="danger" (click)="confirmEmpty()">Empty Trash</cove-button>
+  </div>
+</cove-modal>

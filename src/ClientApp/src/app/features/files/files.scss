@@ -1,0 +1,199 @@
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.trail {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--surface-card-hover);
+    color: var(--text-primary);
+  }
+
+  &.current {
+    color: var(--text-primary);
+    font-weight: var(--weight-extrabold);
+  }
+
+  // Highlighted while a dragged card hovers it, so "drop to move up" is discoverable.
+  &.drop {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+    color: var(--accent-subtle-text);
+  }
+}
+
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+
+  &--info {
+    background: var(--accent-subtle);
+    color: var(--accent-subtle-text);
+  }
+
+  &--error {
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    color: var(--danger);
+  }
+}
+
+.banner-x {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+  margin-bottom: var(--space-5);
+  transition: all var(--duration-fast) var(--ease-standard);
+
+  &.active {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+  }
+}
+
+.dz-title {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.tasks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.task-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: 4px;
+  font-size: var(--text-sm);
+}
+
+.tname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tstate {
+  color: var(--text-tertiary);
+  text-transform: capitalize;
+
+  &.done { color: var(--success); }
+  &.error { color: var(--danger); }
+}
+
+.terr {
+  margin: 4px 0 0;
+  font-size: var(--text-xs);
+  color: var(--danger);
+}
+
+.section-title {
+  margin: var(--space-5) 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-extrabold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.cell {
+  border-radius: var(--radius-lg);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: outline-color var(--duration-fast) var(--ease-standard);
+
+  &.drop {
+    outline-color: var(--accent);
+  }
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-10) var(--space-4);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.muted {
+  color: var(--text-tertiary);
+}
+
+.confirm-body {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}

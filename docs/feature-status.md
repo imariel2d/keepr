@@ -3,10 +3,10 @@
 Tracking the planned feature set against what is actually implemented in the codebase.
 
 Keepr is a **personal media store** with a folder hierarchy, rename, and a 10-day trash:
-single-owner (no sharing yet). Of the 25 planned features, **4 are complete**, **3 have a
-finished backend awaiting frontend work** (folders, rename, trash), and 18 are not started.
+single-owner (no sharing yet). Of the 25 planned features, **7 are complete** (backend + UI)
+and 18 are not started.
 
-**Legend:** ✅ Done · 🔵 Backend done, frontend pending · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
+**Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
 ---
 
@@ -15,10 +15,10 @@ finished backend awaiting frontend work** (folders, rename, trash), and 18 are n
 | # | Feature | Status | Evidence / gap |
 |---|---------|--------|----------------|
 | 1 | Upload/download files | ✅ | Presigned S3 multipart upload (`src/Api/Features/Uploads/UploadsController.cs`) + presigned GET download (`src/Api/Features/Media/MediaController.cs`) |
-| 2 | Folder hierarchy (create, nested, move) | 🔵 | Backend done 2026-07-22: `Folder` entity (adjacency list), `FoldersController`, recursive-CTE subtree/breadcrumbs, cycle + depth guards, auto-suffix naming. Storage stays flat `{ownerId}/{uuid}` (FD1). **Frontend pending** — [api-changes-frontend.md](api-changes-frontend.md) |
+| 2 | Folder hierarchy (create, nested, move) | ✅ | Backend: `Folder` entity (adjacency list), recursive-CTE subtree/breadcrumbs, cycle + depth guards, auto-suffix naming. UI: `src/ClientApp/src/app/features/files/` — breadcrumb nav, card grid, drag-and-drop + "Move to…" picker. Storage stays flat `{ownerId}/{uuid}` (FD1) |
 | 3 | Authentication | ✅ | JWT register/login (`src/Api/Features/Auth/AuthController.cs`) |
 | 4 | File/folder metadata storage | ✅ | File metadata (`src/Api/Domain/MediaFile.cs`) + folder metadata (`src/Api/Domain/Folder.cs`) |
-| 5 | Rename/delete | 🔵 | Rename: `PATCH /api/media/{id}` + `PATCH /api/folders/{id}`. Delete is now soft (#8). **Frontend pending** |
+| 5 | Rename/delete | ✅ | Rename via `PATCH /api/media/{id}` + `PATCH /api/folders/{id}`, exposed in the card context menu. Delete is now soft (#8) |
 
 ## Tier 2 — Makes it usable as a product
 
@@ -26,7 +26,7 @@ finished backend awaiting frontend work** (folders, rename, trash), and 18 are n
 |---|---------|--------|-------|
 | 6 | Sharing with specific users (view/edit) | ❌ | No share/permission model; everything is owner-scoped |
 | 7 | Shareable links | ❌ | Download URLs are short-TTL internal presigns, not user-facing links |
-| 8 | Trash / soft delete with restore | 🔵 | Backend done 2026-07-22: `DeletedAt`/`DeletedRootId`, EF global query filters, `TrashController` (list/restore/purge/empty), `TrashPurgeService` sweeper at 10 days. **Overrides Q9 hard delete.** **Frontend pending** |
+| 8 | Trash / soft delete with restore | ✅ | `DeletedAt`/`DeletedRootId`, EF global query filters, `TrashController`, `TrashPurgeService` sweeper at 10 days. UI: `features/trash/` with restore, purge, empty, and a "in Trash" line on the quota meter. **Overrides Q9 hard delete** |
 | 9 | Search by file name | ❌ | List endpoint has no search/filter |
 | 10 | In-browser preview (images, PDFs) | ❌ | No preview UI (download-url could feed one, but nothing built) |
 
@@ -64,29 +64,35 @@ finished backend awaiting frontend work** (folders, rename, trash), and 18 are n
 
 ## Summary
 
-- **Done (4):** file upload/download, auth, quota tracking, file+folder metadata.
-- **Backend done, frontend pending (3):** folder hierarchy (#2), rename (#5), trash (#8).
-- **Not started (18):** everything else.
+- **Done (7):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
+  rename/delete, trash.
+- **Not started (18):** everything else. **Tier 1 is complete.**
 
-### Next: the frontend for #2 / #5 / #8
+### Next: Tier 2
 
-The API contract and a ready-to-use implementation prompt are in
-[api-changes-frontend.md](api-changes-frontend.md). Five endpoints changed shape — most
-importantly `POST /api/uploads/init` (takes `folderId`, returns the *stored* name, which may be
-auto-suffixed) and `DELETE /api/media/{id}` (now trashes rather than destroys).
+The cheapest next wins, in order:
 
-### Then: Tier 2
+1. **#9 search by file name** — a flat `OriginalNameLower LIKE` query; the column already exists
+   and is indexed, and `GET /api/media` (unscoped) is already the all-files endpoint a search
+   view would filter.
+2. **#10 in-browser preview** — `download-url` already returns a presigned GET; images and PDFs
+   need only a viewer component.
+3. **#14 starred** — one boolean on `MediaFile` plus a sidebar view.
 
-With Tier 1 closed, the natural next targets are **#9 search by file name** (a flat
-`OriginalNameLower LIKE` query — the column already exists and is indexed) and **#10 in-browser
-preview**, both of which are small next to sharing (#6).
+**#6 sharing** is the big one, and per [my-decisions.md](my-decisions.md) Q5 it is the trigger
+for revisiting malware scanning and content moderation — those become required before sharing
+ships, not after.
 
 ### Known follow-ups
 
 - **Sweeper leasing (Q-F).** `UploadCleanupService` and `TrashPurgeService` are both
   single-instance-safe only. Two instances would double-release quota — add
   `pg_try_advisory_lock` before scaling past one instance.
-- **Trashed-file downloads (Q-G).** Currently 404 via the global query filter, which is the
-  recommended behaviour but was never explicitly decided.
-- **Retention configurability (Q-E).** `Cleanup:TrashRetentionDays` defaults to 10; staging may
-  want 1 for testing.
+- **Browser uploads against the dockerized API don't work.** `docker-compose.api.yml` gives the
+  API `Storage__ServiceUrl=http://minio:9000`, so presigned URLs point at a hostname only
+  resolvable inside the Docker network. Fine for API-to-storage calls, broken for browser-direct
+  PUTs. Run the API on the host when testing uploads, or publish MinIO under a hostname that
+  resolves both places.
+- **Trashed-file downloads (Q-G).** Currently 404 via the global query filter — the recommended
+  behaviour, but never explicitly decided.
+- **Retention configurability (Q-E).** `Cleanup:TrashRetentionDays` defaults to 10.
