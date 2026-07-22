@@ -156,6 +156,15 @@ Inline responses are served as the allowlist's content type rather than the stor
 Use a hidden anchor click for downloads, not `window.open` — the disposition does the work and
 the page stays put.
 
+The response also carries **`expiresAt`**, so clients can cache the URL rather than re-requesting
+one per view. `MediaService` does this, keyed by id + disposition, with a 60s safety margin and
+in-flight de-duplication; it evicts on rename/move/delete, because the URL stays valid but its
+embedded filename would be stale.
+
+```jsonc
+{ "url": "https://…", "expiresAt": "2026-07-22T21:19:57Z" }
+```
+
 ### ⚠️ `GET /api/media` — new query params, new response fields
 ```
 GET /api/media                          → every file, anywhere (flat list; use for search/all-files)

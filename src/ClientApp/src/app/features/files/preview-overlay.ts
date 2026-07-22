@@ -103,8 +103,13 @@ export class PreviewOverlay {
     }
   }
 
-  /** Presigned URLs are short-lived, so an overlay left open can outlive its URL. */
+  /**
+   * Presigned URLs are short-lived, so an overlay left open can outlive its URL. Drop the cached
+   * one first — retrying with the same dead URL would just fail again.
+   */
   protected retry(): void {
+    const item = this.current();
+    if (item) this.media.invalidateUrls(item.id);
     void this.load();
   }
 
@@ -119,6 +124,9 @@ export class PreviewOverlay {
   }
 
   protected onImageError(): void {
+    // Most likely an expired signature; make sure a retry doesn't reuse it.
+    const item = this.current();
+    if (item) this.media.invalidateUrls(item.id);
     this.error.set('That preview link expired. Try again.');
   }
 

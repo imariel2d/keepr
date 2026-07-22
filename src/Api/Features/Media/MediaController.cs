@@ -5,6 +5,7 @@ using Keepr.Api.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Keepr.Api.Features.Media;
 
@@ -16,7 +17,11 @@ namespace Keepr.Api.Features.Media;
 public record MediaListItem(
     Guid Id, string OriginalName, string? ContentType, long SizeBytes, Guid? FolderId,
     DateTimeOffset CreatedAt, string? PreviewKind);
-public record DownloadUrlResponse(string Url);
+/// <summary>
+/// A presigned URL and the moment it stops working. <see cref="ExpiresAt"/> exists so clients
+/// can cache the URL without having to parse the AWS signature's own expiry fields.
+/// </summary>
+public record DownloadUrlResponse(string Url, DateTimeOffset ExpiresAt);
 public record RenameMediaRequest(string OriginalName);
 
 /// <summary>Destination for a move. A null <see cref="FolderId"/> means the owner's root.</summary>
@@ -29,8 +34,12 @@ public record MoveMediaRequest(Guid? FolderId);
 public class MediaController(
     AppDbContext db,
     IObjectStorage storage,
-    TrashService trash) : ControllerBase
+    TrashService trash,
+    IOptions<StorageOptions> storageOptions) : ControllerBase
 {
+    private DateTimeOffset PresignExpiry =>
+        DateTimeOffset.UtcNow.AddMinutes(storageOptions.Value.PresignExpiryMinutes);
+
     /// <summary>
     /// The owner's files. Pass <paramref name="folderId"/> to scope to one folder; omit it for a
     /// flat list of everything, which is what the "all files" and search views want.
@@ -83,8 +92,10 @@ public class MediaController(
 
         var inline = string.Equals(disposition, "inline", StringComparison.OrdinalIgnoreCase);
         if (!inline)
-            return new DownloadUrlResponse(await storage.PresignGetUrlAsync(
-                media.StorageKey, PresignHeaders.ForDownload(media.OriginalName), ct));
+            return new DownloadUrlResponse(
+                await storage.PresignGetUrlAsync(
+                    media.StorageKey, PresignHeaders.ForDownload(media.OriginalName), ct),
+                PresignExpiry);
 
         // Defence in depth: the client uses the same allowlist to pick a render element, but the
         // server refuses to mint an inline URL for anything not on it.
@@ -94,8 +105,10 @@ public class MediaController(
                 "This file type cannot be previewed; download it instead.",
                 statusCode: StatusCodes.Status415UnsupportedMediaType);
 
-        return new DownloadUrlResponse(await storage.PresignGetUrlAsync(
-            media.StorageKey, PresignHeaders.ForInline(media.OriginalName, serveAs), ct));
+        return new DownloadUrlResponse(
+            await storage.PresignGetUrlAsync(
+                media.StorageKey, PresignHeaders.ForInline(media.OriginalName, serveAs), ct),
+            PresignExpiry);
     }
 
     /// <summary>

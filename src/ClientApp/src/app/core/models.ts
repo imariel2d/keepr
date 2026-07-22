@@ -57,6 +57,8 @@ export interface MediaListItem {
 
 export interface DownloadUrlResponse {
   url: string;
+  /** When the signature stops working, so clients can cache the URL until then. */
+  expiresAt: string;
 }
 
 export interface FolderItem {
