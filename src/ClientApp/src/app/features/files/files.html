@@ -115,12 +115,14 @@
         <div
           class="cell"
           draggable="true"
+          (appInView)="onCardInView(f)"
           (dragstart)="onItemDragStart($event, { kind: 'file', id: f.id, name: f.originalName })">
           <cove-file-card
             [name]="f.originalName"
             [type]="fileType(f.contentType)"
+            [thumbnail]="thumbnails()[f.id]"
             [modified]="(f.sizeBytes | bytes) + ' · ' + formatDate(f.createdAt)"
-            (openItem)="download(f)"
+            (openItem)="openFile(f)"
             (menu)="fileMenu($event, f)" />
         </div>
       }
@@ -182,6 +184,13 @@
     <cove-button variant="danger" (click)="confirmDelete()">Move to Trash</cove-button>
   </div>
 </cove-modal>
+
+@if (previewOpen()) {
+  <app-preview-overlay
+    [items]="previewable()"
+    [startIndex]="previewIndex()"
+    (closed)="previewOpen.set(false)" />
+}
 
 <app-move-dialog
   [open]="moveOpen()"

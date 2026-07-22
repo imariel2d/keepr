@@ -28,7 +28,7 @@ and 18 are not started.
 | 7 | Shareable links | ❌ | Download URLs are short-TTL internal presigns, not user-facing links |
 | 8 | Trash / soft delete with restore | ✅ | `DeletedAt`/`DeletedRootId`, EF global query filters, `TrashController`, `TrashPurgeService` sweeper at 10 days. UI: `features/trash/` with restore, purge, empty, and a "in Trash" line on the quota meter. **Overrides Q9 hard delete** |
 | 9 | Search by file name | ❌ | List endpoint has no search/filter |
-| 10 | In-browser preview (images, PDFs) | ❌ | No preview UI (download-url could feed one, but nothing built) |
+| 10 | In-browser preview (images, PDFs) | ✅ | Full-screen overlay with prev/next + keyboard (`features/files/preview-overlay.ts`). Server-side allowlist (`PreviewPolicy`) decides what may render; images/SVG via `<img>`, PDFs via `<iframe>` with a forced content type, plus video/audio. Lazy size-capped grid thumbnails |
 
 ## Tier 3 — Expected by users who've used real Drive/Dropbox
 
@@ -64,9 +64,9 @@ and 18 are not started.
 
 ## Summary
 
-- **Done (7):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
-  rename/delete, trash.
-- **Not started (18):** everything else. **Tier 1 is complete.**
+- **Done (8):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
+  rename/delete, trash, in-browser preview.
+- **Not started (17):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2
 
@@ -75,9 +75,9 @@ The cheapest next wins, in order:
 1. **#9 search by file name** — a flat `OriginalNameLower LIKE` query; the column already exists
    and is indexed, and `GET /api/media` (unscoped) is already the all-files endpoint a search
    view would filter.
-2. **#10 in-browser preview** — `download-url` already returns a presigned GET; images and PDFs
-   need only a viewer component.
-3. **#14 starred** — one boolean on `MediaFile` plus a sidebar view.
+2. **#14 starred** — one boolean on `MediaFile` plus a sidebar view.
+3. **#16 thumbnails** — grid thumbnails are currently capped at 500 KB and reuse the original
+   image; generating real derivatives would lift that cap and cut the bytes ~200×.
 
 **#6 sharing** is the big one, and per [my-decisions.md](my-decisions.md) Q5 it is the trigger
 for revisiting malware scanning and content moderation — those become required before sharing

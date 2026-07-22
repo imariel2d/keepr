@@ -19,8 +19,13 @@ public interface IObjectStorage
     /// <summary>Release the parts of an abandoned/failed upload.</summary>
     Task AbortMultipartUploadAsync(string key, string uploadId, CancellationToken ct = default);
 
-    /// <summary>Presigned URL for the owner to download/view the object.</summary>
-    Task<string> PresignGetUrlAsync(string key, CancellationToken ct = default);
+    /// <summary>
+    /// Presigned URL for the owner to download/view the object. <paramref name="headers"/>
+    /// controls whether the browser saves or renders it, and under what filename — storage keys
+    /// are opaque UUIDs, so without it a download is saved as the UUID.
+    /// </summary>
+    Task<string> PresignGetUrlAsync(
+        string key, PresignHeaders headers = default, CancellationToken ct = default);
 
     /// <summary>Read the first <paramref name="count"/> bytes of an object (for content sniffing).</summary>
     Task<byte[]> ReadHeadBytesAsync(string key, int count, CancellationToken ct = default);

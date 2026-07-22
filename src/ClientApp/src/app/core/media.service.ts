@@ -26,9 +26,28 @@ export class MediaService {
     return firstValueFrom(this.http.get<Usage>('/api/me/usage'));
   }
 
-  async downloadUrl(id: string): Promise<string> {
+  /**
+   * Short-lived URL that makes the browser *save* the file under its real name. The storage key
+   * is an opaque UUID, so the correct filename only exists because the server sets
+   * Content-Disposition on the presigned URL.
+   */
+  downloadUrl(id: string): Promise<string> {
+    return this.presignedUrl(id, 'attachment');
+  }
+
+  /**
+   * Short-lived URL that renders in the page. 415 if the type isn't on the server's preview
+   * allowlist — check `previewKind` first rather than relying on the error.
+   */
+  previewUrl(id: string): Promise<string> {
+    return this.presignedUrl(id, 'inline');
+  }
+
+  private async presignedUrl(id: string, disposition: 'inline' | 'attachment'): Promise<string> {
     const res = await firstValueFrom(
-      this.http.get<DownloadUrlResponse>(`/api/media/${id}/download-url`)
+      this.http.get<DownloadUrlResponse>(`/api/media/${id}/download-url`, {
+        params: { disposition },
+      })
     );
     return res.url;
   }
