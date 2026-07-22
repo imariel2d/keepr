@@ -24,10 +24,12 @@ services:
       Storage__AccessKey: minioadmin
       Storage__SecretKey: minioadmin
       Storage__Bucket: media
-      # IMPORTANT: this host string is baked into the presigned URLs the browser uses,
-      # so it must resolve to MinIO from BOTH the container and your host. Add to /etc/hosts:
-      #   127.0.0.1 minio
+      # The API reaches MinIO over the compose network...
       Storage__ServiceUrl: "http://minio:9000"
+      # ...but presigned URLs are handed to the BROWSER, which cannot resolve "minio".
+      # PublicUrl is the host baked into those URLs; MinIO's published port makes it reachable.
+      # Without this, uploads fail with ERR_NAME_NOT_RESOLVED on the direct-to-storage PUT.
+      Storage__PublicUrl: "http://localhost:9000"
     ports:
       - "5080:5080"
     volumes:

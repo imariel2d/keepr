@@ -11,28 +11,45 @@ namespace Keepr.Api.Storage;
 public sealed class R2ObjectStorage : IObjectStorage
 {
     private readonly IAmazonS3 _s3;
+    /// <summary>
+    /// Used only to mint presigned URLs. Identical to <see cref="_s3"/> unless Storage:PublicUrl
+    /// says the browser must reach storage at a different host than the API does — the dockerised
+    /// local stack, where the API uses "minio:9000" but the browser can only resolve
+    /// "localhost:9000". Signing is offline, so this client never opens a connection.
+    /// </summary>
+    private readonly IAmazonS3 _presignS3;
     private readonly StorageOptions _opt;
     private readonly bool _forceHttp;
+    private readonly bool _presignForceHttp;
 
     public R2ObjectStorage(IOptions<StorageOptions> opt)
     {
         _opt = opt.Value;
         var serviceUrl = _opt.ResolveServiceUrl();
+        var publicUrl = _opt.ResolvePublicUrl();
+
         _forceHttp = serviceUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase);
-        var config = new AmazonS3Config
+        _presignForceHttp = publicUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase);
+
+        _s3 = BuildClient(serviceUrl, _forceHttp);
+        _presignS3 = string.Equals(serviceUrl, publicUrl, StringComparison.OrdinalIgnoreCase)
+            ? _s3
+            : BuildClient(publicUrl, _presignForceHttp);
+    }
+
+    private AmazonS3Client BuildClient(string serviceUrl, bool useHttp) =>
+        new(_opt.AccessKey, _opt.SecretKey, new AmazonS3Config
         {
             ServiceURL = serviceUrl,
             ForcePathStyle = true,          // required for MinIO and simplest for R2
             AuthenticationRegion = "auto",  // R2 expects region "auto"
-            UseHttp = _forceHttp
-        };
-        _s3 = new AmazonS3Client(_opt.AccessKey, _opt.SecretKey, config);
-    }
+            UseHttp = useHttp
+        });
 
     // The SDK v4 endpoint resolver emits https for custom endpoints even when UseHttp is set,
     // so presigned URLs for a plain-HTTP endpoint (MinIO in dev) must be downgraded to match.
     private string MatchScheme(string url) =>
-        _forceHttp && url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+        _presignForceHttp && url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
             ? string.Concat("http://", url.AsSpan("https://".Length))
             : url;
 
@@ -48,7 +65,7 @@ public sealed class R2ObjectStorage : IObjectStorage
     }
 
     public async Task<string> PresignUploadPartUrlAsync(string key, string uploadId, int partNumber, CancellationToken ct = default) =>
-        MatchScheme(await _s3.GetPreSignedURLAsync(new GetPreSignedUrlRequest
+        MatchScheme(await _presignS3.GetPreSignedURLAsync(new GetPreSignedUrlRequest
         {
             BucketName = _opt.Bucket,
             Key = key,
@@ -86,7 +103,7 @@ public sealed class R2ObjectStorage : IObjectStorage
         }, ct);
 
     public async Task<string> PresignGetUrlAsync(string key, CancellationToken ct = default) =>
-        MatchScheme(await _s3.GetPreSignedURLAsync(new GetPreSignedUrlRequest
+        MatchScheme(await _presignS3.GetPreSignedURLAsync(new GetPreSignedUrlRequest
         {
             BucketName = _opt.Bucket,
             Key = key,

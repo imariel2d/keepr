@@ -88,11 +88,10 @@ ships, not after.
 - **Sweeper leasing (Q-F).** `UploadCleanupService` and `TrashPurgeService` are both
   single-instance-safe only. Two instances would double-release quota — add
   `pg_try_advisory_lock` before scaling past one instance.
-- **Browser uploads against the dockerized API don't work.** `docker-compose.api.yml` gives the
-  API `Storage__ServiceUrl=http://minio:9000`, so presigned URLs point at a hostname only
-  resolvable inside the Docker network. Fine for API-to-storage calls, broken for browser-direct
-  PUTs. Run the API on the host when testing uploads, or publish MinIO under a hostname that
-  resolves both places.
+- ~~Browser uploads against the dockerized API don't work.~~ **Fixed 2026-07-22** by splitting
+  `Storage:ServiceUrl` (what the API calls) from `Storage:PublicUrl` (the host baked into
+  presigned URLs). The dockerised stack now uses `minio:9000` internally and `localhost:9000`
+  for the browser.
 - **Trashed-file downloads (Q-G).** Currently 404 via the global query filter — the recommended
   behaviour, but never explicitly decided.
 - **Retention configurability (Q-E).** `Cleanup:TrashRetentionDays` defaults to 10.

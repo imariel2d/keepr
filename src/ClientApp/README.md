@@ -67,7 +67,7 @@ Full contract: [docs/api-changes-frontend.md](../../docs/api-changes-frontend.md
 `docker compose -f docker-compose.yml -f docker-compose.api.yml up -d` publishes the API on
 :5080, which `proxy.conf.json` already targets — so `npm start` works against it.
 
-⚠️ Browser uploads will **not** work in that configuration: the API mints presigned URLs for
-`http://minio:9000`, a hostname that only resolves inside the Docker network. Run the API on the
-host (`dotnet run --project ../Api`, which uses `Storage__ServiceUrl=http://localhost:9000`) when
-testing uploads from the browser.
+Uploads work in that configuration because the API is configured with two storage endpoints:
+`Storage__ServiceUrl=http://minio:9000` for its own calls, and `Storage__PublicUrl=http://localhost:9000`
+for the presigned URLs handed to the browser. Without the second one the direct-to-storage PUT
+fails with `ERR_NAME_NOT_RESOLVED`, since `minio` only resolves inside the Docker network.
