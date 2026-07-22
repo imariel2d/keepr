@@ -6,7 +6,7 @@ Keepr is currently an **MVP personal media store**: flat (no folders), single-ow
 sharing), hard-delete only. Of the 25 planned features, **3 are fully done**, 2 are partial,
 and 20 are not started.
 
-**Legend:** ✅ Done · 🟡 Partial · ❌ Not started
+**Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
 ---
 
@@ -15,10 +15,10 @@ and 20 are not started.
 | # | Feature | Status | Evidence / gap |
 |---|---------|--------|----------------|
 | 1 | Upload/download files | ✅ | Presigned S3 multipart upload (`src/Api/Features/Uploads/UploadsController.cs`) + presigned GET download (`src/Api/Features/Media/MediaController.cs`) |
-| 2 | Folder hierarchy (create, nested, move) | ❌ | No `Folder` entity; storage is flat `{ownerId}/{uuid}` keys |
+| 2 | Folder hierarchy (create, nested, move) | 📐 | Data model designed in [folder-hierarchy-design.md](folder-hierarchy-design.md) (2026-07-21); no `Folder` entity or migration yet. Storage stays flat `{ownerId}/{uuid}` by design (FD1) |
 | 3 | Authentication | ✅ | JWT register/login (`src/Api/Features/Auth/AuthController.cs`) |
-| 4 | File/folder metadata storage | 🟡 | File metadata done (name, size, type, owner, timestamps in `src/Api/Domain/MediaFile.cs`); folder metadata absent |
-| 5 | Rename/delete | 🟡 | Hard delete done (`MediaController.cs`); rename has no endpoint |
+| 4 | File/folder metadata storage | 🟡 | File metadata done (name, size, type, owner, timestamps in `src/Api/Domain/MediaFile.cs`); folder metadata designed but not built (see #2) |
+| 5 | Rename/delete | 🟡 | Delete done (`MediaController.cs`) but becomes soft delete per #8; rename has no endpoint (designed: `PATCH /api/media/{id}`) |
 
 ## Tier 2 — Makes it usable as a product
 
@@ -26,7 +26,7 @@ and 20 are not started.
 |---|---------|--------|-------|
 | 6 | Sharing with specific users (view/edit) | ❌ | No share/permission model; everything is owner-scoped |
 | 7 | Shareable links | ❌ | Download URLs are short-TTL internal presigns, not user-facing links |
-| 8 | Trash / soft delete with restore | ❌ | Delete is hard-only; `MediaStatus.Failed` exists but no trash/restore |
+| 8 | Trash / soft delete with restore | 📐 | Designed in [trash-soft-delete-design.md](trash-soft-delete-design.md) (2026-07-21): delete → Trash → purge after 10 days. **Overrides Q9 hard delete.** Pulled forward because it makes recursive folder delete (#2) safe |
 | 9 | Search by file name | ❌ | List endpoint has no search/filter |
 | 10 | In-browser preview (images, PDFs) | ❌ | No preview UI (download-url could feed one, but nothing built) |
 
@@ -65,11 +65,33 @@ and 20 are not started.
 ## Summary
 
 - **Done (3):** file upload/download, auth, quota tracking.
-- **Partial (2):** metadata (files ✅ / folders ❌), rename-delete (delete ✅ / rename ❌).
-- **Not started (20):** everything else.
+- **Designed, not built (2):** folder hierarchy (#2), trash/soft delete (#8).
+- **Partial (2):** metadata (files ✅ / folders 📐), rename-delete (delete ✅ / rename ❌).
+- **Not started (18):** everything else.
 
-### Suggested next steps to finish Tier 1
+### Next release: folders + rename + trash, together
 
-1. Add **rename** (`PATCH /api/media/{id}`) — closes #5.
-2. Add a **`Folder` entity** + parent-folder FK on `MediaFile`, with create/move endpoints —
-   closes #2 and the #4 folder-metadata gap.
+These three interlock and are cheaper as one migration than three. Folder move and file rename
+share an endpoint; trash changes the unique indexes that folders introduce, so defining them
+once avoids creating and recreating them.
+
+1. **One migration:** `Folders` table; `MediaFile.FolderId`; `OriginalNameLower` + backfill;
+   `OriginalName` narrowed to 255; `DeletedAt`/`DeletedRootId` on both tables; unique indexes
+   defined with their `DeletedAt IS NULL` filter from the start.
+   ⚠️ Includes a **de-duplication pass over existing filenames** that can fail on real data —
+   [folder design §5](folder-hierarchy-design.md#5-migration-plan).
+2. **EF global query filters** for `DeletedAt == null` before any trash code — this is the step
+   that makes every existing and future query safe by default
+   ([trash design §3](trash-soft-delete-design.md#3-the-one-thing-that-will-bite-every-existing-query-must-filter-trashed-rows)).
+3. **Folder endpoints:** create / list children / breadcrumbs / rename+move / recursive delete.
+   Closes #2 and the #4 folder-metadata gap.
+4. **`PATCH /api/media/{id}`** taking `originalName` and `folderId` — closes #5 (rename), adds
+   file move.
+5. **`folderId` on `POST /api/uploads/init`**, which must now also return the stored
+   `originalName` (auto-suffix can change it).
+6. **Trash endpoints + purge sweeper** on the existing `UploadCleanupService` pattern — closes
+   #8. Extend `GET /api/me/usage` with `trashedBytes`.
+
+Decided: [Q-A–Q-D](folder-hierarchy-design.md#7-questions-and-decisions) (auto-suffix names, no
+duplicate filenames per folder, recursive delete via trash, depth cap 32).
+Still open, none blocking: [Q-E–Q-G](trash-soft-delete-design.md#8-open-questions).

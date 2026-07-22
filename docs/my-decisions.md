@@ -42,9 +42,16 @@ AI recommends **presigned direct-to-R2** for large files, optional **proxy** for
 ### Q8 — Delivery / CDN ✅
 - **Decision:** **Private bucket + presigned GET.** No public objects. Downloads/views are served via short-TTL presigned GET URLs minted by the API for the authenticated owner.
 
-### Q9 — Retention & deletion ✅
-- **Decision:** **Hard delete.** Deleting a file immediately `DeleteObject`s from R2, removes the DB row, and frees the quota. No trash/restore for MVP. Orphan/abandoned-upload sweeper still applies (D-cleanup).
-- Upgrade path: a soft-delete/trash layer can be added later by introducing a `deleted_at` column — no painful migration.
+### Q9 — Retention & deletion ✅ **superseded 2026-07-21**
+- ~~**Decision:** **Hard delete.**~~ **Now: soft delete + 10-day trash.** Deleting moves the item
+  to Trash (a `DeletedAt` stamp, no R2 call); a background sweeper permanently purges after
+  10 days, freeing quota then. Trashed bytes still count against quota until purge.
+  See [trash-soft-delete-design.md](trash-soft-delete-design.md).
+- The original hard-delete note called this exact upgrade path — "a soft-delete/trash layer can
+  be added later by introducing a `deleted_at` column, no painful migration" — and that held:
+  the migration is two nullable columns per table.
+- Orphan/abandoned-upload sweeper (D-cleanup) is unchanged and still separate; it handles
+  `Pending` uploads, which is a different failure mode from user deletion.
 
 ---
 
@@ -59,6 +66,17 @@ _(Record confirmed choices here as we go.)_
 - 2026-07-19 — **Delivery: private bucket + presigned GET** (Q8). No public objects.
 - 2026-07-19 — **No virus/content scanning for MVP** (Q5); revisit before the future **file-sharing** feature ships.
 - 2026-07-19 — **Hard delete** (Q9). No trash/restore for MVP.
+- 2026-07-21 — **Folder name collisions auto-suffix** (`Photos (2)`), never 409. Applies to
+  folder create/move and to file upload/rename. See
+  [folder-hierarchy-design.md](folder-hierarchy-design.md) Q-A/§4.0.
+- 2026-07-21 — **No duplicate file names within a folder** (Dropbox-style, not Drive-style).
+  Enforced by a partial unique index; collisions auto-suffix per the decision above. Requires
+  narrowing `OriginalName` to 255 chars and de-duplicating existing rows at migration time —
+  see folder-hierarchy-design.md Q-B/§5.
+- 2026-07-21 — **Soft delete with a 10-day trash, replacing hard delete (overrides Q9).**
+  Delete → Trash → purged permanently after 10 days. Makes recursive folder delete safe, so it
+  ships in the first folder release. See [trash-soft-delete-design.md](trash-soft-delete-design.md).
+- 2026-07-21 — **Folder depth capped at 32** (`Path` = `varchar(1200)`).
 
 <!--
 Example:
