@@ -68,12 +68,15 @@
   <div class="selbar">
     <cove-icon name="check-circle" [size]="16" color="var(--accent)" />
     <span class="selcount">
-      {{ selectedCount() }} {{ plural(selectedCount(), 'file') }} selected
+      {{ selectedCount() }} {{ plural(selectedCount(), 'item') }} selected
     </span>
 
-    <cove-button variant="ghost" size="sm" icon="download" (click)="downloadSelected()">
-      Download
-    </cove-button>
+    <!-- Folders have nothing to download, so this only appears once files are in the selection. -->
+    @if (selectedFiles().length) {
+      <cove-button variant="ghost" size="sm" icon="download" (click)="downloadSelected()">
+        Download {{ selectedFiles().length }} {{ plural(selectedFiles().length, 'file') }}
+      </cove-button>
+    }
     <cove-button variant="ghost" size="sm" icon="move" (click)="openMoveSelected()">
       Move to…
     </cove-button>
@@ -102,6 +105,7 @@
       @for (f of folders(); track f.id) {
         <div
           class="cell"
+          [attr.data-key]="'folder:' + f.id"
           [class.drop]="dropTarget() === f.id"
           draggable="true"
           (dragstart)="onItemDragStart($event, { kind: 'folder', id: f.id, name: f.name })"
@@ -110,7 +114,10 @@
           (drop)="onFolderDrop($event, f.id)">
           <cove-folder-card
             [name]="f.name"
-            [selected]="dropTarget() === f.id"
+            [selected]="isSelected('folder', f.id)"
+            [active]="dropTarget() === f.id"
+            (toggleSelect)="toggleSelect('folder', f.id)"
+            (cardClick)="onCardClick($event, 'folder', f.id)"
             (openItem)="openFolder(f)"
             (menu)="folderMenu($event, f)" />
         </div>
@@ -124,6 +131,7 @@
       @for (f of files(); track f.id) {
         <div
           class="cell"
+          [attr.data-key]="'file:' + f.id"
           draggable="true"
           (appInView)="onCardInView(f)"
           (dragstart)="onItemDragStart($event, { kind: 'file', id: f.id, name: f.originalName })">
@@ -132,9 +140,9 @@
             [type]="fileType(f.contentType)"
             [thumbnail]="thumbnails()[f.id]"
             [modified]="(f.sizeBytes | bytes) + ' · ' + formatDate(f.createdAt)"
-            [selected]="isSelected(f.id)"
-            (toggleSelect)="toggleSelect(f.id)"
-            (cardClick)="onCardClick($event, f)"
+            [selected]="isSelected('file', f.id)"
+            (toggleSelect)="toggleSelect('file', f.id)"
+            (cardClick)="onCardClick($event, 'file', f.id)"
             (openItem)="openFile(f)"
             (menu)="fileMenu($event, f)" />
         </div>
@@ -207,6 +215,17 @@
     [items]="previewable()"
     [startIndex]="previewIndex()"
     (closed)="previewOpen.set(false)" />
+}
+
+<!-- Rubber-band rectangle. Viewport-positioned and inert, so it never becomes a hit target. -->
+@if (marquee(); as m) {
+  <div
+    class="marquee"
+    aria-hidden="true"
+    [style.left.px]="m.left"
+    [style.top.px]="m.top"
+    [style.width.px]="m.width"
+    [style.height.px]="m.height"></div>
 }
 
 <app-move-dialog

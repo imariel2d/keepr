@@ -1,4 +1,4 @@
-import { Component, HostListener, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, HostBinding, HostListener, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
@@ -21,6 +21,22 @@ import { MoveDialog } from './move-dialog';
 import { PreviewOverlay } from './preview-overlay';
 import { InViewDirective } from '../../core/in-view.directive';
 import { saveFile } from '../../core/save-file';
+
+type ItemKind = 'file' | 'folder';
+interface Rect { left: number; top: number; width: number; height: number; }
+
+/** Selection is keyed by kind too: a folder and a file could otherwise collide on id. */
+const selectionKey = (kind: ItemKind, id: string): string => `${kind}:${id}`;
+
+/** Pointer travel before a press becomes a marquee rather than a plain click. */
+const MARQUEE_THRESHOLD_PX = 5;
+
+/**
+ * A press starting inside any of these is someone using the UI, not sweeping the background.
+ * Cards are excluded so dragging a card still moves it rather than drawing a rectangle.
+ */
+const MARQUEE_IGNORE =
+  '.cell, button, input, a, label, cove-modal, cove-context-menu, app-move-dialog, app-preview-overlay, .selbar, .head, .banner';
 
 /** Marks a drag as ours, so an OS file-drop and an internal move are never confused. */
 const DRAG_TYPE = 'application/x-keepr-item';
@@ -57,6 +73,12 @@ export class Files {
   private readonly router = inject(Router);
   protected readonly uploads = inject(UploadService);
   protected readonly usage = inject(UsageStore);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  /** Suppresses text selection while a rectangle is being dragged. */
+  @HostBinding('class.marqueeing') get isMarqueeing(): boolean {
+    return this.marquee() !== null;
+  }
 
   private readonly moveDialog = viewChild(MoveDialog);
 
@@ -95,8 +117,14 @@ export class Files {
   protected readonly confirmOpen = signal(false);
   protected readonly confirmTargets = signal<DragPayload[]>([]);
 
-  /** Ids of checkbox-selected files in the current folder. */
-  protected readonly selectedIds = signal<ReadonlySet<string>>(new Set());
+  /**
+   * Selected items as `kind:id` keys. Folders and files share one set so a marquee, the
+   * selection bar and the bulk actions all speak about "items" rather than two parallel lists.
+   */
+  protected readonly selectedKeys = signal<ReadonlySet<string>>(new Set());
+
+  /** Live marquee rectangle in viewport coordinates, or null when not dragging one. */
+  protected readonly marquee = signal<Rect | null>(null);
 
   protected readonly previewOpen = signal(false);
   protected readonly previewIndex = signal(0);
@@ -111,9 +139,10 @@ export class Files {
   /** Files the server says can be rendered; the overlay pages through exactly these. */
   protected readonly previewable = computed(() => this.files().filter((f) => f.previewKind !== null));
 
-  protected readonly selectedCount = computed(() => this.selectedIds().size);
+  protected readonly selectedCount = computed(() => this.selectedKeys().size);
+  protected readonly itemCount = computed(() => this.folders().length + this.files().length);
   protected readonly allSelected = computed(
-    () => this.files().length > 0 && this.selectedCount() === this.files().length
+    () => this.itemCount() > 0 && this.selectedCount() === this.itemCount()
   );
 
   /** The single target when deleting one card, or null when confirming a whole selection. */
@@ -126,53 +155,69 @@ export class Files {
     return targets.length === 1 ? `Delete ${targets[0].name}?` : `Delete ${targets.length} items?`;
   });
 
-  /** Selection resolved against the current listing, in display order. */
-  protected readonly selectedFiles = computed(() =>
-    this.files().filter((f) => this.selectedIds().has(f.id))
-  );
+  /** Selected files only — folders have nothing to download. */
+  protected readonly selectedFiles = computed(() => {
+    const keys = this.selectedKeys();
+    return this.files().filter((f) => keys.has(selectionKey('file', f.id)));
+  });
 
+  /** Everything selected, resolved to payloads in display order: folders first, then files. */
   private selectedPayloads(): DragPayload[] {
-    return this.selectedFiles().map((f) => ({ kind: 'file', id: f.id, name: f.originalName }));
+    const keys = this.selectedKeys();
+    const out: DragPayload[] = [];
+    for (const f of this.folders()) {
+      if (keys.has(selectionKey('folder', f.id))) out.push({ kind: 'folder', id: f.id, name: f.name });
+    }
+    for (const f of this.files()) {
+      if (keys.has(selectionKey('file', f.id))) out.push({ kind: 'file', id: f.id, name: f.originalName });
+    }
+    return out;
   }
 
   // ---- selection ----------------------------------------------------------
 
-  protected isSelected(id: string): boolean {
-    return this.selectedIds().has(id);
+  protected isSelected(kind: ItemKind, id: string): boolean {
+    return this.selectedKeys().has(selectionKey(kind, id));
   }
 
-  protected toggleSelect(id: string): void {
-    this.selectedIds.update((current) => {
+  protected toggleSelect(kind: ItemKind, id: string): void {
+    const key = selectionKey(kind, id);
+    this.selectedKeys.update((current) => {
       const next = new Set(current);
-      if (!next.delete(id)) next.add(id);
+      if (!next.delete(key)) next.add(key);
       return next;
     });
   }
 
   protected selectAll(): void {
-    this.selectedIds.set(new Set(this.files().map((f) => f.id)));
+    this.selectedKeys.set(
+      new Set([
+        ...this.folders().map((f) => selectionKey('folder', f.id)),
+        ...this.files().map((f) => selectionKey('file', f.id)),
+      ])
+    );
   }
 
   protected clearSelection(): void {
-    this.selectedIds.set(new Set());
+    this.selectedKeys.set(new Set());
   }
 
   /**
-   * Click on the card body. Once anything is selected the grid is in selection mode, so a plain
-   * click picks files rather than doing nothing — reaching for the small checkbox every time is
+   * Click on a card body. Once anything is selected the grid is in selection mode, so a plain
+   * click picks items rather than doing nothing — reaching for the small checkbox every time is
    * the behaviour this replaces.
    *
-   * Shift and Ctrl/Cmd act on the clicked file alone: deliberately not a range select, so a
-   * modifier can never sweep in files the user did not click.
+   * Shift and Ctrl/Cmd act on the clicked item alone: deliberately not a range select, so a
+   * modifier can never sweep in items the user did not click.
    */
-  protected onCardClick(event: MouseEvent, file: MediaListItem): void {
+  protected onCardClick(event: MouseEvent, kind: ItemKind, id: string): void {
     if (event.shiftKey || event.ctrlKey || event.metaKey) {
       event.preventDefault();
-      this.toggleSelect(file.id);
+      this.toggleSelect(kind, id);
       return;
     }
     // Outside selection mode a single click is inert; double-click still opens.
-    if (this.selectedCount() > 0) this.toggleSelect(file.id);
+    if (this.selectedCount() > 0) this.toggleSelect(kind, id);
   }
 
   constructor() {
@@ -183,6 +228,9 @@ export class Files {
   // ---- navigation ---------------------------------------------------------
 
   protected openFolder(f: FolderItem): void {
+    // In selection mode the double-click's two clicks already toggled this card twice; navigating
+    // away on top of that is not what the user is doing.
+    if (this.selectedCount() > 0) return;
     void this.router.navigate(['/files', f.id]);
   }
 
@@ -430,6 +478,10 @@ export class Files {
 
   protected folderMenu(event: MouseEvent, f: FolderItem): void {
     const payload: DragPayload = { kind: 'folder', id: f.id, name: f.name };
+    if (this.isBulkTarget('folder', f.id)) {
+      this.showMenu(event, this.bulkMenuItems());
+      return;
+    }
     this.showMenu(event, [
       { label: 'Open', icon: 'folder-open', onSelect: () => this.openFolder(f) },
       { label: 'Rename', icon: 'edit-2', onSelect: () => this.openRename(payload) },
@@ -446,31 +498,51 @@ export class Files {
    */
   protected fileMenu(event: MouseEvent, f: MediaListItem): void {
     const payload: DragPayload = { kind: 'file', id: f.id, name: f.originalName };
-    const count = this.selectedCount();
-    const bulk = this.isSelected(f.id) && count > 1;
-    const suffix = bulk ? ` ${count} ${this.plural(count, 'file')}` : '';
-
+    if (this.isBulkTarget('file', f.id)) {
+      this.showMenu(event, this.bulkMenuItems());
+      return;
+    }
     this.showMenu(event, [
-      {
-        label: `Download${suffix}`,
+      { label: 'Download', icon: 'download', onSelect: () => void this.download(f) },
+      { label: 'Rename', icon: 'edit-2', onSelect: () => this.openRename(payload) },
+      { label: 'Move to…', icon: 'move', onSelect: () => this.openMove(payload) },
+      { divider: true },
+      { label: 'Delete', icon: 'trash-2', danger: true, onSelect: () => this.askDelete(payload) },
+    ]);
+  }
+
+  /** True when the clicked card belongs to a selection of more than one item. */
+  private isBulkTarget(kind: ItemKind, id: string): boolean {
+    return this.isSelected(kind, id) && this.selectedCount() > 1;
+  }
+
+  /**
+   * Menu for a whole selection. Rename is absent, being one-at-a-time, and Download only appears
+   * when files are selected — folders have nothing to download.
+   */
+  private bulkMenuItems(): ContextMenuItem[] {
+    const total = this.selectedCount();
+    const fileCount = this.selectedFiles().length;
+    const items: ContextMenuItem[] = [];
+
+    if (fileCount) {
+      items.push({
+        label: `Download ${fileCount} ${this.plural(fileCount, 'file')}`,
         icon: 'download',
-        onSelect: () => void (bulk ? this.downloadSelected() : this.download(f)),
-      },
-      // Renaming is inherently one-at-a-time, so it drops out of a bulk menu.
-      ...(bulk ? [] : [{ label: 'Rename', icon: 'edit-2', onSelect: () => this.openRename(payload) }]),
-      {
-        label: `Move${suffix} to…`,
-        icon: 'move',
-        onSelect: () => (bulk ? this.openMoveSelected() : this.openMove(payload)),
-      },
+        onSelect: () => void this.downloadSelected(),
+      });
+    }
+    items.push(
+      { label: `Move ${total} items to…`, icon: 'move', onSelect: () => this.openMoveSelected() },
       { divider: true },
       {
-        label: `Delete${suffix}`,
+        label: `Delete ${total} items`,
         icon: 'trash-2',
         danger: true,
-        onSelect: () => (bulk ? this.askDeleteSelected() : this.askDelete(payload)),
-      },
-    ]);
+        onSelect: () => this.askDeleteSelected(),
+      }
+    );
+    return items;
   }
 
   private showMenu(event: MouseEvent, items: ContextMenuItem[]): void {
@@ -478,6 +550,74 @@ export class Files {
     this.menuY.set(event.clientY);
     this.menuItems.set(items);
     this.menuOpen.set(true);
+  }
+
+  // ---- marquee selection --------------------------------------------------
+
+  private marqueeOrigin: { x: number; y: number } | null = null;
+  /** Selection to build on top of, so a modifier-drag adds instead of replacing. */
+  private marqueeBase: ReadonlySet<string> = new Set();
+
+  /**
+   * Windows-style rubber band. A press that starts on empty space — not on a card, a control or
+   * a dialog — begins a rectangle; every card it touches becomes selected. A press that never
+   * travels far enough stays a plain click and clears the selection instead.
+   */
+  @HostListener('mousedown', ['$event'])
+  protected onMarqueeDown(event: MouseEvent): void {
+    if (event.button !== 0) return;
+    const target = event.target as HTMLElement | null;
+    if (!target || target.closest(MARQUEE_IGNORE)) return;
+
+    event.preventDefault(); // stop the browser starting a text selection instead
+    this.marqueeOrigin = { x: event.clientX, y: event.clientY };
+    this.marqueeBase =
+      event.shiftKey || event.ctrlKey || event.metaKey ? this.selectedKeys() : new Set();
+    window.addEventListener('mousemove', this.onMarqueeMove);
+    window.addEventListener('mouseup', this.onMarqueeUp);
+  }
+
+  private readonly onMarqueeMove = (event: MouseEvent): void => {
+    const origin = this.marqueeOrigin;
+    if (!origin) return;
+    const dx = event.clientX - origin.x;
+    const dy = event.clientY - origin.y;
+    if (!this.marquee() && Math.hypot(dx, dy) < MARQUEE_THRESHOLD_PX) return;
+
+    const rect: Rect = {
+      left: Math.min(origin.x, event.clientX),
+      top: Math.min(origin.y, event.clientY),
+      width: Math.abs(dx),
+      height: Math.abs(dy),
+    };
+    this.marquee.set(rect);
+    this.applyMarquee(rect);
+  };
+
+  private readonly onMarqueeUp = (): void => {
+    const dragged = this.marquee() !== null;
+    this.marqueeOrigin = null;
+    this.marquee.set(null);
+    window.removeEventListener('mousemove', this.onMarqueeMove);
+    window.removeEventListener('mouseup', this.onMarqueeUp);
+    // A press on empty space that never became a rectangle is a click on the background.
+    if (!dragged) this.clearSelection();
+  };
+
+  /** Selects every card whose box intersects the rectangle, on top of the base selection. */
+  private applyMarquee(rect: Rect): void {
+    const next = new Set(this.marqueeBase);
+    const cards = this.host.nativeElement.querySelectorAll<HTMLElement>('[data-key]');
+    for (const card of Array.from(cards)) {
+      const box = card.getBoundingClientRect();
+      const hits =
+        box.left < rect.left + rect.width &&
+        box.right > rect.left &&
+        box.top < rect.top + rect.height &&
+        box.bottom > rect.top;
+      if (hits) next.add(card.dataset['key']!);
+    }
+    this.selectedKeys.set(next);
   }
 
   // ---- drag and drop ------------------------------------------------------

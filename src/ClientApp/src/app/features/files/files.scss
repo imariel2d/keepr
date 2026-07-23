@@ -123,6 +123,20 @@
   }
 }
 
+// While a rectangle is being dragged, nothing in the view should highlight as text.
+:host(.marqueeing) {
+  user-select: none;
+}
+
+.marquee {
+  position: fixed;
+  z-index: 50;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  pointer-events: none;
+}
+
 .selbar {
   display: flex;
   align-items: center;
