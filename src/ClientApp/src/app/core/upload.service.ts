@@ -28,18 +28,48 @@ export class UploadService {
   /** Live list of upload tasks for the UI to render. */
   readonly tasks = signal<UploadTask[]>([]);
 
+  /** Drop every task. The progress toast calls this when it is dismissed. */
+  clear(): void {
+    this.tasks.set([]);
+  }
+
+  static isSettled(task: UploadTask): boolean {
+    return task.status === 'done' || task.status === 'error' || task.status === 'aborted';
+  }
+
   /**
+   * Upload a batch sequentially. Every file gets its row up-front (status `queued`) so the UI
+   * can show "2 of 6" from the start rather than a total that grows as files finish.
+   *
    * @param folderId Destination folder; null uploads to the root.
    */
-  async upload(file: File, folderId: string | null = null): Promise<void> {
-    const task: UploadTask = {
+  async uploadMany(files: File[], folderId: string | null = null): Promise<void> {
+    if (!files.length) return;
+
+    // A finished batch is history the moment a new one starts; otherwise the counter would
+    // carry the previous run's totals forward.
+    if (this.tasks().every((t) => UploadService.isSettled(t))) this.clear();
+
+    const queued: UploadTask[] = files.map((file) => ({
       id: crypto.randomUUID(),
       fileName: file.name,
       totalBytes: file.size,
       uploadedBytes: 0,
-      status: 'uploading',
-    };
-    this.tasks.update((t) => [task, ...t]);
+      status: 'queued',
+    }));
+    this.tasks.update((t) => [...t, ...queued]);
+
+    for (let i = 0; i < files.length; i++) {
+      try {
+        await this.run(queued[i].id, files[i], folderId);
+      } catch {
+        /* the task row carries its own error; keep going with the rest of the batch */
+      }
+    }
+  }
+
+  private async run(taskId: string, file: File, folderId: string | null): Promise<void> {
+    this.patch(taskId, { status: 'uploading' });
 
     let init: InitUploadResponse | undefined;
     try {
@@ -56,17 +86,17 @@ export class UploadService {
       // is auto-suffixed rather than rejected. Show what was actually stored, or the progress
       // row lies for the whole upload and disagrees with the list afterwards.
       if (init.originalName !== file.name) {
-        this.patch(task.id, { fileName: init.originalName });
+        this.patch(taskId, { fileName: init.originalName });
       }
 
-      const parts = await this.uploadParts(file, init, task);
+      const parts = await this.uploadParts(file, init, taskId);
 
-      this.patch(task.id, { status: 'completing' });
+      this.patch(taskId, { status: 'completing' });
       await firstValueFrom(
         this.http.post(`/api/uploads/${init.mediaId}/complete`, { parts })
       );
 
-      this.patch(task.id, { status: 'done', uploadedBytes: file.size });
+      this.patch(taskId, { status: 'done', uploadedBytes: file.size });
     } catch (err: unknown) {
       if (init) {
         // Best-effort: release the reserved quota server-side.
@@ -74,7 +104,7 @@ export class UploadService {
           this.http.post(`/api/uploads/${init.mediaId}/abort`, {})
         ).catch(() => void 0);
       }
-      this.patch(task.id, {
+      this.patch(taskId, {
         status: 'error',
         error: err instanceof Error ? err.message : 'Upload failed',
       });
@@ -85,7 +115,7 @@ export class UploadService {
   private async uploadParts(
     file: File,
     init: InitUploadResponse,
-    task: UploadTask
+    taskId: string
   ): Promise<CompletePart[]> {
     const parts: CompletePart[] = [];
     const partCount = Math.max(1, Math.ceil(file.size / init.partSize));
@@ -115,7 +145,7 @@ export class UploadService {
       }
 
       parts.push({ partNumber, eTag });
-      this.patch(task.id, { uploadedBytes: end });
+      this.patch(taskId, { uploadedBytes: end });
     }
 
     return parts;

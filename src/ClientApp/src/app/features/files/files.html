@@ -51,32 +51,41 @@
   </div>
 }
 
-<section
-  class="dropzone"
-  [class.active]="draggingFiles()"
-  (dragover)="onDragOver($event)"
-  (dragleave)="onDragLeave($event)"
-  (drop)="onDrop($event)">
-  <input id="file-input" type="file" multiple hidden (change)="onFilesSelected($event)" />
-  <cove-icon name="upload-cloud" [size]="26" color="var(--accent)" />
-  <p class="dz-title">Drop files to upload to <strong>{{ contents()?.folder?.name ?? 'My Files' }}</strong></p>
-</section>
+<input id="file-input" type="file" multiple hidden (change)="onFilesSelected($event)" />
 
-@if (uploads.tasks().length) {
-  <section class="tasks">
-    @for (t of uploads.tasks(); track t.id) {
-      <div class="task">
-        <div class="task-row">
-          <span class="tname">{{ t.fileName }}</span>
-          <span class="tstate" [class.error]="taskTone(t) === 'danger'" [class.done]="t.status === 'done'">
-            {{ t.status }}
-          </span>
-        </div>
-        <cove-progress-bar [value]="taskPercent(t)" [tone]="taskTone(t)" [height]="6" />
-        @if (t.error) { <p class="terr">{{ t.error }}</p> }
-      </div>
+<!-- The whole view is the drop target; this is feedback only, so it must not eat drag events.
+     It yields while a folder card is targeted, so that card's highlight reads clearly. -->
+@if (draggingFiles() && !dropTarget()) {
+  <div class="dropveil" aria-hidden="true">
+    <div class="dropveil-card">
+      <cove-icon name="upload-cloud" [size]="32" color="var(--accent)" />
+      <p>Drop to upload to <strong>{{ contents()?.folder?.name ?? 'My Files' }}</strong></p>
+    </div>
+  </div>
+}
+
+@if (selectedCount()) {
+  <div class="selbar">
+    <cove-icon name="check-circle" [size]="16" color="var(--accent)" />
+    <span class="selcount">
+      {{ selectedCount() }} {{ plural(selectedCount(), 'file') }} selected
+    </span>
+
+    <cove-button variant="ghost" size="sm" icon="download" (click)="downloadSelected()">
+      Download
+    </cove-button>
+    <cove-button variant="ghost" size="sm" icon="move" (click)="openMoveSelected()">
+      Move to…
+    </cove-button>
+    <cove-button variant="danger" size="sm" icon="trash-2" (click)="askDeleteSelected()">
+      Delete
+    </cove-button>
+
+    @if (!allSelected()) {
+      <button type="button" class="sellink" (click)="selectAll()">Select all</button>
     }
-  </section>
+    <button type="button" class="sellink" (click)="clearSelection()">Clear</button>
+  </div>
 }
 
 @if (loading()) {
@@ -84,7 +93,7 @@
 } @else if (isEmpty()) {
   <div class="empty">
     <cove-icon name="folder-open" [size]="34" color="var(--text-tertiary)" />
-    <p>This folder is empty — drop files above or create a subfolder.</p>
+    <p>This folder is empty — drop files anywhere here, or create a subfolder.</p>
   </div>
 } @else {
   @if (folders().length) {
@@ -101,6 +110,7 @@
           (drop)="onFolderDrop($event, f.id)">
           <cove-folder-card
             [name]="f.name"
+            [selected]="dropTarget() === f.id"
             (openItem)="openFolder(f)"
             (menu)="folderMenu($event, f)" />
         </div>
@@ -122,6 +132,9 @@
             [type]="fileType(f.contentType)"
             [thumbnail]="thumbnails()[f.id]"
             [modified]="(f.sizeBytes | bytes) + ' · ' + formatDate(f.createdAt)"
+            [selected]="isSelected(f.id)"
+            (toggleSelect)="toggleSelect(f.id)"
+            (cardClick)="onCardClick($event, f)"
             (openItem)="openFile(f)"
             (menu)="fileMenu($event, f)" />
         </div>
@@ -168,16 +181,20 @@
 <!-- Delete confirmation. Folders take their whole contents with them, so say so. -->
 <cove-modal
   [open]="confirmOpen()"
-  [title]="'Delete ' + (confirmTarget()?.name ?? '') + '?'"
+  [title]="confirmTitle()"
   [width]="460"
   (close)="confirmOpen.set(false)">
   <p class="confirm-body">
-    @if (confirmTarget()?.kind === 'folder') {
-      <strong>{{ confirmTarget()?.name }}</strong> and everything inside it will be moved to the Trash.
+    @if (confirmSingle(); as one) {
+      @if (one.kind === 'folder') {
+        <strong>{{ one.name }}</strong> and everything inside it will be moved to the Trash.
+      } @else {
+        <strong>{{ one.name }}</strong> will be moved to the Trash.
+      }
     } @else {
-      <strong>{{ confirmTarget()?.name }}</strong> will be moved to the Trash.
+      <strong>{{ confirmTargets().length }} items</strong> will be moved to the Trash.
     }
-    You can restore it for 10 days; it keeps using storage until then.
+    You can restore {{ confirmSingle() ? 'it' : 'them' }} for 10 days; it keeps using storage until then.
   </p>
   <div class="foot">
     <cove-button variant="ghost" (click)="confirmOpen.set(false)">Cancel</cove-button>
@@ -194,7 +211,7 @@
 
 <app-move-dialog
   [open]="moveOpen()"
-  [item]="moveTarget()"
+  [items]="moveTargets()"
   [sourceFolderId]="folderId()"
   (confirm)="onMoveConfirmed($event)"
   (cancel)="moveOpen.set(false)" />

@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Cove — mark & favicon</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  html, body { margin: 0; background: var(--surface-canvas); font-family: var(--font-body); }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 48px 32px 100px; }
+  h1 { font-family: var(--font-display); font-weight: 800; font-size: 30px; color: var(--text-primary); margin: 0 0 6px; }
+  .sub { font-size: 15px; color: var(--text-secondary); margin: 0 0 36px; }
+  .row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 28px; }
+  .panel { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); padding: 28px 32px; display: flex; align-items: center; gap: 28px; }
+  .panel.dark { background: var(--gray-900); border-color: var(--gray-800); }
+  .cap { font-size: 12px; font-weight: 700; color: var(--text-tertiary); letter-spacing: .4px; text-transform: uppercase; }
+  .cap.d { color: var(--gray-300); }
+  .browser-tab { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 10px 10px 0 0; padding: 9px 14px; font-size: 13px; color: var(--text-primary); box-shadow: var(--shadow-xs); }
+  .files { display:flex; gap:24px; flex-wrap:wrap; margin-top:8px; }
+  .file { display:flex; flex-direction:column; align-items:center; gap:8px; font-size:12px; color:var(--text-tertiary); }
+  code { font-family: var(--font-mono); font-size: 12px; background: var(--surface-sunken); padding: 2px 6px; border-radius: 5px; color: var(--text-secondary); }
+  .install { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 20px 24px; }
+  .install pre { margin: 0; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; color: var(--text-primary); white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Cove mark &amp; favicon</h1>
+  <p class="sub">Direction 1a, refined — filled teal cloud with a terracotta rim tracing the dome. Below: hero sizes, favicon on light &amp; dark, and the install snippet.</p>
+
+  <div class="row">
+    <div class="panel">
+      <img src="cove-mark.svg" width="96" height="96" alt="Cove mark">
+      <div>
+        <div class="cap">Primary mark</div>
+        <div style="font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--text-primary);margin-top:4px">cove-mark.svg</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-top:2px">Transparent, scalable</div>
+      </div>
+    </div>
+    <div class="panel dark">
+      <img src="cove-mark.svg" width="96" height="96" alt="Cove mark on dark">
+      <div>
+        <div class="cap d">On dark</div>
+        <div style="font-family:var(--font-display);font-weight:700;font-size:18px;color:#F4EFE7;margin-top:4px">Holds up</div>
+        <div style="font-size:13px;color:var(--gray-300);margin-top:2px">Both tones stay legible</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="panel" style="flex-direction:column;align-items:flex-start;gap:16px">
+      <div class="cap">Favicon sizes (actual px)</div>
+      <div class="files">
+        <div class="file"><img src="favicon-16.png" width="16" height="16" alt=""><span>16</span></div>
+        <div class="file"><img src="favicon-32.png" width="32" height="32" alt=""><span>32</span></div>
+        <div class="file"><img src="favicon-48.png" width="48" height="48" alt=""><span>48</span></div>
+        <div class="file"><img src="icon-180.png" width="64" height="64" style="border-radius:14px" alt=""><span>180 tile</span></div>
+      </div>
+    </div>
+    <div class="panel" style="flex-direction:column;align-items:flex-start;gap:14px">
+      <div class="cap">In a tab</div>
+      <div class="browser-tab"><img src="favicon-16.png" width="16" height="16" alt=""> Cove — My Drive</div>
+    </div>
+  </div>
+
+  <div class="install">
+    <div class="cap" style="margin-bottom:12px">Drop into your &lt;head&gt;</div>
+    <pre>&lt;link rel="icon" href="/favicon.svg" type="image/svg+xml"&gt;
+&lt;link rel="icon" href="/favicon.ico" sizes="any"&gt;
+&lt;link rel="apple-touch-icon" href="/icon-180.png"&gt;</pre>
+  </div>
+</div>
+</body>
+</html>

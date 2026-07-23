@@ -11,9 +11,16 @@ import { FileType, TYPE_META } from './file-type-meta';
   standalone: true,
   imports: [CommonModule, IconComponent, IconButtonComponent, CheckboxComponent, AvatarComponent],
   template: `
-    <div (mouseenter)="hover = true" (mouseleave)="hover = false" (dblclick)="openItem.emit()" [ngStyle]="cardStyle()">
-      <cove-checkbox *ngIf="hover || selected" [checked]="selected"
-        [ngStyle]="{ position: 'absolute', top: '10px', left: '10px', zIndex: 2 }"></cove-checkbox>
+    <div (mouseenter)="hover = true" (mouseleave)="hover = false"
+         (click)="cardClick.emit($event)" (dblclick)="openItem.emit()"
+         (contextmenu)="$event.preventDefault(); menu.emit($event)" [ngStyle]="cardStyle()">
+      <span *ngIf="hover || selected" draggable="false"
+        [ngStyle]="{ position: 'absolute', top: '10px', left: '10px', zIndex: 2, padding: '4px', margin: '-4px', cursor: 'pointer' }"
+        (click)="$event.stopPropagation(); toggleSelect.emit()"
+        (dblclick)="$event.stopPropagation()"
+        (mousedown)="$event.stopPropagation()">
+        <cove-checkbox [checked]="selected"></cove-checkbox>
+      </span>
       <cove-icon-button *ngIf="hover || selected" icon="more-vertical" label="More actions"
         (click)="$event.stopPropagation(); menu.emit($event)"
         [ngStyle]="{ position: 'absolute', top: '6px', right: '6px', zIndex: 2, background: 'var(--surface-card)' }"></cove-icon-button>
@@ -39,6 +46,9 @@ export class FileCardComponent {
   @Input() selected = false;
   @Output() openItem = new EventEmitter<void>();
   @Output() menu = new EventEmitter<MouseEvent>();
+  @Output() toggleSelect = new EventEmitter<void>();
+  /** Raw click on the card body; the host decides whether it selects, extends, or does nothing. */
+  @Output() cardClick = new EventEmitter<MouseEvent>();
   hover = false;
   get meta() { return TYPE_META[this.type] || TYPE_META.default; }
   cardStyle() {
@@ -48,6 +58,8 @@ export class FileCardComponent {
       border: '1px solid ' + (this.selected ? 'var(--accent)' : 'var(--border-subtle)'), cursor: 'pointer',
       boxShadow: this.hover ? 'var(--shadow-sm)' : 'none', transition: 'all var(--duration-fast) var(--ease-standard)',
       fontFamily: 'var(--font-body)', overflow: 'hidden', position: 'relative',
+      // Shift-clicking across cards would otherwise paint a text selection over the grid.
+      userSelect: 'none',
     };
   }
 }

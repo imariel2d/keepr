@@ -1,8 +1,6 @@
 <header class="topbar">
   <div class="brand">
-    <span class="logo" aria-hidden="true">
-      <cove-icon name="cloud" [size]="20" color="var(--text-on-brand)"></cove-icon>
-    </span>
+    <img class="logo" src="cove-mark.svg" alt="" width="34" height="34" aria-hidden="true" />
     <span class="name">Keepr</span>
   </div>
 
@@ -23,6 +21,7 @@
     <nav class="side">
       <cove-sidebar
         brand="Keepr"
+        brandMark="cove-mark.svg"
         [items]="navItems"
         [active]="section()"
         [showUpload]="false"
@@ -41,3 +40,6 @@
     <router-outlet />
   </main>
 }
+
+<!-- Fixed, app-level: uploads keep running across navigation. -->
+<app-upload-toast />

@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Cove — Logo directions</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  html, body { margin: 0; background: var(--surface-canvas); font-family: var(--font-body); }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 48px 32px 100px; }
+  h1 { font-family: var(--font-display); font-weight: 800; font-size: 30px; color: var(--text-primary); margin: 0 0 6px; }
+  .sub { font-size: 15px; color: var(--text-secondary); margin: 0 0 36px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  .card { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); overflow: hidden; }
+  .stage { height: 220px; display: flex; align-items: center; justify-content: center; background: var(--surface-app); border-bottom: 1px solid var(--border-subtle); position: relative; }
+  .badge { position: absolute; top: 14px; left: 16px; font-family: var(--font-display); font-weight: 700; font-size: 13px; color: var(--text-tertiary); }
+  .strip { display: flex; align-items: center; gap: 22px; padding: 16px 20px; }
+  .swatch { display: flex; align-items: center; justify-content: center; }
+  .meta { padding: 0 20px 18px; }
+  .meta .name { font-family: var(--font-display); font-weight: 700; font-size: 16px; color: var(--text-primary); }
+  .meta .desc { font-size: 13px; color: var(--text-secondary); margin-top: 3px; line-height: 1.45; }
+  .small-row { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-top: 1px solid var(--border-subtle); background: var(--surface-canvas); }
+  .small-row .lbl { font-size: 12px; color: var(--text-tertiary); font-weight: 600; }
+  .darktile { width: 44px; height: 44px; border-radius: 11px; background: var(--gray-900); display: flex; align-items: center; justify-content: center; }
+  .tile { width: 44px; height: 44px; border-radius: 11px; display: flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Cove — logo directions</h1>
+  <p class="sub">Four geometric cloud marks in terracotta + teal. Each shown large, at favicon sizes (32 / 16px), and on a dark tile. Tell me which to refine — reply with 1a, 1b, 1c, or 1d.</p>
+  <div class="grid">
+
+    <!-- 1a — Two-tone stacked cloud -->
+    <div class="card" id="1a">
+      <div class="stage">
+        <span class="badge">1a</span>
+        <svg width="132" height="132" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 44a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 26.5 10 10 0 0 1 46 44H20Z" fill="var(--teal-500)"/>
+          <path d="M20 44a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 26.5" stroke="var(--brand-500)" stroke-width="4" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+      <div class="meta">
+        <div class="name">Filled cloud, terracotta rim</div>
+        <div class="desc">Solid teal cloud with a terracotta stroke tracing the top edge. Warm + calm, reads instantly as storage.</div>
+      </div>
+      <div class="small-row">
+        <span class="lbl">32</span>
+        <svg width="32" height="32" viewBox="0 0 64 64" fill="none"><path d="M20 44a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 26.5 10 10 0 0 1 46 44H20Z" fill="var(--teal-500)"/><path d="M20 44a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 26.5" stroke="var(--brand-500)" stroke-width="4" stroke-linecap="round" fill="none"/></svg>
+        <span class="lbl">16</span>
+        <svg width="16" height="16" viewBox="0 0 64 64" fill="none"><path d="M20 44a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 26.5 10 10 0 0 1 46 44H20Z" fill="var(--teal-500)"/><path d="M20 44a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 26.5" stroke="var(--brand-500)" stroke-width="5" stroke-linecap="round" fill="none"/></svg>
+        <div class="darktile">
+          <svg width="26" height="26" viewBox="0 0 64 64" fill="none"><path d="M20 44a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 26.5 10 10 0 0 1 46 44H20Z" fill="var(--teal-500)"/><path d="M20 44a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 26.5" stroke="var(--brand-500)" stroke-width="4" stroke-linecap="round" fill="none"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1b — Cloud + cove notch (negative space) -->
+    <div class="card" id="1b">
+      <div class="stage">
+        <span class="badge">1b</span>
+        <svg width="132" height="132" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M19 45a11 11 0 0 1-1.2-21.9A15 15 0 0 1 46 27.5 10 10 0 0 1 45 45H19Z" fill="var(--brand-500)"/>
+          <path d="M22 45c0-4 3-7 10-7s10 3 10 7" fill="var(--teal-500)"/>
+          <path d="M22 45c0-4 3-7 10-7s10 3 10 7" stroke="var(--surface-app)" stroke-width="0" fill="var(--teal-500)"/>
+        </svg>
+      </div>
+      <div class="meta">
+        <div class="name">Cloud with a teal cove</div>
+        <div class="desc">A terracotta cloud cradling a teal inlet — nods to both “cloud” and the “cove” name. Distinctive silhouette.</div>
+      </div>
+      <div class="small-row">
+        <span class="lbl">32</span>
+        <svg width="32" height="32" viewBox="0 0 64 64" fill="none"><path d="M19 45a11 11 0 0 1-1.2-21.9A15 15 0 0 1 46 27.5 10 10 0 0 1 45 45H19Z" fill="var(--brand-500)"/><path d="M22 45c0-4 3-7 10-7s10 3 10 7" fill="var(--teal-500)"/></svg>
+        <span class="lbl">16</span>
+        <svg width="16" height="16" viewBox="0 0 64 64" fill="none"><path d="M19 45a11 11 0 0 1-1.2-21.9A15 15 0 0 1 46 27.5 10 10 0 0 1 45 45H19Z" fill="var(--brand-500)"/><path d="M22 45c0-4 3-7 10-7s10 3 10 7" fill="var(--teal-500)"/></svg>
+        <div class="darktile">
+          <svg width="26" height="26" viewBox="0 0 64 64" fill="none"><path d="M19 45a11 11 0 0 1-1.2-21.9A15 15 0 0 1 46 27.5 10 10 0 0 1 45 45H19Z" fill="var(--brand-500)"/><path d="M22 45c0-4 3-7 10-7s10 3 10 7" fill="var(--teal-500)"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1c — Split cloud, diagonal two-tone -->
+    <div class="card" id="1c">
+      <div class="stage">
+        <span class="badge">1c</span>
+        <svg width="132" height="132" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="cloud1c"><path d="M20 44a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 26.5 10 10 0 0 1 46 44H20Z"/></clipPath>
+          </defs>
+          <g clip-path="url(#cloud1c)">
+            <rect x="0" y="0" width="64" height="64" fill="var(--brand-500)"/>
+            <path d="M0 40 L64 20 V64 H0 Z" fill="var(--teal-500)"/>
+          </g>
+        </svg>
+      </div>
+      <div class="meta">
+        <div class="name">Split cloud (waterline)</div>
+        <div class="desc">One cloud shape divided by a diagonal “waterline” — terracotta sky over teal water. Minimal, modern, single glyph.</div>
+      </div>
+      <div class="small-row">
+        <span class="lbl">32</span>
+        <svg width="32" height="32" viewBox="0 0 64 64" fill="none"><defs><clipPath id="c1c32"><path d="M20 44a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 26.5 10 10 0 0 1 46 44H20Z"/></clipPath></defs><g clip-path="url(#c1c32)"><rect width="64" height="64" fill="var(--brand-500)"/><path d="M0 40 L64 20 V64 H0 Z" fill="var(--teal-500)"/></g></svg>
+        <span class="lbl">16</span>
+        <svg width="16" height="16" viewBox="0 0 64 64" fill="none"><defs><clipPath id="c1c16"><path d="M20 44a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 26.5 10 10 0 0 1 46 44H20Z"/></clipPath></defs><g clip-path="url(#c1c16)"><rect width="64" height="64" fill="var(--brand-500)"/><path d="M0 40 L64 20 V64 H0 Z" fill="var(--teal-500)"/></g></svg>
+        <div class="darktile">
+          <svg width="26" height="26" viewBox="0 0 64 64" fill="none"><defs><clipPath id="c1cd"><path d="M20 44a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 26.5 10 10 0 0 1 46 44H20Z"/></clipPath></defs><g clip-path="url(#c1cd)"><rect width="64" height="64" fill="var(--brand-500)"/><path d="M0 40 L64 20 V64 H0 Z" fill="var(--teal-500)"/></g></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1d — Outline cloud + terracotta upload arc -->
+    <div class="card" id="1d">
+      <div class="stage">
+        <span class="badge">1d</span>
+        <svg width="132" height="132" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 45a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 27.5 10 10 0 0 1 46 45H20Z" stroke="var(--teal-600)" stroke-width="4" fill="var(--teal-50)"/>
+          <path d="M32 39V27" stroke="var(--brand-500)" stroke-width="4" stroke-linecap="round"/>
+          <path d="M27 31l5-5 5 5" stroke="var(--brand-500)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="meta">
+        <div class="name">Outline cloud + upload arrow</div>
+        <div class="desc">Teal outline cloud with a terracotta upload arrow. The most literal “put files here” read; friendly and light.</div>
+      </div>
+      <div class="small-row">
+        <span class="lbl">32</span>
+        <svg width="32" height="32" viewBox="0 0 64 64" fill="none"><path d="M20 45a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 27.5 10 10 0 0 1 46 45H20Z" stroke="var(--teal-600)" stroke-width="4" fill="var(--teal-50)"/><path d="M32 39V27" stroke="var(--brand-500)" stroke-width="4" stroke-linecap="round"/><path d="M27 31l5-5 5 5" stroke="var(--brand-500)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="lbl">16</span>
+        <svg width="16" height="16" viewBox="0 0 64 64" fill="none"><path d="M20 45a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 27.5 10 10 0 0 1 46 45H20Z" stroke="var(--teal-600)" stroke-width="5" fill="var(--teal-50)"/><path d="M32 40V26" stroke="var(--brand-500)" stroke-width="5" stroke-linecap="round"/><path d="M26 31l6-6 6 6" stroke="var(--brand-500)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="darktile">
+          <svg width="26" height="26" viewBox="0 0 64 64" fill="none"><path d="M20 45a11 11 0 0 1-1.2-21.9A15 15 0 0 1 47 27.5 10 10 0 0 1 46 45H20Z" stroke="var(--teal-300)" stroke-width="4" fill="none"/><path d="M32 39V27" stroke="var(--brand-300)" stroke-width="4" stroke-linecap="round"/><path d="M27 31l5-5 5 5" stroke="var(--brand-300)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

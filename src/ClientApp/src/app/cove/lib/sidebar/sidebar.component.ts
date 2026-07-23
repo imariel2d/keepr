@@ -13,7 +13,8 @@ export interface NavItem { key: string; label: string; icon: string; }
   template: `
     <div [ngStyle]="{ width: '240px', display: 'flex', flexDirection: 'column', gap: '20px', padding: '20px 12px', fontFamily: 'var(--font-body)', height: '100%' }">
       <div [ngStyle]="{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px' }">
-        <cove-icon name="cloud" [size]="22" color="var(--accent)"></cove-icon>
+        <img *ngIf="brandMark; else glyph" [src]="brandMark" alt="" width="24" height="24" [ngStyle]="{ display: 'block' }" />
+        <ng-template #glyph><cove-icon name="cloud" [size]="22" color="var(--accent)"></cove-icon></ng-template>
         <span [ngStyle]="{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '20px', color: 'var(--text-primary)' }">{{ brand }}</span>
       </div>
       <cove-button *ngIf="showUpload" icon="upload-cloud" [ngStyle]="{ margin: '0 8px', display: 'block' }" (click)="upload.emit()">Upload</cove-button>
@@ -32,6 +33,8 @@ export interface NavItem { key: string; label: string; icon: string; }
 export class SidebarComponent {
   @Input() active = 'mine';
   @Input() brand = 'Cove';
+  /** Optional brand mark image; falls back to the generic cloud glyph when unset. */
+  @Input() brandMark = '';
   @Input() showUpload = true;
   /** Raw numbers only used for the bar; the caption comes from quotaLabel. */
   @Input() quotaUsed = 0;

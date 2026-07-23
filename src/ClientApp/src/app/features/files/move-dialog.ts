@@ -16,7 +16,7 @@ import { ModalComponent } from '../../cove/lib/modal/modal.component';
   selector: 'app-move-dialog',
   imports: [ModalComponent, ButtonComponent, IconComponent],
   template: `
-    <cove-modal [open]="open" [title]="'Move ' + (item?.name ?? '')" [width]="520" (close)="cancel.emit()">
+    <cove-modal [open]="open" [title]="title()" [width]="520" (close)="cancel.emit()">
       <div class="picker">
         <div class="trail">
           <button type="button" class="crumb" (click)="browse(null)">
@@ -68,9 +68,9 @@ export class MoveDialog {
   private readonly folderApi = inject(FolderService);
 
   @Input() open = false;
-  /** The item being moved; a folder can't be dropped into itself. */
-  @Input() item: DragPayload | null = null;
-  /** Where the item lives now, so "Move here" can be disabled for a no-op. */
+  /** The items being moved — one card, or a whole selection. A folder can't go inside itself. */
+  @Input() items: DragPayload[] = [];
+  /** Where the items live now, so "Move here" can be disabled for a no-op. */
   @Input() sourceFolderId: string | null = null;
 
   @Output() confirm = new EventEmitter<string | null>();
@@ -98,8 +98,13 @@ export class MoveDialog {
     }
   }
 
+  protected title(): string {
+    if (this.items.length === 1) return `Move ${this.items[0].name}`;
+    return `Move ${this.items.length} items`;
+  }
+
   protected isSelf(f: FolderItem): boolean {
-    return this.item?.kind === 'folder' && this.item.id === f.id;
+    return this.items.some((i) => i.kind === 'folder' && i.id === f.id);
   }
 
   protected isCurrent(): boolean {

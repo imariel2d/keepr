@@ -18,15 +18,12 @@
   text-align: center;
   margin-bottom: var(--space-6);
 
+  // Self-coloured brand mark — no tinted tile behind it.
   .mark {
-    display: inline-grid;
-    place-items: center;
-    width: 52px;
-    height: 52px;
+    display: inline-block;
+    width: 56px;
+    height: 56px;
     margin-bottom: var(--space-4);
-    border-radius: var(--radius-lg);
-    background: linear-gradient(135deg, var(--accent), var(--accent-active));
-    box-shadow: var(--shadow-sm);
   }
 
   h1 {

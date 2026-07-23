@@ -108,7 +108,8 @@ export interface UploadTask {
   fileName: string;
   totalBytes: number;
   uploadedBytes: number;
-  status: 'uploading' | 'completing' | 'done' | 'error' | 'aborted';
+  /** `queued` exists so a batch can show "2 of 6" from the first frame, before file 2 starts. */
+  status: 'queued' | 'uploading' | 'completing' | 'done' | 'error' | 'aborted';
   error?: string;
 }
 

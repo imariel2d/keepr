@@ -84,63 +84,76 @@
   padding: 0 4px;
 }
 
-.dropzone {
+// The drop target is the whole view, so it has to stay tall even in a near-empty folder.
+:host {
+  display: block;
+  position: relative;
+  min-height: calc(100vh - 140px);
+}
+
+.dropveil {
+  position: absolute;
+  inset: calc(var(--space-4) * -1);
+  z-index: 40;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-3);
-  padding: var(--space-5);
-  border: 1.5px dashed var(--border-strong);
+  border: 2px dashed var(--accent);
   border-radius: var(--radius-lg);
-  background: var(--surface-sunken);
-  margin-bottom: var(--space-5);
-  transition: all var(--duration-fast) var(--ease-standard);
+  background: color-mix(in srgb, var(--accent-subtle) 88%, transparent);
+  // Critical: the veil sits under the cursor, so it must not become the drag target itself —
+  // that would fire dragleave on the grid and strobe the overlay.
+  pointer-events: none;
+}
 
-  &.active {
-    border-color: var(--accent);
-    background: var(--accent-subtle);
+.dropveil-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-lg);
+
+  p {
+    margin: 0;
+    font-size: var(--text-base);
+    color: var(--text-secondary);
   }
 }
 
-.dz-title {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
-
-.tasks {
+.selbar {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin-bottom: var(--space-5);
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent-subtle);
 }
 
-.task-row {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: 4px;
+.selcount {
+  flex: 1;
+  min-width: max-content;
   font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--accent-subtle-text);
 }
 
-.tname {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.sellink {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--accent-subtle-text);
 
-.tstate {
-  color: var(--text-tertiary);
-  text-transform: capitalize;
-
-  &.done { color: var(--success); }
-  &.error { color: var(--danger); }
-}
-
-.terr {
-  margin: 4px 0 0;
-  font-size: var(--text-xs);
-  color: var(--danger);
+  &:hover { text-decoration: underline; }
 }
 
 .section-title {

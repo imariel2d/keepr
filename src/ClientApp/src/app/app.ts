@@ -5,19 +5,19 @@ import { AuthService } from './core/auth.service';
 import { ThemeService } from './core/theme.service';
 import { UsageStore } from './core/usage.store';
 import { ButtonComponent } from './cove/lib/button/button.component';
-import { IconComponent } from './cove/lib/icon/icon.component';
 import { IconButtonComponent } from './cove/lib/icon-button/icon-button.component';
 import { NavItem, SidebarComponent } from './cove/lib/sidebar/sidebar.component';
 import { BytesPipe } from './core/bytes.pipe';
+import { UploadToast } from './features/uploads/upload-toast';
 
 @Component({
   selector: 'app-root',
   imports: [
     RouterOutlet,
     ButtonComponent,
-    IconComponent,
     IconButtonComponent,
     SidebarComponent,
+    UploadToast,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
