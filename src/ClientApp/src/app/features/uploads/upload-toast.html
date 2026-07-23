@@ -1,0 +1,39 @@
+@if (total()) {
+  <div
+    class="toast"
+    [class.toast--error]="finished() && failed() > 0"
+    role="status"
+    aria-live="polite">
+    <div class="row">
+      <span class="glyph" aria-hidden="true">
+        @if (!finished()) {
+          <cove-icon name="upload-cloud" [size]="18" color="var(--accent)" />
+        } @else if (failed()) {
+          <cove-icon name="alert-circle" [size]="18" color="var(--danger)" />
+        } @else {
+          <cove-icon name="check-circle" [size]="18" color="var(--success)" />
+        }
+      </span>
+
+      <span class="title">{{ title() }}</span>
+
+      <!-- Closable only once nothing is in flight, so a running batch can't be orphaned. -->
+      @if (finished()) {
+        <button type="button" class="close" (click)="dismiss()" aria-label="Dismiss">
+          <cove-icon name="x" [size]="15" />
+        </button>
+      }
+    </div>
+
+    @if (!finished()) {
+      <p class="name">{{ currentName() }}</p>
+      <cove-progress-bar [value]="percent()" tone="accent" [height]="6" />
+    } @else if (failed()) {
+      <ul class="failed">
+        @for (name of failedNames(); track name) {
+          <li>{{ name }}</li>
+        }
+      </ul>
+    }
+  </div>
+}

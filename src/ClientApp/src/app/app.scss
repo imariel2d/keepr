@@ -22,14 +22,11 @@
   align-items: center;
   gap: var(--space-3);
 
+  // The brand mark carries its own colour (teal cloud, terracotta rim), so no tile behind it.
   .logo {
-    display: grid;
-    place-items: center;
+    display: block;
     width: 34px;
     height: 34px;
-    border-radius: var(--radius-md);
-    background: linear-gradient(135deg, var(--accent), var(--accent-active));
-    box-shadow: var(--shadow-sm);
   }
 
   .name {
