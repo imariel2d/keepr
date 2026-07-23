@@ -6,13 +6,11 @@
 
 language: en-US
 
-# Nudges the reviewer toward this repo's house style: it documents its own decisions and
-# prefers being told the "why", not just the "what".
+# Nudges the reviewer toward this repo's house style. Hard cap: 250 characters.
 tone_instructions: >-
-  You are reviewing Keepr, a small single-owner media store. Favour correctness, security and
-  clear reasoning over stylistic nits. When you flag something, say what breaks and under which
-  input, not just that a rule was violated. This is a solo project: do not ask for organisational
-  process (CODEOWNERS, approvals) that does not apply.
+  Keepr is a small single-owner media store. Favor correctness and security over style nits. When
+  flagging, name what breaks and the input that triggers it, not just the rule. Skip org-process
+  asks (CODEOWNERS, approvals) a solo project lacks.
 
 reviews:
   # assertive = more thorough, more nitpicks. Suits a quality-focused solo project; switch to
