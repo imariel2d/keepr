@@ -16,7 +16,7 @@ and 18 are not started.
 |---|---------|--------|----------------|
 | 1 | Upload/download files | ✅ | Presigned S3 multipart upload (`src/Api/Features/Uploads/UploadsController.cs`) + presigned GET download (`src/Api/Features/Media/MediaController.cs`) |
 | 2 | Folder hierarchy (create, nested, move) | ✅ | Backend: `Folder` entity (adjacency list), recursive-CTE subtree/breadcrumbs, cycle + depth guards, auto-suffix naming. UI: `src/ClientApp/src/app/features/files/` — breadcrumb nav, card grid, drag-and-drop + "Move to…" picker. Storage stays flat `{ownerId}/{uuid}` (FD1) |
-| 3 | Authentication | ✅ | JWT register/login (`src/Api/Features/Auth/AuthController.cs`) |
+| 3 | Authentication | ✅ | JWT register/login (`src/Api/Features/Auth/AuthController.cs`). Signup is invite-gated behind `IRegistrationGate` — see [registration-gate-design.md](registration-gate-design.md) |
 | 4 | File/folder metadata storage | ✅ | File metadata (`src/Api/Domain/MediaFile.cs`) + folder metadata (`src/Api/Domain/Folder.cs`) |
 | 5 | Rename/delete | ✅ | Rename via `PATCH /api/media/{id}` + `PATCH /api/folders/{id}`, exposed in the card context menu. Delete is now soft (#8) |
 

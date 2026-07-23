@@ -49,6 +49,20 @@
         </cove-input>
       </div>
 
+      @if (mode() === 'register') {
+        <div class="field">
+          <label for="invite">Invite code</label>
+          <cove-input
+            icon="key-round"
+            name="invite"
+            autocomplete="off"
+            placeholder="Required to sign up"
+            [value]="inviteCode()"
+            (valueChange)="inviteCode.set($event)" />
+          <p class="hint">Keepr is invite-only. Ask the owner for a code.</p>
+        </div>
+      }
+
       @if (error()) {
         <p class="error" role="alert">
           <cove-icon name="alert-circle" [size]="15"></cove-icon>

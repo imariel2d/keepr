@@ -15,6 +15,7 @@ builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(Stor
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.Configure<QuotaOptions>(builder.Configuration.GetSection(QuotaOptions.SectionName));
 builder.Services.Configure<CleanupOptions>(builder.Configuration.GetSection(CleanupOptions.SectionName));
+builder.Services.Configure<RegistrationOptions>(builder.Configuration.GetSection(RegistrationOptions.SectionName));
 
 // ---- Persistence -----------------------------------------------------------
 // Resolve from ConnectionStrings:Postgres (key-value or postgres:// URI) or discrete Db:* fields.
@@ -43,6 +44,9 @@ if (string.IsNullOrWhiteSpace(storageCfg["AccountId"]) && string.IsNullOrWhiteSp
 builder.Services.AddSingleton<IObjectStorage, R2ObjectStorage>();
 builder.Services.AddScoped<QuotaService>();
 builder.Services.AddScoped<JwtTokenService>();
+// Who may create an account. Swap this line for another IRegistrationGate (emailed invites, an
+// allow-list, an approval queue) without touching AuthController.
+builder.Services.AddScoped<IRegistrationGate, InviteCodeRegistrationGate>();
 builder.Services.AddScoped<FolderService>();
 builder.Services.AddScoped<TrashService>();
 builder.Services.AddHostedService<UploadCleanupService>();

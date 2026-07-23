@@ -16,9 +16,10 @@ export class AuthService {
     return this.token();
   }
 
-  async register(email: string, password: string): Promise<void> {
+  /** Signups are gated: the server rejects a missing or wrong invite code with 403. */
+  async register(email: string, password: string, inviteCode: string): Promise<void> {
     const res = await firstValueFrom(
-      this.http.post<AuthResponse>('/api/auth/register', { email, password })
+      this.http.post<AuthResponse>('/api/auth/register', { email, password, inviteCode })
     );
     this.setToken(res.accessToken);
   }

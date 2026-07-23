@@ -21,6 +21,8 @@ services:
       ASPNETCORE_URLS: http://+:5080
       # Reach Postgres/MinIO by their compose service names over the shared network.
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=media;Username=media;Password=media"
+      # Invite code required to register. Empty would close signups entirely.
+      Registration__InviteCode: keepr-dev
       Storage__AccessKey: minioadmin
       Storage__SecretKey: minioadmin
       Storage__Bucket: media

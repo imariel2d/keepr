@@ -17,6 +17,8 @@ export class Login {
 
   protected readonly email = signal('');
   protected readonly password = signal('');
+  /** Required to register: the server gates signups behind a shared code. */
+  protected readonly inviteCode = signal('');
   protected readonly showPassword = signal(false);
   protected readonly mode = signal<'login' | 'register'>('login');
   protected readonly error = signal<string | null>(null);
@@ -33,19 +35,30 @@ export class Login {
     this.busy.set(true);
     try {
       if (this.mode() === 'register') {
-        await this.auth.register(this.email(), this.password());
+        await this.auth.register(this.email(), this.password(), this.inviteCode());
       } else {
         await this.auth.login(this.email(), this.password());
       }
       await this.router.navigate(['']);
-    } catch {
+    } catch (e) {
+      // The gate's reasons are written for end users ("That invite code is not valid."), so show
+      // them rather than a generic failure that leaves the user guessing which field is wrong.
       this.error.set(
-        this.mode() === 'register'
-          ? 'Registration failed. The email may already be in use.'
-          : 'Login failed. Check your email and password.'
+        this.messageOf(
+          e,
+          this.mode() === 'register'
+            ? 'Registration failed. The email may already be in use.'
+            : 'Login failed. Check your email and password.'
+        )
       );
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** Errors are problem+json; `detail` carries a message meant for the user. */
+  private messageOf(e: unknown, fallback: string): string {
+    const detail = (e as { error?: { detail?: string } })?.error?.detail;
+    return typeof detail === 'string' && detail ? detail : fallback;
   }
 }
