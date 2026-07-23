@@ -30,7 +30,9 @@ export class InputComponent {
   @Output() valueChange = new EventEmitter<string>();
   focus = false;
   private heights: Record<Size, string> = { sm: '32px', md: '40px', lg: '48px' };
-  inputStyle = { flex: 1, border: 'none', outline: 'none', background: 'transparent', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--text-primary)' };
+  // boxShadow:none overrides the global `*:focus-visible` ring. The wrapper already shows focus
+  // (accent border + shadow), so without this the inner input draws a second ring inside it.
+  inputStyle = { flex: 1, border: 'none', outline: 'none', boxShadow: 'none', background: 'transparent', fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--text-primary)' };
   wrapStyle() {
     return {
       display: 'flex', alignItems: 'center', gap: '8px', height: this.heights[this.size],
