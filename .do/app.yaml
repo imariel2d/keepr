@@ -38,6 +38,11 @@ services:
       - key: Jwt__SigningKey
         scope: RUN_TIME
         type: SECRET
+      # Shared invite code required to create an account. If this is unset, registration is
+      # refused outright rather than left open — see InviteCodeRegistrationGate.
+      - key: Registration__InviteCode
+        scope: RUN_TIME
+        type: SECRET
       - key: Storage__AccountId
         scope: RUN_TIME
         type: SECRET
