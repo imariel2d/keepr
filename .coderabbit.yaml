@@ -1,0 +1,143 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit configuration for Keepr (ASP.NET Core + Angular monolith).
+# Docs: https://docs.coderabbit.ai/guides/configure-coderabbit
+# Edit in an editor with the schema above loaded — it flags unknown keys as you type.
+
+language: en-US
+
+# Nudges the reviewer toward this repo's house style: it documents its own decisions and
+# prefers being told the "why", not just the "what".
+tone_instructions: >-
+  You are reviewing Keepr, a small single-owner media store. Favour correctness, security and
+  clear reasoning over stylistic nits. When you flag something, say what breaks and under which
+  input, not just that a rule was violated. This is a solo project: do not ask for organisational
+  process (CODEOWNERS, approvals) that does not apply.
+
+reviews:
+  # assertive = more thorough, more nitpicks. Suits a quality-focused solo project; switch to
+  # "chill" if the volume gets noisy.
+  profile: assertive
+
+  # Do not gate merges on CodeRabbit — it advises, the human decides.
+  request_changes_workflow: false
+
+  high_level_summary: true
+  changed_files_summary: true
+  review_status: true
+  collapse_walkthrough: false
+
+  # Flow-heavy code (multipart upload, trash lifecycle, two-legged auth) reads better as a diagram.
+  sequence_diagrams: true
+
+  # Keep PR threads professional; no closing poem.
+  poem: false
+
+  auto_review:
+    enabled: true
+    # Review each push against the last reviewed commit, not the whole PR every time.
+    auto_incremental_review: true
+    drafts: false
+    base_branches:
+      - main
+    # Skip work-in-progress PRs by title.
+    ignore_title_keywords:
+      - WIP
+      - "[skip ci]"
+      - DO NOT REVIEW
+
+  # Keep generated, vendored and built artefacts out of review. "!" excludes; everything else is
+  # still reviewed. See the frontend/EF notes below for why each is here.
+  path_filters:
+    - "!**/bin/**"
+    - "!**/obj/**"
+    - "!**/node_modules/**"
+    - "!**/dist/**"
+    - "!**/.angular/**"
+    - "!src/Api/wwwroot/**"          # the built SPA, copied in by the Dockerfile
+    - "!**/Migrations/*.Designer.cs" # EF-generated
+    - "!**/Migrations/*ModelSnapshot.cs"
+    - "!src/ClientApp/brand/**"      # exported icon assets + a static design sheet
+    - "!package-lock.json"
+    - "!**/*.min.js"
+
+  # Per-area review guidance. These encode conventions the codebase already follows, so CodeRabbit
+  # reinforces them instead of suggesting against the grain.
+  path_instructions:
+    - path: "src/Api/**/*.cs"
+      instructions: >-
+        ASP.NET Core (.NET 10), feature-folder layout under Features/.
+        - Error responses must be RFC7807 problem+json via Problem(...) / ValidationProblem(...),
+          never an anonymous { error = ... } object. The Angular client reads error.detail.
+        - Configuration is bound to a strongly-typed *Options class that owns a `SectionName`
+          const, registered in Program.cs. Required settings should fail fast at startup with a
+          message naming the env var, not throw lazily on first use.
+        - Every async method takes a CancellationToken and passes it down to EF and I/O calls.
+        - EF queries must stay owner-scoped (WHERE OwnerId == userId) and must not bypass the
+          global query filters that hide trashed rows.
+        - Never log secrets, tokens, connection strings or invite codes. Compare secrets in
+          constant time.
+        - Public controllers, endpoints and DTOs carry XML doc comments (GenerateDocumentationFile
+          is on); DTOs are records.
+        - Flag any raw SQL that is not schema-qualified to the "keepr" schema.
+    - path: "src/ClientApp/src/app/**/*.ts"
+      instructions: >-
+        Angular 21, standalone components, signals-first.
+        - Use signal()/computed() for state and inject() for DI, not constructor injection or
+          RxJS subjects for simple state.
+        - Prefer the built-in control flow (@if/@for/@switch) over *ngIf/*ngFor in feature code.
+        - Do NOT write bare assignments or comparisons as event-binding expressions
+          (e.g. (mousedown)="x = a === b"). Angular calls preventDefault() when a binding
+          expression evaluates to false, which silently breaks focus and native behaviour — use a
+          method returning void instead.
+        - HTTP errors are problem+json; read error.detail for user-facing text.
+        - Components are OnPush-friendly; avoid logic in getters called from templates when a
+          computed() will do.
+    - path: "src/ClientApp/src/app/cove/**"
+      instructions: >-
+        This is the Cove design-system library, shared by every screen. Treat changes here as
+        library changes: a new input/output or a style change ripples to all consumers. Check that
+        overlays/controls do not steal drag or click events (position/pointer-events), and that
+        hover-mounted elements reserve their space so cards do not resize on hover.
+    - path: "**/*.{yaml,yml}"
+      instructions: >-
+        Compose and DigitalOcean App Platform specs. Real secrets must never appear here — they are
+        set as SECRET env vars in the DO dashboard. Local-dev credentials (minioadmin, keepr-dev)
+        are intentional. Flag any production secret value committed inline.
+    - path: "docs/**/*.md"
+      instructions: >-
+        Design docs. Review for internal consistency and broken cross-references, not prose style.
+        Do not demand rewrites of intentional voice.
+
+  tools:
+    # Secret scanning — the most valuable check here, given how much env/storage/JWT config lives
+    # in this repo.
+    gitleaks:
+      enabled: true
+    # Lint both Dockerfiles.
+    hadolint:
+      enabled: true
+    # .do/app.yaml + docker-compose files.
+    yamllint:
+      enabled: true
+    # Design docs and READMEs.
+    markdownlint:
+      enabled: true
+    languagetool:
+      enabled: true
+      level: default
+    # No ESLint config in this repo (Prettier only) and no GitHub Actions, so these would only add
+    # noise. Turn them on if that changes.
+    eslint:
+      enabled: false
+    actionlint:
+      enabled: false
+
+chat:
+  # Let CodeRabbit answer follow-up questions in PR threads without being re-summoned each time.
+  auto_reply: true
+
+knowledge_base:
+  # Learn from merged-PR discussion and this repo's own docs/decisions over time.
+  learnings:
+    scope: local
