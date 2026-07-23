@@ -54,14 +54,21 @@ public class InviteCodeRegistrationGate(
     IOptions<RegistrationOptions> options,
     ILogger<InviteCodeRegistrationGate> log) : IRegistrationGate
 {
+    // The gate is scoped (one per request), so the "no code configured" warning would otherwise
+    // fire on every public registration attempt and flood the logs. IOptions is a startup snapshot
+    // that never reloads, so warning once per process says everything an operator needs. 0 = not
+    // yet warned; Interlocked makes the first-caller check atomic across concurrent requests.
+    private static int _missingCodeWarned;
+
     public Task<GateDecision> EvaluateAsync(RegistrationAttempt attempt, CancellationToken ct)
     {
         var expected = options.Value.InviteCode?.Trim();
 
         if (string.IsNullOrWhiteSpace(expected))
         {
-            log.LogWarning(
-                "Registration refused: no Registration:InviteCode is configured, so signups are closed.");
+            if (Interlocked.Exchange(ref _missingCodeWarned, 1) == 0)
+                log.LogWarning(
+                    "Registration refused: no Registration:InviteCode is configured, so signups are closed.");
             return Task.FromResult(GateDecision.Deny("Registration is currently closed."));
         }
 
