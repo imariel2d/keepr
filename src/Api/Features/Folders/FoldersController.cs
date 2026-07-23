@@ -73,12 +73,16 @@ public class FoldersController(
             .Select(f => new FolderItem(f.Id, f.Name, f.ParentId, f.CreatedAt, f.UpdatedAt))
             .ToListAsync(ct);
 
-        var files = await db.MediaFiles
+        var rows = await db.MediaFiles
             .Where(m => m.OwnerId == userId && m.FolderId == folderId && m.Status == MediaStatus.Ready)
             .OrderByDescending(m => m.CreatedAt)
-            .Select(m => new MediaListItem(
-                m.Id, m.OriginalName, m.ContentType, m.SizeBytes, m.FolderId, m.CreatedAt))
+            .Select(m => new { m.Id, m.OriginalName, m.ContentType, m.SizeBytes, m.FolderId, m.CreatedAt })
             .ToListAsync(ct);
+
+        // PreviewKind is an in-memory allowlist lookup, so it is applied after materialising.
+        var files = rows.Select(m => new MediaListItem(
+            m.Id, m.OriginalName, m.ContentType, m.SizeBytes, m.FolderId, m.CreatedAt,
+            PreviewPolicy.KindName(m.ContentType))).ToList();
 
         return new FolderContents(current, breadcrumbs, children, files);
     }

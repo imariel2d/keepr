@@ -19,11 +19,21 @@ import { FileCardComponent } from '../../cove/lib/files/file-card.component';
 import { FolderCardComponent } from '../../cove/lib/files/folder-card.component';
 import { FileType } from '../../cove/lib/files/file-type-meta';
 import { MoveDialog } from './move-dialog';
+import { PreviewOverlay } from './preview-overlay';
+import { InViewDirective } from '../../core/in-view.directive';
+import { saveFile } from '../../core/save-file';
 
 type Tone = 'accent' | 'success' | 'warning' | 'danger';
 
 /** Marks a drag as ours, so an OS file-drop and an internal move are never confused. */
 const DRAG_TYPE = 'application/x-keepr-item';
+
+/**
+ * Only images below this size double as their own grid thumbnail. Above it the type icon is
+ * kept: a folder of phone photos would otherwise pull tens of megabytes to paint 190px cards.
+ * Proper derivatives are feature #16.
+ */
+const THUMBNAIL_MAX_BYTES = 500 * 1024;
 
 @Component({
   selector: 'app-files',
@@ -38,6 +48,8 @@ const DRAG_TYPE = 'application/x-keepr-item';
     FileCardComponent,
     FolderCardComponent,
     MoveDialog,
+    PreviewOverlay,
+    InViewDirective,
   ],
   templateUrl: './files.html',
   styleUrl: './files.scss',
@@ -85,10 +97,18 @@ export class Files {
   protected readonly confirmOpen = signal(false);
   protected readonly confirmTarget = signal<DragPayload | null>(null);
 
+  protected readonly previewOpen = signal(false);
+  protected readonly previewIndex = signal(0);
+  /** Presigned thumbnail URLs, keyed by media id; filled lazily as cards scroll into view. */
+  protected readonly thumbnails = signal<Record<string, string>>({});
+
   protected readonly folders = computed(() => this.contents()?.folders ?? []);
   protected readonly files = computed(() => this.contents()?.files ?? []);
   protected readonly breadcrumbs = computed(() => this.contents()?.breadcrumbs ?? []);
   protected readonly isEmpty = computed(() => !this.folders().length && !this.files().length);
+
+  /** Files the server says can be rendered; the overlay pages through exactly these. */
+  protected readonly previewable = computed(() => this.files().filter((f) => f.previewKind !== null));
 
   constructor() {
     // Re-fetch whenever the route id changes, including back/forward navigation.
@@ -111,6 +131,7 @@ export class Files {
     this.loading.set(true);
     this.error.set(null);
     try {
+      this.thumbnails.set({});
       this.contents.set(await this.folderApi.contents(this.folderId()));
     } catch (e) {
       this.error.set(this.messageOf(e, 'Could not load this folder.'));
@@ -218,9 +239,39 @@ export class Files {
 
   protected async download(item: MediaListItem): Promise<void> {
     try {
-      window.open(await this.media.downloadUrl(item.id), '_blank');
+      // The URL carries Content-Disposition: attachment, so this saves under the real filename
+      // instead of opening a tab that renders the file.
+      saveFile(await this.media.downloadUrl(item.id));
     } catch (e) {
       this.error.set(this.messageOf(e, 'Could not get a download link.'));
+    }
+  }
+
+  // ---- preview ------------------------------------------------------------
+
+  /** Clicking a file previews it when possible, and otherwise falls back to downloading. */
+  protected openFile(item: MediaListItem): void {
+    if (item.previewKind === null) {
+      void this.download(item);
+      return;
+    }
+    const index = this.previewable().findIndex((f) => f.id === item.id);
+    this.previewIndex.set(Math.max(0, index));
+    this.previewOpen.set(true);
+  }
+
+  /**
+   * Lazily fetch a thumbnail once a card scrolls near the viewport. Skipped for non-images and
+   * for anything over the size cap, which keeps the icon instead.
+   */
+  protected async onCardInView(item: MediaListItem): Promise<void> {
+    if (item.previewKind !== 'image' || item.sizeBytes > THUMBNAIL_MAX_BYTES) return;
+    if (this.thumbnails()[item.id]) return;
+    try {
+      const url = await this.media.previewUrl(item.id);
+      this.thumbnails.update((map) => ({ ...map, [item.id]: url }));
+    } catch {
+      // A missing thumbnail is cosmetic; the card keeps its type icon.
     }
   }
 

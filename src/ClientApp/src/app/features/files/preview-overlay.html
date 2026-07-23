@@ -1,0 +1,74 @@
+@if (current(); as item) {
+  <div class="scrim" (click)="closed.emit()">
+    <header class="bar" (click)="$event.stopPropagation()">
+      <div class="meta">
+        <span class="name">{{ item.originalName }}</span>
+        <span class="sub">
+          {{ item.sizeBytes | bytes }}
+          @if (items.length > 1) { · {{ index() + 1 }} of {{ items.length }} }
+        </span>
+      </div>
+      <div class="bar-actions">
+        <cove-button variant="ghost" size="sm" icon="download" (click)="download()">Download</cove-button>
+        <cove-icon-button icon="x" label="Close preview" (click)="closed.emit()" />
+      </div>
+    </header>
+
+    @if (items.length > 1) {
+      <button
+        type="button"
+        class="nav nav--prev"
+        [disabled]="!hasPrev()"
+        aria-label="Previous file"
+        (click)="$event.stopPropagation(); go(-1)">
+        <cove-icon name="chevron-left" [size]="26" />
+      </button>
+      <button
+        type="button"
+        class="nav nav--next"
+        [disabled]="!hasNext()"
+        aria-label="Next file"
+        (click)="$event.stopPropagation(); go(1)">
+        <cove-icon name="chevron-right" [size]="26" />
+      </button>
+    }
+
+    <!-- stopPropagation so clicking the file itself doesn't close the overlay -->
+    <div class="stage" (click)="$event.stopPropagation()">
+      @if (loading()) {
+        <p class="muted">Loading preview…</p>
+      } @else if (error(); as e) {
+        <div class="fail">
+          <cove-icon name="alert-circle" [size]="30" color="var(--danger)" />
+          <p>{{ e }}</p>
+          <div class="fail-actions">
+            <cove-button variant="ghost" size="sm" (click)="retry()">Try again</cove-button>
+            <cove-button variant="primary" size="sm" icon="download" (click)="download()">Download</cove-button>
+          </div>
+        </div>
+      } @else if (url(); as src) {
+        @switch (item.previewKind) {
+          @case ('image') {
+            <!-- Also the SVG path: <img> renders it without executing any script inside. -->
+            <img [src]="src" [alt]="item.originalName" class="media" (error)="onImageError()" />
+          }
+          @case ('pdf') {
+            @if (pdfUrl(); as safe) {
+              <iframe [src]="safe" class="frame" [title]="item.originalName"></iframe>
+            }
+          }
+          @case ('video') {
+            <video [src]="src" class="media" controls preload="metadata"></video>
+          }
+          @case ('audio') {
+            <div class="audio">
+              <cove-icon name="music" [size]="46" color="var(--accent)" />
+              <p class="audio-name">{{ item.originalName }}</p>
+              <audio [src]="src" controls preload="metadata"></audio>
+            </div>
+          }
+        }
+      }
+    </div>
+  </div>
+}

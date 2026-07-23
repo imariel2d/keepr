@@ -32,6 +32,10 @@ These are not optional details; the UI will show wrong data if they're ignored.
 5. **Names are unique per folder, case-insensitively.** `beach.jpg` and `BEACH.JPG` collide in
    the same folder; the same name in a different folder does not.
 6. **`folderId: null` means the user's root.** It is not an error or a missing value.
+7. **Never decide what is safe to render from `contentType`.** Use `previewKind`, which the
+   server computes from an allowlist. A file's stored content type is whatever the uploader
+   declared whenever magic-byte sniffing didn't recognise the signature, so it can claim to be
+   `text/html`.
 
 ---
 
@@ -40,6 +44,8 @@ These are not optional details; the UI will show wrong data if they're ignored.
 ### `GET /api/folders/contents?folderId={guid?}`
 The main browse call. Omit `folderId` for the root. Returns the folder, its breadcrumb trail,
 its subfolders, and its files in **one** request.
+
+Note `files[]` items carry `previewKind` (see §4).
 
 ```jsonc
 {
@@ -134,14 +140,40 @@ suffixed upload shows the wrong name for its entire progress bar and afterwards.
 Also now returns `404` if `folderId` doesn't exist, and `400` for an invalid filename.
 The rest of the multipart flow (`part-url`, `complete`, `abort`) is unchanged.
 
-### ⚠️ `GET /api/media` — new query params, new response field
+### ⚠️ `GET /api/media/{id}/download-url` — new `disposition` parameter
+```
+GET /api/media/{id}/download-url                        → attachment (default)
+GET /api/media/{id}/download-url?disposition=inline     → renders in the page
+```
+`attachment` sets `Content-Disposition: attachment; filename="<real name>"`, so the browser
+**saves** the file under its real name. Previously there was no disposition at all, which meant
+images and PDFs opened in a tab instead of downloading, and a manual "Save as" suggested the
+storage UUID.
+
+`inline` is for preview and is refused with **415** for any type not on the server's allowlist.
+Inline responses are served as the allowlist's content type rather than the stored one.
+
+Use a hidden anchor click for downloads, not `window.open` — the disposition does the work and
+the page stays put.
+
+The response also carries **`expiresAt`**, so clients can cache the URL rather than re-requesting
+one per view. `MediaService` does this, keyed by id + disposition, with a 60s safety margin and
+in-flight de-duplication; it evicts on rename/move/delete, because the URL stays valid but its
+embedded filename would be stale.
+
+```jsonc
+{ "url": "https://…", "expiresAt": "2026-07-22T21:19:57Z" }
+```
+
+### ⚠️ `GET /api/media` — new query params, new response fields
 ```
 GET /api/media                          → every file, anywhere (flat list; use for search/all-files)
 GET /api/media?scoped=true              → files at the ROOT only
 GET /api/media?scoped=true&folderId=…   → files in that folder
 ```
 `scoped` exists because "root" and "everywhere" both send no `folderId`. Each item gained
-**`folderId`**. Trashed files are excluded automatically.
+**`folderId`** and **`previewKind`** (`"image" | "pdf" | "video" | "audio" | null`; null means
+download-only). Trashed files are excluded automatically.
 
 ### ⚠️ `DELETE /api/media/{id}` — semantics changed
 Was a permanent delete; is now **move to trash**. Same `204`. Quota is *not* freed until purge.
@@ -183,7 +215,7 @@ Was a permanent delete; is now **move to trash**. Same `204`. Quota is *not* fre
 | DELETE | `/api/media/{id}` | **changed** — now trashes instead of destroying |
 | POST | `/api/uploads/init` | **changed** — `folderId` in, `originalName`/`folderId` out |
 | GET | `/api/me/usage` | **changed** — `trashedBytes` added |
-| GET | `/api/media/{id}/download-url` | unchanged |
+| GET | `/api/media/{id}/download-url` | **changed** — `disposition=inline\|attachment`, real filename |
 | POST | `/api/uploads/{id}/part-url\|complete\|abort` | unchanged |
 
 ---

@@ -5,12 +5,23 @@ using Keepr.Api.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Keepr.Api.Features.Media;
 
+/// <summary>
+/// <paramref name="PreviewKind"/> is "image", "pdf", "video", "audio", or null when the file
+/// can only be downloaded. Computed server-side from an allowlist so the client never has to
+/// decide what is safe to render — see <see cref="PreviewPolicy"/>.
+/// </summary>
 public record MediaListItem(
-    Guid Id, string OriginalName, string? ContentType, long SizeBytes, Guid? FolderId, DateTimeOffset CreatedAt);
-public record DownloadUrlResponse(string Url);
+    Guid Id, string OriginalName, string? ContentType, long SizeBytes, Guid? FolderId,
+    DateTimeOffset CreatedAt, string? PreviewKind);
+/// <summary>
+/// A presigned URL and the moment it stops working. <see cref="ExpiresAt"/> exists so clients
+/// can cache the URL without having to parse the AWS signature's own expiry fields.
+/// </summary>
+public record DownloadUrlResponse(string Url, DateTimeOffset ExpiresAt);
 public record RenameMediaRequest(string OriginalName);
 
 /// <summary>Destination for a move. A null <see cref="FolderId"/> means the owner's root.</summary>
@@ -23,8 +34,12 @@ public record MoveMediaRequest(Guid? FolderId);
 public class MediaController(
     AppDbContext db,
     IObjectStorage storage,
-    TrashService trash) : ControllerBase
+    TrashService trash,
+    IOptions<StorageOptions> storageOptions) : ControllerBase
 {
+    private DateTimeOffset PresignExpiry =>
+        DateTimeOffset.UtcNow.AddMinutes(storageOptions.Value.PresignExpiryMinutes);
+
     /// <summary>
     /// The owner's files. Pass <paramref name="folderId"/> to scope to one folder; omit it for a
     /// flat list of everything, which is what the "all files" and search views want.
@@ -42,23 +57,58 @@ public class MediaController(
         // "every file anywhere" (scoped=false) — both of which send no folderId.
         if (scoped) query = query.Where(m => m.FolderId == folderId);
 
-        var items = await query
+        // Projected after materialising: the allowlist is a dictionary lookup, not something
+        // EF can translate to SQL.
+        var rows = await query
             .OrderByDescending(m => m.CreatedAt)
-            .Select(m => new MediaListItem(
-                m.Id, m.OriginalName, m.ContentType, m.SizeBytes, m.FolderId, m.CreatedAt))
+            .Select(m => new { m.Id, m.OriginalName, m.ContentType, m.SizeBytes, m.FolderId, m.CreatedAt })
             .ToListAsync(ct);
+
+        var items = rows.Select(m => new MediaListItem(
+            m.Id, m.OriginalName, m.ContentType, m.SizeBytes, m.FolderId, m.CreatedAt,
+            PreviewPolicy.KindName(m.ContentType))).ToList();
         return Ok(items);
     }
 
-    /// <summary>Short-TTL presigned GET so the private object can be viewed/downloaded.</summary>
+    /// <summary>
+    /// Short-TTL presigned GET. <paramref name="disposition"/> selects what the browser does
+    /// with it:
+    /// <list type="bullet">
+    /// <item><c>attachment</c> (default) — saves the file under its real name. Without this the
+    /// browser falls back to the URL path, which is an opaque UUID.</item>
+    /// <item><c>inline</c> — renders it in the page, for preview. Allowed only for types on the
+    /// preview allowlist, and served as the allowlist's content type rather than the stored one.</item>
+    /// </list>
+    /// </summary>
     [HttpGet("{id:guid}/download-url")]
     [ProducesResponseType<DownloadUrlResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<DownloadUrlResponse>> DownloadUrl(Guid id, CancellationToken ct)
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status415UnsupportedMediaType)]
+    public async Task<ActionResult<DownloadUrlResponse>> DownloadUrl(
+        Guid id, [FromQuery] string? disposition, CancellationToken ct)
     {
         var media = await OwnedReady(id, ct);
         if (media is null) return NotFound();
-        return new DownloadUrlResponse(await storage.PresignGetUrlAsync(media.StorageKey, ct));
+
+        var inline = string.Equals(disposition, "inline", StringComparison.OrdinalIgnoreCase);
+        if (!inline)
+            return new DownloadUrlResponse(
+                await storage.PresignGetUrlAsync(
+                    media.StorageKey, PresignHeaders.ForDownload(media.OriginalName), ct),
+                PresignExpiry);
+
+        // Defence in depth: the client uses the same allowlist to pick a render element, but the
+        // server refuses to mint an inline URL for anything not on it.
+        var serveAs = PreviewPolicy.ServeAs(media.ContentType);
+        if (serveAs is null)
+            return Problem(
+                "This file type cannot be previewed; download it instead.",
+                statusCode: StatusCodes.Status415UnsupportedMediaType);
+
+        return new DownloadUrlResponse(
+            await storage.PresignGetUrlAsync(
+                media.StorageKey, PresignHeaders.ForInline(media.OriginalName, serveAs), ct),
+            PresignExpiry);
     }
 
     /// <summary>
@@ -161,7 +211,8 @@ public class MediaController(
     }
 
     private static MediaListItem ToItem(MediaFile m) =>
-        new(m.Id, m.OriginalName, m.ContentType, m.SizeBytes, m.FolderId, m.CreatedAt);
+        new(m.Id, m.OriginalName, m.ContentType, m.SizeBytes, m.FolderId, m.CreatedAt,
+            PreviewPolicy.KindName(m.ContentType));
 
     private async Task<MediaFile?> OwnedReady(Guid id, CancellationToken ct)
     {

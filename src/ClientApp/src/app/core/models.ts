@@ -36,6 +36,9 @@ export interface CompletePart {
   eTag: string;
 }
 
+/** How the browser may render a file inline. Decided server-side by an allowlist. */
+export type PreviewKind = 'image' | 'pdf' | 'video' | 'audio';
+
 export interface MediaListItem {
   id: string;
   originalName: string;
@@ -44,10 +47,18 @@ export interface MediaListItem {
   /** null = the owner's root, not a missing value. */
   folderId: string | null;
   createdAt: string;
+  /**
+   * null means download-only. Never infer this from contentType on the client: a file's stored
+   * type is whatever the uploader declared when magic-byte sniffing came up empty, so the
+   * allowlist lives on the server.
+   */
+  previewKind: PreviewKind | null;
 }
 
 export interface DownloadUrlResponse {
   url: string;
+  /** When the signature stops working, so clients can cache the URL until then. */
+  expiresAt: string;
 }
 
 export interface FolderItem {

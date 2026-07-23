@@ -102,14 +102,28 @@ public sealed class R2ObjectStorage : IObjectStorage
             UploadId = uploadId
         }, ct);
 
-    public async Task<string> PresignGetUrlAsync(string key, CancellationToken ct = default) =>
-        MatchScheme(await _presignS3.GetPreSignedURLAsync(new GetPreSignedUrlRequest
+    public async Task<string> PresignGetUrlAsync(
+        string key, PresignHeaders headers = default, CancellationToken ct = default)
+    {
+        var req = new GetPreSignedUrlRequest
         {
             BucketName = _opt.Bucket,
             Key = key,
             Verb = HttpVerb.GET,
             Expires = DateTime.UtcNow.AddMinutes(_opt.PresignExpiryMinutes)
-        }));
+        };
+
+        // Sent as response-content-* query parameters, which S3/MinIO echo back as response
+        // headers. They are part of the signature, so a client cannot tamper with them.
+        var disposition = headers.BuildContentDisposition();
+        if (disposition is not null || headers.ContentType is not null)
+        {
+            req.ResponseHeaderOverrides.ContentDisposition = disposition;
+            req.ResponseHeaderOverrides.ContentType = headers.ContentType;
+        }
+
+        return MatchScheme(await _presignS3.GetPreSignedURLAsync(req));
+    }
 
     public async Task<byte[]> ReadHeadBytesAsync(string key, int count, CancellationToken ct = default)
     {
