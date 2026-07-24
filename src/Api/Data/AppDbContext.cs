@@ -61,8 +61,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
             // Every public link resolve is this lookup, so it must be a unique index probe; unique
             // also turns a token collision into a database error rather than an ambiguous match.
-            e.HasIndex(x => x.TokenHash).IsUnique();
-            e.Property(x => x.TokenHash).HasMaxLength(32).IsRequired();
+            e.HasIndex(x => x.Token).IsUnique();
+            e.Property(x => x.Token).HasMaxLength(64).IsRequired();
 
             // Cascade: hard-deleting (purging) a file drops its links. A link to a *trashed* file
             // is caught at resolve time by re-checking the file, not by this FK.

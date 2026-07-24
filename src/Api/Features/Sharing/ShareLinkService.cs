@@ -1,6 +1,5 @@
 using System.Buffers.Text;
 using System.Security.Cryptography;
-using System.Text;
 using Keepr.Api.Data;
 using Keepr.Api.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -71,7 +70,7 @@ public class ShareLinkService(AppDbContext db, IOptions<ShareOptions> options, T
         {
             MediaFileId = mediaFileId,
             CreatedByUserId = ownerId,
-            TokenHash = Hash(token),
+            Token = token,
             CreatedAt = now,
             ExpiresAt = now.Add(ClampWindow(expiresInDays))
         };
@@ -91,8 +90,7 @@ public class ShareLinkService(AppDbContext db, IOptions<ShareOptions> options, T
         if (!_opt.PublicAccessEnabled)
             return new ShareResolveResult(ShareResolveStatus.Gone, null, null);
 
-        var hash = Hash(token);
-        var link = await db.ShareLinks.SingleOrDefaultAsync(s => s.TokenHash == hash, ct);
+        var link = await db.ShareLinks.SingleOrDefaultAsync(s => s.Token == token, ct);
         if (link is null) return new ShareResolveResult(ShareResolveStatus.NotFound, null, null);
 
         var now = clock.GetUtcNow();
@@ -175,10 +173,7 @@ public class ShareLinkService(AppDbContext db, IOptions<ShareOptions> options, T
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>256 bits from a CSPRNG: not guessable, so it needs no slow hash on the way in.</summary>
+    /// <summary>256 bits from a CSPRNG: unguessable, so possession of it is the authorization.</summary>
     private static string GenerateToken() =>
         Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
-
-    private static byte[] Hash(string token) =>
-        SHA256.HashData(Encoding.UTF8.GetBytes(token));
 }

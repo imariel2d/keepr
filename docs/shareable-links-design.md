@@ -69,30 +69,33 @@ must be revisited — not reused — when multi-user sharing is designed. That n
 
 ## 3. The token is the capability
 
-A link is a 256-bit random token from a CSPRNG, base64url-encoded, carried in the URL. The database
-stores only `SHA-256(token)`.
+A link is a 256-bit random token from a CSPRNG, base64url-encoded, carried in the URL. It is
+**unguessable, so possession is authorization** — 256 bits has no structure to brute-force, so the
+public endpoints need no rate limiting to protect the token itself (bandwidth abuse via an
+already-leaked link is a separate concern — §7).
 
-This reuses the session token design wholesale ([cookie-session-design.md](cookie-session-design.md)
-§3), for the same reasons:
+### 3.1 The token is stored, so an active link can be re-copied (Q-S5 resolved)
 
-- **Unguessable, so possession is authorization.** 256 bits has no structure to brute-force, so the
-  public endpoints need no rate limiting to protect the token itself (bandwidth abuse via an
-  already-leaked link is a separate concern — §7).
-- **Stored hashed, so a database dump is inert.** A leak of the `Shares` table must not hand over
-  working links to private files. The lookup is an indexed equality probe on the hash, so no
-  timing-safe compare is needed on top.
+The token is stored in the `Shares` table, and the management list (§6) returns each active link's
+URL. So the owner can re-copy a link at any time — the Drive/Dropbox behaviour.
 
-### 3.1 Consequence: the URL is shown once
+This is a deliberate reversal of the original design, which stored only `SHA-256(token)` so a
+database dump would be inert (the session/invite-code principle). That made the URL a **show-once**
+value, and in practice the one-shot flow was the friction Q-S5 anticipated: "lost the link? revoke
+and make a new one" is a poor substitute for "copy it again". Storing the token buys the expected
+behaviour at a stated cost — **a dump of the `Shares` table exposes the active share URLs.**
 
-Because only the digest is stored, the full link cannot be reconstructed later. It is returned
-**once**, at creation, for the owner to copy — the same contract as a GitHub personal access token.
-The management list (§6) shows a link's existence, expiry, and status so it can be revoked, but not
-its URL.
+Why that cost is acceptable *here*, and bounded:
 
-The alternative — storing the token so the link can be re-displayed — is what Drive/Dropbox do, and
-is friendlier. It was rejected to stay consistent with the repo's standing principle that a
-replayable secret is never stored in plaintext (sessions, the invite code). "Lost the link? Revoke
-it and make a new one" is the recovery path. If that proves annoying in practice, revisit as Q-S5.
+- A share URL grants read to **one file the owner already chose to expose** via an unguessable link
+  meant to be handed around — not a password or a session. The exposure is narrow.
+- It rides on the same single-owner scoping as the Q5 acceptance (§2): the owner sharing their own
+  files. It is **not** reusable for multi-user sharing (#6), where it would need revisiting.
+- Encrypting the token at rest (so a dump without the app key is still inert) is the stronger
+  version, deferred as a follow-up — it needs a persisted key, the same concern the cookie-session
+  doc raised, for marginal benefit at this scale.
+
+Revoked links are never shown in the management list — they are dead and cannot be re-shared.
 
 ---
 
@@ -106,10 +109,9 @@ Unlike a session, a link's expiry does **not** slide automatically — a shared 
 grant, not a live thing being kept warm by use.
 
 The owner can, however, **change a link's expiry after creation** — extend it or bring it
-forward — without touching the URL. This pairs directly with the show-once rule (§3.1): because the
-token can't be re-displayed, "just make a new link" would mean losing the URL already handed out. So
-the way to keep a still-circulating link alive longer, or to cut it short, is to edit its expiry in
-place rather than recreate it. An expired-but-not-revoked link can be extended back to life this way
+forward — without changing the URL. So the way to keep a still-circulating link alive longer, or to
+cut it short, is to edit its expiry in place rather than revoke and recreate (which would invalidate
+the URL already handed out). An expired-but-not-revoked link can be extended back to life this way
 (the URL is still out there); a **revoked** link is terminal and cannot be re-extended — resharing
 means a new link. The only thing that ever changes an expiry is an explicit owner action.
 
@@ -151,8 +153,8 @@ the same instinct as the invite-code and storage-credential checks.
 
 | Method | Route | Purpose |
 |---|---|---|
-| `POST` | `/api/media/{id}/share` | Create a link for a file the caller owns. Body `{ expiresInDays }`. Returns `{ linkId, url, expiresAt }` — `url` shown once (§3.1) |
-| `GET` | `/api/media/{id}/shares` | List the file's links: `linkId`, `createdAt`, `expiresAt`, `revoked`. No URL |
+| `POST` | `/api/media/{id}/share` | Create a link for a file the caller owns. Body `{ expiresInDays }`. Returns `{ linkId, url, expiresAt }` |
+| `GET` | `/api/media/{id}/shares` | List the file's links with each active link's `url` (§3.1), so the owner can re-copy. Revoked links are omitted |
 | `PATCH` | `/api/shares/{linkId}` | **Change the expiry.** Body `{ expiresInDays }` → new `ExpiresAt` measured from now, same cap as create. Owner-scoped. Rejected (`409`) on a revoked link — revocation is terminal (§4) |
 | `DELETE` | `/api/shares/{linkId}` | **Stop sharing — one link.** Sets `RevokedAt`; idempotent; owner-scoped |
 | `DELETE` | `/api/media/{id}/shares` | **Stop sharing the file.** Revokes every live link on the file at once — the "make this file private again" button, without hunting down individual links |
@@ -204,7 +206,7 @@ public class ShareLink
     public Guid MediaFileId { get; set; }        // cascade: purging the file removes its links
     public MediaFile File { get; set; }
     public Guid CreatedByUserId { get; set; }
-    public byte[] TokenHash { get; set; }         // SHA-256(token); unique index
+    public string Token { get; set; }              // the capability itself; unique index (§3.1)
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }  // required
     public DateTimeOffset? RevokedAt { get; set; }
@@ -212,11 +214,12 @@ public class ShareLink
 }
 ```
 
-- **Unique index on `TokenHash`** — every public request is this lookup, so it must be an index
-  probe, and unique turns a token collision into a database error rather than an ambiguous match.
+- **Unique index on `Token`** — every public request is this lookup, so it must be an index probe,
+  and unique turns a token collision into a database error rather than an ambiguous match.
 - **Cascade from `MediaFile`** — when a file is hard-deleted (purged from trash), its links go with
   it. A link to a *trashed* file (not yet purged) is handled by the resolve check in §6, not the FK.
-- Migration `AddShareLinks`; table in the `keepr` schema like the rest.
+- Migrations `AddShareLinks` then `StoreShareTokenForReCopy` (the §3.1 switch from hash to token);
+  table in the `keepr` schema like the rest.
 
 ---
 
@@ -266,10 +269,10 @@ Unauthenticated endpoints make the still-open Q-R1 more pressing. Token guessing
 bandwidth abuse of a valid link is not. ASP.NET Core's rate limiter keyed by IP, with the
 `X-Forwarded-For` handling App Platform needs.
 
-### ⏳ Q-S5 — Re-displaying a link
-§3.1 shows the URL once. If "revoke and re-create" proves annoying, the alternative is storing the
-token so the list can show it again — at the cost of the hashed-storage property. Left as a
-deliberate trade to revisit only if the one-shot flow actually bites.
+### ✅ Q-S5 — Re-displaying a link (resolved 2026-07-24)
+Resolved in favour of re-copyable links: the token is stored and the management list returns each
+active link's URL (§3.1). The hashed-storage property was given up knowingly, scoped to single-owner
+sharing. Follow-up still open: encrypt the token at rest so a bare DB dump stays inert.
 
 ### ⏳ Q-S6 — Max active links per user
 No cap today. A trivial abuse bound (and a cheap way to keep the `Shares` table sane) if it ever

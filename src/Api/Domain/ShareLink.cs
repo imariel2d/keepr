@@ -2,8 +2,11 @@ namespace Keepr.Api.Domain;
 
 /// <summary>
 /// A public "anyone with the link" grant to one file. The unguessable token in the URL *is* the
-/// authorization — there is no account behind it. The row stores <see cref="TokenHash"/>, never the
-/// token, so a dump of this table cannot be replayed as working links.
+/// authorization — there is no account behind it.
+///
+/// The token is stored so the owner can re-copy an active link's URL at any time (design Q-S5).
+/// The trade, taken knowingly: a dump of this table exposes the active share URLs — acceptable for
+/// a single-owner deployment sharing its own files, and revisited before multi-user sharing (#6).
 ///
 /// See docs/shareable-links-design.md. This is deliberately not user-to-user sharing (#6).
 /// </summary>
@@ -18,8 +21,8 @@ public class ShareLink
     /// <summary>Who minted the link. Always the file's owner today; kept for attribution.</summary>
     public Guid CreatedByUserId { get; set; }
 
-    /// <summary>SHA-256 of the URL token. Looked up by equality on a unique index.</summary>
-    public byte[] TokenHash { get; set; } = default!;
+    /// <summary>The URL token — the capability itself. Looked up by equality on a unique index.</summary>
+    public string Token { get; set; } = default!;
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 

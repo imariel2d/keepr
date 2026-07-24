@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, computed, inject, signal } from '@angular/core';
 import { ShareService } from '../../core/share.service';
 import { ShareLinkResponse } from '../../core/models';
 import { ButtonComponent } from '../../cove/lib/button/button.component';
@@ -17,12 +17,11 @@ const EXPIRY_OPTIONS: ExpiryOption[] = [
 ];
 
 /**
- * "Share" dialog for one file: mint an "anyone with the link" URL, see the file's existing links,
- * change a link's expiry, revoke one, or stop sharing the file entirely.
+ * "Share" dialog for one file: mint an "anyone with the link" URL, copy any active link, change a
+ * link's expiry, revoke one, or stop sharing the file entirely.
  *
- * The created URL is shown once and cannot be re-displayed — the server stores only the token's
- * digest (design §3.1). Editing a link's expiry, rather than recreating it, is how a link already
- * handed out is kept alive.
+ * An active link's URL can be re-copied at any time — the server stores the token so it can hand
+ * the URL back (design Q-S5). Revoked links are hidden; they're dead and can't be re-shared.
  */
 @Component({
   selector: 'app-share-dialog',
@@ -45,54 +44,38 @@ const EXPIRY_OPTIONS: ExpiryOption[] = [
           </cove-button>
         </div>
 
-        <!-- The one-time URL of a link just created -->
-        @if (freshUrl(); as url) {
-          <div class="fresh">
-            <p class="fresh-note">
-              <cove-icon name="check" [size]="14" /> Link created. Copy it now — for security it
-              won't be shown again.
-            </p>
-            <div class="url-row">
-              <input class="url" type="text" readonly [value]="url" (focus)="selectAll($event)" />
-              <cove-button variant="secondary" [icon]="copied() ? 'check' : 'copy'" (click)="copy(url)">
-                {{ copied() ? 'Copied' : 'Copy' }}
-              </cove-button>
-            </div>
-          </div>
-        }
-
-        <!-- Existing links -->
+        <!-- Existing links (revoked ones are hidden) -->
         <div class="links">
           @if (loading()) {
             <p class="muted">Loading links…</p>
-          } @else if (links().length === 0) {
+          } @else if (visibleLinks().length === 0) {
             <p class="muted">This file isn't shared yet.</p>
           } @else {
-            @for (link of links(); track link.linkId) {
+            @for (link of visibleLinks(); track link.linkId) {
               <div class="link" [class.dead]="status(link) !== 'Active'">
                 <div class="link-info">
                   <span class="badge" [attr.data-state]="status(link)">{{ status(link) }}</span>
-                  <span class="dates">
-                    @if (status(link) === 'Revoked') {
-                      Revoked
-                    } @else {
-                      Expires {{ formatDate(link.expiresAt) }}
-                    }
-                  </span>
+                  <span class="dates">Expires {{ formatDate(link.expiresAt) }}</span>
                 </div>
-                @if (status(link) === 'Active') {
-                  <div class="link-actions">
-                    <select [value]="''" (change)="extend(link, $event)" title="Change expiry">
-                      <option value="" disabled>Change expiry…</option>
-                      @for (o of options; track o.days) {
-                        <option [value]="o.days">{{ o.label }}</option>
-                      }
-                    </select>
-                    <cove-button variant="ghost" icon="x" [disabled]="busy()" (click)="revoke(link)">
-                      Revoke
+                <div class="link-actions">
+                  @if (status(link) === 'Active') {
+                    <cove-button variant="secondary" size="sm"
+                                 [icon]="copiedId() === link.linkId ? 'check' : 'copy'"
+                                 (click)="copy(link)">
+                      {{ copiedId() === link.linkId ? 'Copied' : 'Copy link' }}
                     </cove-button>
-                  </div>
-                }
+                  }
+                  <select [value]="''" (change)="extend(link, $event)" title="Change expiry">
+                    <option value="" disabled>Change expiry…</option>
+                    @for (o of options; track o.days) {
+                      <option [value]="o.days">{{ o.label }}</option>
+                    }
+                  </select>
+                  <cove-button variant="ghost" size="sm" icon="x" [disabled]="busy()"
+                               (click)="revoke(link)">
+                    Revoke
+                  </cove-button>
+                </div>
               </div>
             }
           }
@@ -132,13 +115,15 @@ export class ShareDialog {
   protected readonly loading = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly freshUrl = signal<string | null>(null);
-  protected readonly copied = signal(false);
+  /** The link whose "Copy link" was just clicked, so only that button reads "Copied". */
+  protected readonly copiedId = signal<string | null>(null);
+
+  /** Revoked links are dead and can't be re-shared, so they're hidden from the list. */
+  protected readonly visibleLinks = computed(() => this.links().filter((l) => !l.revoked));
 
   /** Called by the parent each time the dialog opens, to load the file's links fresh. */
   async load(): Promise<void> {
-    this.freshUrl.set(null);
-    this.copied.set(false);
+    this.copiedId.set(null);
     this.error.set(null);
     this.loading.set(true);
     try {
@@ -157,11 +142,11 @@ export class ShareDialog {
   protected async create(): Promise<void> {
     this.busy.set(true);
     this.error.set(null);
-    this.copied.set(false);
     try {
       const res = await this.api.create(this.fileId, this.days());
-      this.freshUrl.set(res.url);
       this.links.set(await this.api.list(this.fileId));
+      // Copy the new link straight to the clipboard — it's the thing the user just asked for.
+      await this.copyUrl(res.url, res.linkId);
       this.changed.emit();
     } catch {
       this.error.set('Could not create the link.');
@@ -208,7 +193,7 @@ export class ShareDialog {
     this.error.set(null);
     try {
       await this.api.stopSharingFile(this.fileId);
-      this.freshUrl.set(null);
+      this.copiedId.set(null);
       this.links.set(await this.api.list(this.fileId));
       this.changed.emit();
     } catch {
@@ -218,17 +203,18 @@ export class ShareDialog {
     }
   }
 
-  protected async copy(url: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(url);
-      this.copied.set(true);
-    } catch {
-      // Clipboard blocked (e.g. insecure context) — the field is selectable as a fallback.
-    }
+  protected copy(link: ShareLinkResponse): Promise<void> {
+    return this.copyUrl(link.url, link.linkId);
   }
 
-  protected selectAll(event: FocusEvent): void {
-    (event.target as HTMLInputElement).select();
+  private async copyUrl(url: string, linkId: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(url);
+      this.copiedId.set(linkId);
+    } catch {
+      // Clipboard blocked (e.g. an insecure context); surface it rather than fail silently.
+      this.error.set('Copying isn’t available here — select and copy the link manually.');
+    }
   }
 
   protected status(link: ShareLinkResponse): 'Active' | 'Expired' | 'Revoked' {

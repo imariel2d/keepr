@@ -78,9 +78,10 @@ export interface CreatedShareResponse {
   expiresAt: string;
 }
 
-/** A share link for management. No URL: it can't be rebuilt from the stored digest. */
+/** A share link for management, including the URL so an active link can be re-copied. */
 export interface ShareLinkResponse {
   linkId: string;
+  url: string;
   createdAt: string;
   expiresAt: string;
   revoked: boolean;

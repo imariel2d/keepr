@@ -16,9 +16,9 @@ public record UpdateShareRequest(int ExpiresInDays);
 /// one chance to copy it. See docs/shareable-links-design.md §3.1.</summary>
 public record CreatedShareResponse(Guid LinkId, string Url, DateTimeOffset ExpiresAt);
 
-/// <summary>A link for management. No URL: it cannot be reconstructed from the stored digest.</summary>
+/// <summary>A link for management, including the URL so an active link can be re-copied (Q-S5).</summary>
 public record ShareLinkResponse(
-    Guid LinkId, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt, bool Revoked,
+    Guid LinkId, string Url, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt, bool Revoked,
     DateTimeOffset? LastAccessedAt);
 
 public record StopSharingResponse(int Revoked);
@@ -109,6 +109,7 @@ public class SharesController(AppDbContext db, ShareLinkService shares) : Contro
         await db.MediaFiles.AnyAsync(
             m => m.Id == fileId && m.OwnerId == userId && m.Status == MediaStatus.Ready, ct);
 
-    private static ShareLinkResponse ToResponse(ShareLink s) =>
-        new(s.Id, s.CreatedAt, s.ExpiresAt, s.RevokedAt is not null, s.LastAccessedAt);
+    private ShareLinkResponse ToResponse(ShareLink s) =>
+        new(s.Id, shares.BuildUrl(s.Token), s.CreatedAt, s.ExpiresAt, s.RevokedAt is not null,
+            s.LastAccessedAt);
 }
