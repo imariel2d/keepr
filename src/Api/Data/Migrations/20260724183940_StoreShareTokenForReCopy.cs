@@ -10,6 +10,12 @@ namespace Keepr.Api.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // Existing links used the hashed-token scheme, whose raw token was never stored — so
+            // they cannot be carried into the token-stored scheme and would stop resolving anyway.
+            // Drop them before the swap; this also avoids a duplicate empty-string collision when
+            // the new NOT NULL Token column (default '') meets its unique index.
+            migrationBuilder.Sql(@"DELETE FROM keepr.""ShareLinks"";");
+
             migrationBuilder.DropIndex(
                 name: "IX_ShareLinks_TokenHash",
                 schema: "keepr",

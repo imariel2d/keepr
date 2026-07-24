@@ -248,6 +248,32 @@ shell so the footer/branding is not duplicated.
 
 ---
 
+## 10.1 Verification
+
+Exercised end-to-end against the local dockerised stack, 2026-07-24:
+
+| Check | Result |
+|---|---|
+| Create (owner) → URL | Built from `Sharing:PublicBaseUrl` (`http://localhost:4200/s/…`) |
+| List (owner) | Active links carry the `url`; revoked links present in the API, hidden by the UI |
+| Resolve (anonymous) | Metadata only, `previewKind` set for the image |
+| download-url (anonymous) | `200` for inline and attachment; presigned |
+| PATCH expiry | Updated |
+| Revoke → resolve | `410` problem+json "no longer available" |
+| Unknown token → resolve | `404` |
+| Stop sharing file → resolve | `{revoked:n}`, then `410` |
+
+In the browser: the public viewer renders the file card + download and degrades gracefully to the
+download when the preview media can't load; the `410` state shows the "Link unavailable" card. The
+owner dialog creates a link, lists only active links with a copy button, and revoking drops the
+link out of the list. (Clipboard copy falls back to a manual-copy message in the sandboxed test
+browser; it works in a normal secure context.)
+
+**Migration note:** the switch from hashed to stored tokens (§3.1) can't carry old links forward —
+their raw token was never stored — so `StoreShareTokenForReCopy` deletes any existing rows before
+adding the unique `Token` column. Any links created under the hashed scheme stop working and must
+be re-created.
+
 ## 11. Open questions
 
 ### ⏳ Q-S1 — Folder links

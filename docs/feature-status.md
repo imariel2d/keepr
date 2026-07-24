@@ -3,8 +3,8 @@
 Tracking the planned feature set against what is actually implemented in the codebase.
 
 Keepr is a **personal media store** with a folder hierarchy, rename, and a 10-day trash:
-single-owner (no sharing yet). Of the 33 planned features, **8 are complete** (backend + UI),
-**1 is partial** (#7 — backend built, no UI yet), and 24 are not started.
+single-owner (no sharing yet). Of the 33 planned features, **9 are complete** (backend + UI)
+and 24 are not started.
 
 **Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
@@ -25,7 +25,7 @@ single-owner (no sharing yet). Of the 33 planned features, **8 are complete** (b
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
 | 6 | Sharing with specific users (view/edit) | ❌ | No share/permission model; everything is owner-scoped |
-| 7 | Shareable links | 🟡 | **Backend built, no UI yet** — [shareable-links-design.md](shareable-links-design.md). `ShareLink` model + migration, `ShareLinkService`, and owner/public endpoints (`src/Api/Features/Sharing/`): single-file capability URLs, hashed tokens, mandatory (owner-editable) expiry, per-link + whole-file revoke, presigned-R2 resolve gated by `PreviewPolicy`. **Not built:** the public `/s/:token` viewer page, the owner share UI, and end-to-end verification. Q5 risk accepted for single-owner sharing; scanning still required before #6 |
+| 7 | Shareable links | ✅ | [shareable-links-design.md](shareable-links-design.md). Single-file capability URLs (`src/Api/Features/Sharing/`), mandatory (owner-editable) expiry, per-link + whole-file revoke, presigned-R2 resolve gated by `PreviewPolicy`. UI: public `/s/:token` viewer + an owner Share dialog (create, copy active links, edit expiry, revoke). Verified end-to-end against the dockerised stack. Tokens are stored so links are re-copyable (Q-S5); Q5 risk accepted for single-owner sharing, scanning still required before #6 |
 | 8 | Trash / soft delete with restore | ✅ | `DeletedAt`/`DeletedRootId`, EF global query filters, `TrashController`, `TrashPurgeService` sweeper at 10 days. UI: `features/trash/` with restore, purge, empty, and a "in Trash" line on the quota meter. **Overrides Q9 hard delete** |
 | 9 | Search by file name | ❌ | List endpoint has no search/filter |
 | 10 | In-browser preview (images, PDFs) | ✅ | Full-screen overlay with prev/next + keyboard (`features/files/preview-overlay.ts`). Server-side allowlist (`PreviewPolicy`) decides what may render; images/SVG via `<img>`, PDFs via `<iframe>` with a forced content type, plus video/audio. Lazy size-capped grid thumbnails |
@@ -96,10 +96,8 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 
 ## Summary
 
-- **Done (8):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
-  rename/delete, trash, in-browser preview.
-- **Partial (1):** shareable links (#7) — backend built, no UI yet;
-  [shareable-links-design.md](shareable-links-design.md).
+- **Done (9):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
+  rename/delete, trash, in-browser preview, shareable links.
 - **Not started (24):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2
