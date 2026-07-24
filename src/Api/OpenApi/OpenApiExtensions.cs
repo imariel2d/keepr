@@ -12,13 +12,12 @@ namespace Keepr.Api.OpenApi;
 public static class OpenApiExtensions
 {
     private const string DocumentName = "v1";
-    private const string BearerScheme = "Bearer";
 
     public static IServiceCollection AddKeeprOpenApi(this IServiceCollection services) =>
         services.AddOpenApi(DocumentName, options =>
         {
             options.AddDocumentTransformer<ApiInfoTransformer>();
-            options.AddDocumentTransformer<BearerSecurityTransformer>();
+            options.AddDocumentTransformer<SessionSecurityTransformer>();
             options.AddOperationTransformer<AuthResponsesTransformer>();
         });
 
@@ -70,8 +69,9 @@ internal sealed class ApiInfoTransformer : IOpenApiDocumentTransformer
                    `trashedBytes` so a UI can explain why deleting didn't free space.
                 3. **`folderId: null` means the user's root**, not a missing value.
 
-                Everything except `/health` and `/api/auth/*` needs a bearer token: call
-                `POST /api/auth/login`, then paste the `accessToken` into **Authorize** above.
+                Everything except `/health` and `/api/auth/*` needs a session: call
+                `POST /api/auth/login` once and the browser carries the cookie from then on —
+                there is no token to paste, because it is HttpOnly by design.
                 """
         };
         return Task.CompletedTask;
@@ -79,36 +79,48 @@ internal sealed class ApiInfoTransformer : IOpenApiDocumentTransformer
 }
 
 /// <summary>
-/// Declares the JWT bearer scheme and applies it as the document-wide default, so Swagger UI
-/// shows an Authorize button and sends the token on every call.
+/// Declares the session cookie scheme and applies it as the document-wide default.
+///
+/// There is no Authorize button to fill in: the cookie is HttpOnly and set by
+/// <c>POST /api/auth/login</c>, so Swagger UI authenticates by calling login and then letting the
+/// browser attach the cookie on its own. Declaring the scheme still matters — it tells generated
+/// clients that credentials ride on the request, and drives the padlocks in the UI.
 /// </summary>
-internal sealed class BearerSecurityTransformer : IOpenApiDocumentTransformer
+internal sealed class SessionSecurityTransformer : IOpenApiDocumentTransformer
 {
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken ct)
     {
         var scheme = new OpenApiSecurityScheme
         {
-            Type = SecuritySchemeType.Http,
-            Scheme = "bearer",
-            BearerFormat = "JWT",
-            In = ParameterLocation.Header,
-            Description = "JWT from POST /api/auth/login. Paste the raw token; \"Bearer \" is added for you."
+            Type = SecuritySchemeType.ApiKey,
+            In = ParameterLocation.Cookie,
+            Name = SessionSchemeName,
+            Description =
+                "Session cookie set by POST /api/auth/login and cleared by POST /api/auth/logout. " +
+                "HttpOnly, so it cannot be pasted here — sign in via the login endpoint and the " +
+                "browser sends it automatically."
         };
 
         document.Components ??= new OpenApiComponents();
         document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-        document.Components.SecuritySchemes["Bearer"] = scheme;
+        document.Components.SecuritySchemes[SchemeKey] = scheme;
 
         document.Security =
         [
             new OpenApiSecurityRequirement
             {
-                [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+                [new OpenApiSecuritySchemeReference(SchemeKey, document)] = []
             }
         ];
 
         return Task.CompletedTask;
     }
+
+    private const string SchemeKey = "Session";
+
+    // Matches SessionOptions.CookieName. Duplicated rather than injected because a document
+    // transformer is built before options are resolvable here; the test in Api.Tests pins them together.
+    private const string SessionSchemeName = "keepr_session";
 }
 
 /// <summary>
@@ -127,7 +139,7 @@ internal sealed class AuthResponsesTransformer : IOpenApiOperationTransformer
         if (!requiresAuth || allowsAnonymous) return Task.CompletedTask;
 
         operation.Responses ??= new OpenApiResponses();
-        operation.Responses.TryAdd("401", new OpenApiResponse { Description = "Missing or expired bearer token." });
+        operation.Responses.TryAdd("401", new OpenApiResponse { Description = "Missing, expired, or revoked session." });
 
         return Task.CompletedTask;
     }

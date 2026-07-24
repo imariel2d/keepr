@@ -1,18 +1,16 @@
-using System.Text;
 using Keepr.Api.Data;
 using Keepr.Api.Features.Auth;
 using Keepr.Api.OpenApi;
 using Keepr.Api.Services;
 using Keepr.Api.Storage;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ---- Configuration bindings ------------------------------------------------
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
-builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+builder.Services.Configure<AuthSessionOptions>(builder.Configuration.GetSection(AuthSessionOptions.SectionName));
 builder.Services.Configure<QuotaOptions>(builder.Configuration.GetSection(QuotaOptions.SectionName));
 builder.Services.Configure<CleanupOptions>(builder.Configuration.GetSection(CleanupOptions.SectionName));
 builder.Services.Configure<RegistrationOptions>(builder.Configuration.GetSection(RegistrationOptions.SectionName));
@@ -42,8 +40,10 @@ if (string.IsNullOrWhiteSpace(storageCfg["AccountId"]) && string.IsNullOrWhiteSp
         "Object storage endpoint is missing. Set Storage__AccountId (R2) or Storage__ServiceUrl (custom S3).");
 
 builder.Services.AddSingleton<IObjectStorage, R2ObjectStorage>();
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<QuotaService>();
-builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddScoped<SessionService>();
+builder.Services.AddSingleton<SessionCookie>();
 // Who may create an account. Swap this line for another IRegistrationGate (emailed invites, an
 // allow-list, an approval queue) without touching AuthController.
 builder.Services.AddScoped<IRegistrationGate, InviteCodeRegistrationGate>();
@@ -53,21 +53,12 @@ builder.Services.AddHostedService<UploadCleanupService>();
 builder.Services.AddHostedService<TrashPurgeService>();
 
 // ---- Auth ------------------------------------------------------------------
-var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()!;
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(o =>
-    {
-        o.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwt.Issuer,
-            ValidAudience = jwt.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey))
-        };
-    });
+// The session lives in an HttpOnly cookie holding an opaque id, not a JWT: a JWT stays valid
+// until it expires no matter what the server thinks, so logout could not actually end a session.
+// See docs/cookie-session-design.md.
+builder.Services.AddAuthentication(SessionAuthenticationHandler.SchemeName)
+    .AddScheme<AuthenticationSchemeOptions, SessionAuthenticationHandler>(
+        SessionAuthenticationHandler.SchemeName, null);
 builder.Services.AddAuthorization();
 
 builder.Services.AddControllers();

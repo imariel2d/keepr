@@ -1,8 +1,9 @@
 // API contract types. Mirror the DTOs in src/Api/Features/*.
 // Full contract + behaviour notes: docs/api-changes-frontend.md.
 
-export interface AuthResponse {
-  accessToken: string;
+/** Who the caller is. Carries no token: the session is an HttpOnly cookie the client can't read. */
+export interface SessionResponse {
+  email: string;
 }
 
 export interface Usage {

@@ -68,8 +68,9 @@ export class App {
     this.router.navigate([key === 'trash' ? '/trash' : '/files']);
   }
 
-  logout(): void {
-    this.auth.logout();
-    this.router.navigate(['/login']);
+  /** Awaits the server call so the session is actually revoked before we leave the page. */
+  async logout(): Promise<void> {
+    await this.auth.logout();
+    await this.router.navigate(['/login']);
   }
 }

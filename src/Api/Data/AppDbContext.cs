@@ -12,6 +12,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public const string Schema = "keepr";
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<Session> Sessions => Set<Session>();
     public DbSet<MediaFile> MediaFiles => Set<MediaFile>();
     public DbSet<Folder> Folders => Set<Folder>();
 
@@ -29,6 +30,28 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Email).IsUnique();
             e.Property(x => x.Email).HasMaxLength(320).IsRequired();
             e.Property(x => x.PasswordHash).IsRequired();
+        });
+
+        b.Entity<Session>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            // Every authenticated request is this lookup, so it must be a unique index probe.
+            // Unique also makes a token collision a database error rather than an ambiguous match.
+            e.HasIndex(x => x.TokenHash).IsUnique();
+            e.Property(x => x.TokenHash).HasMaxLength(32).IsRequired();
+
+            e.Property(x => x.UserAgent).HasMaxLength(512);
+            e.Property(x => x.CreatedIp).HasMaxLength(45); // INET6_ADDRSTRLEN
+
+            // Cascade: a deleted user's sessions must not outlive them.
+            e.HasOne(x => x.User)
+                .WithMany(u => u.Sessions)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Drives the per-user cleanup of dead rows on login (§4.2).
+            e.HasIndex(x => new { x.UserId, x.ExpiresAt });
         });
 
         b.Entity<MediaFile>(e =>
