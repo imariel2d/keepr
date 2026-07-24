@@ -232,8 +232,11 @@ and users who understand that are likelier to change it than to argue with it.
 The server stays authoritative. The client mirrors the rules to avoid teaching them one failed
 submit at a time.
 
-- A live requirements checklist under the password field in register mode — length, and the
-  email-reuse check. Both are computable in the browser.
+- A live requirements checklist under the password field in register mode, covering **every** rule
+  the browser can evaluate: minimum length, the 72-byte maximum, and the email-reuse check. The
+  checklist also gates the submit button, so the client never sends something the server is certain
+  to reject. The byte rule matters more than it looks — it is the one a naive character count would
+  miss, since 19 emoji are 19 characters but 76 bytes.
 - **The breach check is not mirrored.** It would mean the browser sending password hash prefixes to
   a third party. Server-only, surfaced on submit.
 - **`autocomplete` is currently wrong**: `login.html` hardcodes `current-password` in both modes. In

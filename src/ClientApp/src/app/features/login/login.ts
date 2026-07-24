@@ -8,6 +8,13 @@ import { IconComponent } from '../../cove/lib/icon/icon.component';
 /** Mirrors PasswordPolicy.MinLength. The server stays the authority; this is only guidance. */
 const MIN_PASSWORD_LENGTH = 12;
 
+/**
+ * Mirrors PasswordPolicy.MaxBytes. Bytes rather than characters because BCrypt truncates at 72
+ * bytes server-side, so a passphrase in a non-Latin script can cross the limit well under 72
+ * visible characters.
+ */
+const MAX_PASSWORD_BYTES = 72;
+
 interface Requirement {
   readonly label: string;
   readonly met: boolean;
@@ -39,8 +46,11 @@ export class Login {
    * The rules that can be checked in the browser, shown live while registering so the user isn't
    * told the requirements one failed submit at a time.
    *
-   * The breach check is deliberately absent: mirroring it would mean the browser sending password
-   * hash prefixes to a third party. That one stays server-side and surfaces on submit.
+   * Every rule the browser can evaluate is mirrored here, so `canSubmit` below never lets through
+   * something the server is certain to reject.
+   *
+   * The breach check is the one deliberate omission: mirroring it would mean the browser sending
+   * password hash prefixes to a third party. That one stays server-side and surfaces on submit.
    */
   protected readonly requirements = computed<Requirement[]>(() => {
     const password = this.password();
@@ -50,6 +60,12 @@ export class Login {
       {
         label: `At least ${MIN_PASSWORD_LENGTH} characters`,
         met: [...password].length >= MIN_PASSWORD_LENGTH,
+      },
+      {
+        label: `At most ${MAX_PASSWORD_BYTES} bytes (about ${MAX_PASSWORD_BYTES} characters)`,
+        met:
+          password.length > 0 &&
+          new TextEncoder().encode(password).length <= MAX_PASSWORD_BYTES,
       },
       {
         label: "Doesn't contain your email",
