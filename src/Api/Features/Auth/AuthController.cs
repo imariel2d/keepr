@@ -27,20 +27,26 @@ public class AuthController(
     SessionService sessions,
     SessionCookie cookie,
     IRegistrationGate registrationGate,
+    IBreachedPasswordCheck breachCheck,
     IOptions<QuotaOptions> quota) : ControllerBase
 {
     [HttpPost("register")]
     [ProducesResponseType<SessionResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Register(RegisterRequest req, CancellationToken ct)
     {
-        var email = req.Email.Trim().ToLowerInvariant();
+        var email = (req.Email ?? string.Empty).Trim().ToLowerInvariant();
 
-        // Gate before touching the database. Checking the address first would turn this endpoint
-        // into an "is this email registered?" oracle for anyone without an invite.
+        // Gate before touching anything else. Checking the address first would turn this endpoint
+        // into an "is this email registered?" oracle for anyone without an invite; validating
+        // first would let an uninvited caller drive our outbound breach-check requests.
         var decision = await registrationGate.EvaluateAsync(
             new RegistrationAttempt(email, req.InviteCode), ct);
         if (!decision.Allowed)
             return Problem(decision.Reason, statusCode: decision.StatusCode);
+
+        if (await ValidateCredentials(email, req.Password, ct) is { } invalid)
+            return invalid;
 
         if (await db.Users.AnyAsync(u => u.Email == email, ct))
             return Problem("Email already registered.", statusCode: StatusCodes.Status409Conflict);
@@ -96,6 +102,43 @@ public class AuthController(
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public ActionResult<SessionResponse> Current() =>
         new SessionResponse(User.FindFirst(KeeprClaims.Email)?.Value ?? string.Empty);
+
+    /// <summary>
+    /// Applies the email and password rules, returning a 400 when anything fails and null when
+    /// the credentials are acceptable.
+    ///
+    /// Every failure is reported at once, not just the first, so the form can mark each bad field
+    /// in one round-trip instead of teaching the rules one rejection at a time.
+    /// </summary>
+    private async Task<IActionResult?> ValidateCredentials(
+        string email, string? password, CancellationToken ct)
+    {
+        var errors = new Dictionary<string, string[]>();
+
+        if (EmailPolicy.Validate(email) is { } emailError)
+            errors["email"] = [emailError];
+
+        var passwordErrors = PasswordPolicy.Validate(password, email);
+
+        // Only worth a network round-trip once the password is otherwise acceptable — a password
+        // that is already too short is going to be rejected either way.
+        if (passwordErrors.Count == 0 && await breachCheck.IsBreachedAsync(password!, ct))
+            passwordErrors.Add(PasswordPolicy.BreachedMessage);
+
+        if (passwordErrors.Count > 0)
+            errors["password"] = [.. passwordErrors];
+
+        if (errors.Count == 0) return null;
+
+        // Both shapes are populated: `errors` is the per-field map a form wants, while `detail`
+        // keeps the existing single-line error rendering working unchanged.
+        var problem = new ValidationProblemDetails(errors)
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Detail = string.Join(" ", errors.Values.SelectMany(v => v))
+        };
+        return BadRequest(problem);
+    }
 
     private async Task<IActionResult> StartSession(User user, CancellationToken ct)
     {

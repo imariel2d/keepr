@@ -1,0 +1,69 @@
+# Disposable / throwaway email providers, refused at registration.
+#
+# Hand-curated rather than vendored from a community list. Those lists run to tens of thousands of
+# entries and routinely sweep in durable forwarding aliases — SimpleLogin, addy.io, Apple's Hide My
+# Email, Firefox Relay (mozmail.com), DuckDuckGo (duck.com). Blocking one of those tells a
+# privacy-conscious invited user their email provider is not allowed, which is a hostile dead end.
+# NONE OF THOSE BELONG IN THIS FILE. See docs/user-registration-validation-design.md (§4.3).
+#
+# This list is a snapshot and will go stale; that is accepted, because registration is already
+# invite-gated and this is insurance rather than a load-bearing control. Add entries by PR.
+#
+# Format: one domain per line, lowercase. Blank lines and #-comments ignored.
+
+10minutemail.com
+10minutemail.net
+20minutemail.com
+33mail.com
+disposablemail.com
+dispostable.com
+emailondeck.com
+emailtemporario.com.br
+fakeinbox.com
+fakemail.net
+getairmail.com
+getnada.com
+guerrillamail.biz
+guerrillamail.com
+guerrillamail.de
+guerrillamail.info
+guerrillamail.net
+guerrillamail.org
+guerrillamailblock.com
+inboxbear.com
+incognitomail.com
+jetable.org
+mail-temporaire.fr
+mail7.io
+mailcatch.com
+maildrop.cc
+mailexpire.com
+mailinator.com
+mailinator.net
+mailnesia.com
+mailsac.com
+mailtemp.info
+mintemail.com
+mohmal.com
+moakt.com
+mytemp.email
+nowmymail.com
+sharklasers.com
+spam4.me
+spamgourmet.com
+tempail.com
+tempinbox.com
+tempmail.net
+tempmail.plus
+tempmailaddress.com
+tempmailo.com
+temp-mail.io
+temp-mail.org
+throwawaymail.com
+trashmail.com
+trashmail.de
+trashmail.net
+trbvm.com
+yopmail.com
+yopmail.fr
+yopmail.net

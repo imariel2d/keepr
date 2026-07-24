@@ -21,6 +21,9 @@
           placeholder="you@example.com"
           [value]="email()"
           (valueChange)="email.set($event)" />
+        @for (message of errorsFor('email'); track message) {
+          <p class="field-error">{{ message }}</p>
+        }
       </div>
 
       <div class="field">
@@ -29,7 +32,7 @@
           icon="lock"
           [type]="showPassword() ? 'text' : 'password'"
           name="password"
-          autocomplete="current-password"
+          [autocomplete]="mode() === 'register' ? 'new-password' : 'current-password'"
           placeholder="••••••••"
           [value]="password()"
           (valueChange)="password.set($event)">
@@ -47,6 +50,21 @@
             }
           </button>
         </cove-input>
+
+        @if (mode() === 'register') {
+          <ul class="requirements">
+            @for (requirement of requirements(); track requirement.label) {
+              <li [class.met]="requirement.met">
+                <cove-icon [name]="requirement.met ? 'check' : 'circle'" [size]="13"></cove-icon>
+                {{ requirement.label }}
+              </li>
+            }
+          </ul>
+        }
+
+        @for (message of errorsFor('password'); track message) {
+          <p class="field-error">{{ message }}</p>
+        }
       </div>
 
       @if (mode() === 'register') {
@@ -70,7 +88,7 @@
         </p>
       }
 
-      <cove-button variant="primary" size="lg" [disabled]="busy()" class="submit">
+      <cove-button variant="primary" size="lg" [disabled]="busy() || !canSubmit()" class="submit">
         {{ busy() ? 'Please wait…' : (mode() === 'register' ? 'Create account' : 'Sign in') }}
       </cove-button>
     </form>

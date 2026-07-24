@@ -47,6 +47,20 @@ builder.Services.AddSingleton<SessionCookie>();
 // Who may create an account. Swap this line for another IRegistrationGate (emailed invites, an
 // allow-list, an approval queue) without touching AuthController.
 builder.Services.AddScoped<IRegistrationGate, InviteCodeRegistrationGate>();
+
+// Rejects passwords found in the Have I Been Pwned corpus. Only a 5-character hash prefix ever
+// leaves the process (k-anonymity), and the check fails OPEN — a third party's outage must not be
+// able to close registration. See docs/user-registration-validation-design.md (§5.3).
+builder.Services.AddHttpClient<IBreachedPasswordCheck, PwnedPasswordsClient>(c =>
+{
+    c.BaseAddress = new Uri("https://api.pwnedpasswords.com/");
+    // HIBP rejects requests without a User-Agent identifying the caller.
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("Keepr/1.0");
+    // Pads the response to a uniform size so its length cannot narrow down the bucket.
+    c.DefaultRequestHeaders.Add("Add-Padding", "true");
+    // Short: this sits in the registration path, and failing open beats making the user wait.
+    c.Timeout = TimeSpan.FromSeconds(5);
+});
 builder.Services.AddScoped<FolderService>();
 builder.Services.AddScoped<TrashService>();
 builder.Services.AddHostedService<UploadCleanupService>();
