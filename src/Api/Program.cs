@@ -15,6 +15,7 @@ builder.Services.Configure<AuthSessionOptions>(builder.Configuration.GetSection(
 builder.Services.Configure<QuotaOptions>(builder.Configuration.GetSection(QuotaOptions.SectionName));
 builder.Services.Configure<CleanupOptions>(builder.Configuration.GetSection(CleanupOptions.SectionName));
 builder.Services.Configure<RegistrationOptions>(builder.Configuration.GetSection(RegistrationOptions.SectionName));
+builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection(AdminOptions.SectionName));
 
 // ---- Persistence -----------------------------------------------------------
 // Resolve from ConnectionStrings:Postgres (key-value or postgres:// URI) or discrete Db:* fields.
@@ -48,6 +49,10 @@ builder.Services.AddSingleton<SessionCookie>();
 // Who may create an account. Swap this line for another IRegistrationGate (emailed invites, an
 // allow-list, an approval queue) without touching AuthController.
 builder.Services.AddScoped<IRegistrationGate, InviteCodeRegistrationGate>();
+
+// Seeds the first admin at startup (env Admin__Email/Password) so the console is reachable on a
+// fresh deployment where signups are invite-gated. See docs/admin-console-design.md §3.
+builder.Services.AddScoped<AdminSeeder>();
 
 // Rejects passwords found in the Have I Been Pwned corpus. Only a 5-character hash prefix ever
 // leaves the process (k-anonymity), and the check fails OPEN — a third party's outage must not be
@@ -96,6 +101,9 @@ using (var scope = app.Services.CreateScope())
     // owner can create a schema even when CREATE on "public" is denied (managed Postgres).
     db.Database.ExecuteSqlRaw($"CREATE SCHEMA IF NOT EXISTS \"{AppDbContext.Schema}\"");
     db.Database.Migrate();
+
+    // After migrations so the Role column exists: make sure the instance has an admin.
+    await scope.ServiceProvider.GetRequiredService<AdminSeeder>().EnsureSeededAsync();
 }
 
 // OpenAPI spec at /openapi/v1.json and Swagger UI at /swagger (Development only).
