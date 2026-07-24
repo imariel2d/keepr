@@ -35,9 +35,8 @@ services:
       - key: Db__Password
         scope: RUN_TIME
         type: SECRET
-      - key: Jwt__SigningKey
-        scope: RUN_TIME
-        type: SECRET
+      # Sessions need no secret: each one is an independent random token, stored hashed. Removing
+      # Jwt__SigningKey from the app spec is safe — nothing reads it any more.
       # Shared invite code required to create an account. If this is unset, registration is
       # refused outright rather than left open — see InviteCodeRegistrationGate.
       - key: Registration__InviteCode

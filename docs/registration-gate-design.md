@@ -153,7 +153,7 @@ Responses are problem+json, matching the rest of the API (`detail` carries the u
 | Wrong code | `403` | That invite code is not valid. |
 | No code configured | `403` | Registration is currently closed. |
 | Code fine, email taken | `409` | Email already registered. |
-| Success | `200` | `{ accessToken }` |
+| Success | `200` | `{ email }`, plus the session cookie — see [cookie-session-design.md](cookie-session-design.md) |
 
 `POST /api/auth/login` was changed only in shape — `Unauthorized(new { error })` became
 `Problem(..., 401)` — so every auth failure is problem+json and the client has one parser.

@@ -20,6 +20,7 @@ public class User
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public ICollection<MediaFile> Files { get; set; } = new List<MediaFile>();
+    public ICollection<Session> Sessions { get; set; } = new List<Session>();
 
     public long RemainingBytes => Math.Max(0, QuotaBytes - UsedBytes);
 }

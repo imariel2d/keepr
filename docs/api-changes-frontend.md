@@ -4,13 +4,15 @@
 > and verified end-to-end. The Angular client has **not** been touched yet. This file is the
 > complete contract plus, at the bottom, a ready-to-use prompt for building the UI.
 >
-> All JSON is camelCase. All endpoints require `Authorization: Bearer <token>` unless noted.
+> All JSON is camelCase. Authenticated endpoints are authorised by the session cookie set at
+> login — there is no `Authorization` header any more, and nothing for the client to attach or
+> store. See [cookie-session-design.md](cookie-session-design.md).
 > Errors are RFC7807 problem+json — the human-readable message is in **`detail`**.
 >
-> 💡 **Try any of this live:** run the API and open **http://localhost:5080/swagger**. Log in via
-> `POST /api/auth/login`, paste the `accessToken` into **Authorize**, then use "Try it out" on
-> any endpoint. The OpenAPI document is at `/openapi/v1.json` if you want to generate a typed
-> client instead of hand-writing the services.
+> 💡 **Try any of this live:** run the API and open **http://localhost:5080/swagger**. Call
+> `POST /api/auth/login` once; the browser keeps the cookie and sends it on every subsequent
+> "Try it out" by itself — there is no token to paste. The OpenAPI document is at
+> `/openapi/v1.json` if you want to generate a typed client instead of hand-writing the services.
 
 ---
 

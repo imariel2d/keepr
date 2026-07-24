@@ -60,6 +60,38 @@ form {
     font-size: var(--text-xs);
     color: var(--text-tertiary);
   }
+
+  // Server-reported problems with this specific field, shown under it rather than in the single
+  // summary banner so the user can see which input to fix.
+  .field-error {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--danger);
+  }
+}
+
+// Live password rules. Unmet items are stated plainly rather than in red: nothing is wrong yet
+// while the user is still typing their first password.
+.requirements {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    transition: color var(--duration-fast);
+
+    &.met {
+      color: var(--success, var(--accent));
+    }
+  }
 }
 
 .reveal {
