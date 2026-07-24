@@ -1,6 +1,9 @@
 # Shareable Links — Design
 
-> Status: **designed, not built**. Feature #7 in [feature-status.md](feature-status.md).
+> Status: **partial — backend built, frontend + end-to-end verification pending**. Feature #7 in
+> [feature-status.md](feature-status.md). Implemented: `ShareLink` model + migration,
+> `ShareLinkService`, and the owner/public endpoints (`src/Api/Features/Sharing/`). Not yet: the
+> public `/s/:token` viewer page, the owner share UI, and the end-to-end run against Postgres.
 >
 > Decided by Ariel, 2026-07-24: let the owner mint an unguessable link that anyone can open to
 > view or download **one file**, without an account. Links carry an expiry and can be revoked.
