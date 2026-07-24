@@ -11,6 +11,10 @@ namespace Keepr.Api.Features.Sharing;
 public record SharePublicResponse(
     string FileName, string? ContentType, long SizeBytes, string? PreviewKind, DateTimeOffset ExpiresAt);
 
+/// <summary>A short-TTL presigned URL for the shared file, minted fresh per request.</summary>
+/// <param name="Url">The presigned storage URL to fetch the bytes from directly.</param>
+/// <param name="ExpiresAt">When the URL stops working, so the client can cache it without parsing
+/// the signature's own expiry fields.</param>
 public record ShareDownloadUrlResponse(string Url, DateTimeOffset ExpiresAt);
 
 /// <summary>
