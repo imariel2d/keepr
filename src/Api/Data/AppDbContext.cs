@@ -13,6 +13,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Session> Sessions => Set<Session>();
+    public DbSet<ShareLink> ShareLinks => Set<ShareLink>();
     public DbSet<MediaFile> MediaFiles => Set<MediaFile>();
     public DbSet<Folder> Folders => Set<Folder>();
 
@@ -52,6 +53,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
             // Drives the per-user cleanup of dead rows on login (§4.2).
             e.HasIndex(x => new { x.UserId, x.ExpiresAt });
+        });
+
+        b.Entity<ShareLink>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            // Every public link resolve is this lookup, so it must be a unique index probe; unique
+            // also turns a token collision into a database error rather than an ambiguous match.
+            e.HasIndex(x => x.TokenHash).IsUnique();
+            e.Property(x => x.TokenHash).HasMaxLength(32).IsRequired();
+
+            // Cascade: hard-deleting (purging) a file drops its links. A link to a *trashed* file
+            // is caught at resolve time by re-checking the file, not by this FK.
+            e.HasOne(x => x.File)
+                .WithMany()
+                .HasForeignKey(x => x.MediaFileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Listing a file's links and the whole-file "stop sharing" both scan by file.
+            e.HasIndex(x => x.MediaFileId);
         });
 
         b.Entity<MediaFile>(e =>
