@@ -72,6 +72,12 @@ public class AuthController(
         if (user is null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
             return Problem("Invalid credentials.", statusCode: StatusCodes.Status401Unauthorized);
 
+        // A kicked account still has a row until the background wipe removes it. Refuse login in
+        // that window — reported as invalid credentials, not "account removed", so the endpoint
+        // stays a poor oracle for account state. See docs/admin-console-design.md §4.2.
+        if (user.DeletionRequestedAt is not null)
+            return Problem("Invalid credentials.", statusCode: StatusCodes.Status401Unauthorized);
+
         return await StartSession(user, ct);
     }
 

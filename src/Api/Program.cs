@@ -72,6 +72,7 @@ builder.Services.AddScoped<FolderService>();
 builder.Services.AddScoped<TrashService>();
 builder.Services.AddHostedService<UploadCleanupService>();
 builder.Services.AddHostedService<TrashPurgeService>();
+builder.Services.AddHostedService<AccountWipeService>();
 
 // ---- Auth ------------------------------------------------------------------
 // The session lives in an HttpOnly cookie holding an opaque id, not a JWT: a JWT stays valid

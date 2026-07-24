@@ -1,7 +1,10 @@
 # Admin Console — Roles & Account Administration — Design
 
 > Feature #34 in [feature-status.md](feature-status.md), the account-focused slice of the broader
-> #21 admin console. Status: **designed, not yet implemented**.
+> #21 admin console. Status: **backend implemented** (`src/Api/Features/Admin/AdminController.cs`,
+> `Services/AdminAuditService.cs`, `Services/AccountWipeService.cs`, `Features/Auth/AdminSeeder.cs`;
+> migrations `AddUserRole`, `AddAdminActionLog`, `AddUserDeletionRequestedAt`). **Angular UI (§6)
+> pending.**
 >
 > Decided by Ariel, 2026-07-24. This doc introduces the **role/authorization model** that #34
 > names as its hard prerequisite ("every account is an equal owner today"), and specifies the
@@ -193,7 +196,12 @@ Enforced server-side, not just hidden in the UI:
 - **No self-kick, no self-demote.** An admin cannot delete or demote their own account. Prevents
   accidental lockout and the "delete the last admin" footgun in one move.
 - **Cannot remove the last admin.** `DELETE`/demote is refused with 409 if it would leave zero
-  admins. The count is checked inside the same transaction as the change.
+  admins. The count is checked against non-pending admins other than the target. Note: for the
+  **kick path alone** this is defensive — removing the last admin necessarily means removing
+  *yourself*, which the self-kick guard already blocks, so the 409 is currently unreachable via
+  `DELETE`. It becomes load-bearing once a **demote** endpoint exists (an admin demoting the only
+  other admin, or themselves). Kept now so that invariant lives with the guardrails, not the
+  future endpoint.
 - Quota edits and kicks target `User`-role accounts freely; an admin editing *another* admin's
   quota is allowed (no ranking among admins), but deleting another admin still trips the
   last-admin check.

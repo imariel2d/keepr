@@ -1,4 +1,5 @@
 using Keepr.Api.Data;
+using Keepr.Api.Domain;
 using Keepr.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -124,6 +125,55 @@ public class AdminController(
         return new AdminUserDetail(
             user.Id, user.Email, user.Role.ToString(), user.QuotaBytes, user.UsedBytes,
             user.RemainingBytes, trashed, user.CreatedAt, active);
+    }
+
+    /// <summary>
+    /// Kicks a user: revokes every session now, marks the account for deletion, and audits it —
+    /// all synchronously — then returns 202. The background <c>AccountWipeService</c> hard-deletes
+    /// their files (live and trashed, no recovery window) and removes the account. Guardrails: an
+    /// admin cannot kick their own account, and the last remaining admin cannot be removed. See
+    /// docs/admin-console-design.md §4.2/§4.3.
+    /// </summary>
+    [HttpDelete("users/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> KickUser(Guid id, CancellationToken ct)
+    {
+        if (id == User.UserId())
+            return Problem("You cannot remove your own account.", statusCode: StatusCodes.Status400BadRequest);
+
+        var user = await db.Users.FindAsync([id], ct);
+        if (user is null) return NotFound();
+
+        // Idempotent: a second kick while the wipe is still pending is a no-op, not an error.
+        if (user.DeletionRequestedAt is not null) return Accepted();
+
+        // Never strand the instance with no admin. Count admins other than this one that aren't
+        // themselves being deleted; if there are none, this kick would remove the last admin.
+        if (user.Role == Role.Admin)
+        {
+            var otherAdmins = await db.Users.CountAsync(
+                u => u.Role == Role.Admin && u.Id != id && u.DeletionRequestedAt == null, ct);
+            if (otherAdmins == 0)
+                return Problem("Cannot remove the last admin.", statusCode: StatusCodes.Status409Conflict);
+        }
+
+        var now = clock.GetUtcNow();
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        // Access is gone the instant this commits, before a single byte is touched.
+        await db.Sessions
+            .Where(s => s.UserId == id && s.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, now), ct);
+
+        user.DeletionRequestedAt = now;
+        audit.RecordUserKicked(User.UserId(), ActorEmail(), user.Id, user.Email);
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        return Accepted();
     }
 
     private string ActorEmail() => User.FindFirst(KeeprClaims.Email)?.Value ?? string.Empty;

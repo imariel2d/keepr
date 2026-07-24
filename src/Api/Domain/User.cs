@@ -23,6 +23,14 @@ public class User
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
+    /// <summary>
+    /// Set when an admin kicks this account. From this moment the account is disabled — login is
+    /// refused and its sessions are already revoked — and the background <c>AccountWipeService</c>
+    /// hard-deletes every file it owns before removing the row. Null for a normal, live account.
+    /// See docs/admin-console-design.md §4.2.
+    /// </summary>
+    public DateTimeOffset? DeletionRequestedAt { get; set; }
+
     public ICollection<MediaFile> Files { get; set; } = new List<MediaFile>();
     public ICollection<Session> Sessions { get; set; } = new List<Session>();
 
