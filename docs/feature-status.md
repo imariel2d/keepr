@@ -3,8 +3,8 @@
 Tracking the planned feature set against what is actually implemented in the codebase.
 
 Keepr is a **personal media store** with a folder hierarchy, rename, and a 10-day trash:
-single-owner (no sharing yet). Of the 31 planned features, **8 are complete** (backend + UI)
-and 23 are not started.
+single-owner (no sharing yet). Of the 33 planned features, **8 are complete** (backend + UI)
+and 25 are not started.
 
 **Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
@@ -85,13 +85,20 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 |---|---------|--------|-------|
 | 31 | Monitoring & analytics | ❌ | Only a `/health` liveness endpoint exists (`Program.cs`, wired to DO App Platform's `health_check`); logging is default console. No metrics, distributed tracing, or error tracking (OpenTelemetry / App Insights / Sentry), and no product-usage analytics on the client. **Two distinct halves:** *ops monitoring* (uptime, latency, error rates, alerts) and *product analytics* (which features get used) — different tools, can land independently. Distinct from #13 (in-app activity log) and #22 (compliance audit trail), which are user- and compliance-facing rather than operational |
 
+## Legal pages
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 32 | Terms & Conditions page | ❌ | No public route exists — every route but `/login` is behind `authGuard`, and there is no footer or public layout to link from. The engineering is small (a public route + a content component); the real dependency is the **legal copy itself**, which has to be authored, not built |
+| 33 | Privacy Notice page | ❌ | Same shape as #32, but more than a formality here: the app stores personal data (account email, uploaded files), and this is the disclosure side of that. Naturally paired with the register flow (a link or consent checkbox on signup) and with account data handling (#26–29, especially account/data deletion) |
+
 ---
 
 ## Summary
 
 - **Done (8):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
   rename/delete, trash, in-browser preview.
-- **Not started (23):** everything else. **Tier 1 is complete.**
+- **Not started (25):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2
 
