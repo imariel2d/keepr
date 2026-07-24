@@ -3,8 +3,8 @@
 Tracking the planned feature set against what is actually implemented in the codebase.
 
 Keepr is a **personal media store** with a folder hierarchy, rename, and a 10-day trash:
-single-owner (no sharing yet). Of the 29 planned features, **8 are complete** (backend + UI)
-and 21 are not started.
+single-owner (no sharing yet). Of the 30 planned features, **8 are complete** (backend + UI)
+and 22 are not started.
 
 **Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
@@ -43,6 +43,12 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 | 28 | Change password | ❌ | Needs current-password confirmation, re-runs `PasswordPolicy` + the breach check, re-hashes with BCrypt, and revokes the user's other sessions — "sign out everywhere" is nearly free given the `Sessions` table ([cookie-session-design.md](cookie-session-design.md) Q-C3) |
 | 29 | Profile: first & last name | ❌ | `User` has no name fields today (`src/Api/Domain/User.cs`) — needs a migration plus a `PATCH /api/me` (`MeController` is GET-only). `cove-avatar` already derives initials from a whitespace-split name, so first + last would populate it |
 
+## Localization
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 30 | Spanish language (i18n) | ❌ | No i18n framework installed (`@angular/localize`/`ngx-translate`) and no locale config in `angular.json`; all UI copy is hardcoded English. **Not a frontend-only job:** user-facing server strings — validation and gate messages (`EmailPolicy`, `PasswordPolicy`, `RegistrationGate`) — are English prose returned in problem+json `detail` and rendered verbatim by the client. Full Spanish means either the server localizes off `Accept-Language`, or the API returns stable error *codes* and the client owns the copy. The latter is the cleaner fork but reworks the current `detail`-rendering contract |
+
 ## Tier 3 — Expected by users who've used real Drive/Dropbox
 
 | # | Feature | Status | Notes |
@@ -79,7 +85,7 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 
 - **Done (8):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
   rename/delete, trash, in-browser preview.
-- **Not started (21):** everything else. **Tier 1 is complete.**
+- **Not started (22):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2
 
