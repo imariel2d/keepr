@@ -44,7 +44,8 @@ public class SessionAuthenticationHandler(
         var identity = new ClaimsIdentity(
             [
                 new Claim(KeeprClaims.Sub, user.Id.ToString()),
-                new Claim(KeeprClaims.Email, user.Email)
+                new Claim(KeeprClaims.Email, user.Email),
+                new Claim(KeeprClaims.Role, user.Role.ToString())
             ],
             SchemeName);
 

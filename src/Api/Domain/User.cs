@@ -11,6 +11,10 @@ public class User
     public string Email { get; set; } = default!;
     public string PasswordHash { get; set; } = default!;
 
+    /// <summary>Authorization level. Defaults to <see cref="Role.User"/>; only the bootstrap
+    /// admin or an existing admin's promotion sets <see cref="Role.Admin"/>.</summary>
+    public Role Role { get; set; } = Role.User;
+
     /// <summary>Total storage the user is allowed. Default 5 GB.</summary>
     public long QuotaBytes { get; set; } = 5L * 1024 * 1024 * 1024;
 

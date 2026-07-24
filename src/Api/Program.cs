@@ -1,4 +1,5 @@
 using Keepr.Api.Data;
+using Keepr.Api.Domain;
 using Keepr.Api.Features.Auth;
 using Keepr.Api.OpenApi;
 using Keepr.Api.Services;
@@ -73,7 +74,13 @@ builder.Services.AddHostedService<TrashPurgeService>();
 builder.Services.AddAuthentication(SessionAuthenticationHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, SessionAuthenticationHandler>(
         SessionAuthenticationHandler.SchemeName, null);
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // The privileged gate for /api/admin. RequireClaim over the role emitted by the session
+    // handler: a User-role caller is authenticated but 403s, anonymous 401s. See
+    // docs/admin-console-design.md §2.2.
+    options.AddPolicy("Admin", p => p.RequireClaim(KeeprClaims.Role, nameof(Role.Admin)));
+});
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

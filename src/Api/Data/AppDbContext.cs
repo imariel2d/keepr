@@ -30,6 +30,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Email).IsUnique();
             e.Property(x => x.Email).HasMaxLength(320).IsRequired();
             e.Property(x => x.PasswordHash).IsRequired();
+
+            // Stored as a string like MediaFile.Status, so the column reads 'User'/'Admin' rather
+            // than an opaque int. The default backfills every pre-existing row to User — no
+            // account is silently promoted by the migration.
+            e.Property(x => x.Role).HasConversion<string>().HasMaxLength(16)
+                .HasDefaultValue(Role.User);
         });
 
         b.Entity<Session>(e =>
