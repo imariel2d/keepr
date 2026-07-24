@@ -3,8 +3,8 @@
 Tracking the planned feature set against what is actually implemented in the codebase.
 
 Keepr is a **personal media store** with a folder hierarchy, rename, and a 10-day trash:
-single-owner (no sharing yet). Of the 25 planned features, **7 are complete** (backend + UI)
-and 18 are not started.
+single-owner (no sharing yet). Of the 29 planned features, **8 are complete** (backend + UI)
+and 21 are not started.
 
 **Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
@@ -29,6 +29,19 @@ and 18 are not started.
 | 8 | Trash / soft delete with restore | ✅ | `DeletedAt`/`DeletedRootId`, EF global query filters, `TrashController`, `TrashPurgeService` sweeper at 10 days. UI: `features/trash/` with restore, purge, empty, and a "in Trash" line on the quota meter. **Overrides Q9 hard delete** |
 | 9 | Search by file name | ❌ | List endpoint has no search/filter |
 | 10 | In-browser preview (images, PDFs) | ✅ | Full-screen overlay with prev/next + keyboard (`features/files/preview-overlay.ts`). Server-side allowlist (`PreviewPolicy`) decides what may render; images/SVG via `<img>`, PDFs via `<iframe>` with a forced content type, plus video/audio. Lazy size-capped grid thumbnails |
+
+## Account management (self-service)
+
+Numbered 26–29 rather than slotted into a tier: features 6–25 are referenced by number in the
+summary below and in other docs, so inserting mid-list would break those references. Password
+reset is really a Tier 2 usability concern; the profile edits are Tier 3.
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 26 | Forgot / reset password | ❌ | No email provider and no reset-token table exist. **Blocked on email verification** — a reset link can't be sent to an address the user never proved they own (Q-V6 in [user-registration-validation-design.md](user-registration-validation-design.md)). A successful reset should revoke existing sessions ([cookie-session-design.md](cookie-session-design.md) Q-C3) |
+| 27 | Change email | ❌ | `Email` is already unique + normalized (`AppDbContext`). A change must re-run `EmailPolicy` and, once #26's verification exists, re-verify the new address before it takes effect |
+| 28 | Change password | ❌ | Needs current-password confirmation, re-runs `PasswordPolicy` + the breach check, re-hashes with BCrypt, and revokes the user's other sessions — "sign out everywhere" is nearly free given the `Sessions` table ([cookie-session-design.md](cookie-session-design.md) Q-C3) |
+| 29 | Profile: first & last name | ❌ | `User` has no name fields today (`src/Api/Domain/User.cs`) — needs a migration plus a `PATCH /api/me` (`MeController` is GET-only). `cove-avatar` already derives initials from a whitespace-split name, so first + last would populate it |
 
 ## Tier 3 — Expected by users who've used real Drive/Dropbox
 
@@ -66,7 +79,7 @@ and 18 are not started.
 
 - **Done (8):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
   rename/delete, trash, in-browser preview.
-- **Not started (17):** everything else. **Tier 1 is complete.**
+- **Not started (21):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2
 
@@ -82,6 +95,11 @@ The cheapest next wins, in order:
 **#6 sharing** is the big one, and per [my-decisions.md](my-decisions.md) Q5 it is the trigger
 for revisiting malware scanning and content moderation — those become required before sharing
 ships, not after.
+
+**Account management (#26–29)** clusters around one prerequisite: **email verification** (Q-V6).
+Reset-password (#26) is blocked on it outright, and change-email (#27) wants it too. Change-password
+(#28) and profile names (#29) are independent and cheaper — #29 is just a migration plus a
+`PATCH /api/me`. Sequence: verification → #26/#27 together, with #28/#29 landable any time.
 
 ### Known follow-ups
 
