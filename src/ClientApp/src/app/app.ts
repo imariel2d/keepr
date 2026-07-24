@@ -68,9 +68,21 @@ export class App {
     this.router.navigate([key === 'trash' ? '/trash' : '/files']);
   }
 
-  /** Awaits the server call so the session is actually revoked before we leave the page. */
+  /**
+   * Awaits the server call so the session is actually revoked before we leave the page — but
+   * leaves regardless of whether it succeeded.
+   *
+   * AuthService clears local state in its own `finally`, so letting a failed request skip the
+   * navigation would strand the user on a guarded page with a signed-out shell. The server row
+   * may then outlive the click and expire on its own, which is worse than a clean logout and
+   * better than trapping the user.
+   */
   async logout(): Promise<void> {
-    await this.auth.logout();
+    try {
+      await this.auth.logout();
+    } catch {
+      // Already reflected locally; nothing useful to add beyond getting them to /login.
+    }
     await this.router.navigate(['/login']);
   }
 }
