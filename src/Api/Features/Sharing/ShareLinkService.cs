@@ -16,8 +16,10 @@ public class ShareOptions
     public int MaxExpiryDays { get; set; } = 90;
 
     /// <summary>
-    /// Base URL the public viewer link is built against, e.g. <c>https://keepr.app</c>. Empty means
-    /// "derive it from the incoming request" — right when the API serves the SPA on one origin.
+    /// Required. The canonical public origin the viewer link is built against, e.g.
+    /// <c>https://keepr.app</c> (prod) or <c>http://localhost:4200</c> (dev, the SPA origin).
+    /// Validated at startup: an unset or non-absolute-http(s) value fails fast rather than let a
+    /// capability URL be built from the untrusted request Host header. See design §6.
     /// </summary>
     public string PublicBaseUrl { get; set; } = "";
 
@@ -150,13 +152,14 @@ public class ShareLinkService(AppDbContext db, IOptions<ShareOptions> options, T
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync(ct);
 
-    /// <summary>Builds the user-facing viewer URL for a freshly issued token.</summary>
-    public string BuildUrl(string baseUrl, string token) =>
-        $"{baseUrl.TrimEnd('/')}/s/{token}";
-
-    /// <summary>Config base if set, else the request's own origin (single-origin deployments).</summary>
-    public string ResolveBaseUrl(string requestOrigin) =>
-        string.IsNullOrWhiteSpace(_opt.PublicBaseUrl) ? requestOrigin : _opt.PublicBaseUrl;
+    /// <summary>
+    /// Builds the user-facing viewer URL for a freshly issued token, from the configured public
+    /// origin — never from the request host, which is untrusted and wrong behind a proxy or when
+    /// the SPA is on a different origin. <see cref="ShareOptions.PublicBaseUrl"/> is validated at
+    /// startup, so it is trusted here.
+    /// </summary>
+    public string BuildUrl(string token) =>
+        $"{_opt.PublicBaseUrl.TrimEnd('/')}/s/{token}";
 
     private TimeSpan ClampWindow(int days) =>
         TimeSpan.FromDays(Math.Clamp(days, 1, _opt.MaxExpiryDays));

@@ -137,6 +137,12 @@ downloads already work; public links keep that property.
 cookie or the app's DOM. Inline rendering is still gated by `PreviewPolicy` exactly as the owner
 preview path is.
 
+**The viewer URL is built from a configured origin, never the request host.** `Sharing:PublicBaseUrl`
+is required and validated at startup (an absolute http/https URL); the app refuses to boot without
+it. The `Host` header is client-controlled and, behind App Platform's proxy or with the SPA on a
+separate origin, simply wrong — so a capability URL must never be assembled from it. Failing fast is
+the same instinct as the invite-code and storage-credential checks.
+
 ---
 
 ## 6. API surface

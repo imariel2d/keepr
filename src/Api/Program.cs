@@ -52,6 +52,23 @@ if (string.IsNullOrWhiteSpace(storageCfg["AccountId"]) && string.IsNullOrWhiteSp
     throw new InvalidOperationException(
         "Object storage endpoint is missing. Set Storage__AccountId (R2) or Storage__ServiceUrl (custom S3).");
 
+// Validate the Sharing config at startup, so a bad value fails the boot rather than surfacing
+// later on a link operation. MaxExpiryDays < 1 is the sharp one: it feeds Math.Clamp(days, 1, max),
+// which throws when min > max — a runtime crash on every create/update. Bind once and check all
+// three; fail fast, like the checks above.
+var shareCfg = builder.Configuration.GetSection(ShareOptions.SectionName).Get<ShareOptions>()
+               ?? new ShareOptions();
+if (!Uri.TryCreate(shareCfg.PublicBaseUrl, UriKind.Absolute, out var shareUri) ||
+    (shareUri.Scheme != Uri.UriSchemeHttp && shareUri.Scheme != Uri.UriSchemeHttps))
+    throw new InvalidOperationException(
+        "Sharing:PublicBaseUrl must be an absolute http(s) URL — the public origin the share-link " +
+        "viewer is served from (e.g. https://your-app.example, or http://localhost:4200 in dev). " +
+        "Set Sharing__PublicBaseUrl. See docs/shareable-links-design.md.");
+if (shareCfg.MaxExpiryDays < 1)
+    throw new InvalidOperationException("Sharing:MaxExpiryDays must be at least 1.");
+if (shareCfg.AccessStampThrottleMinutes < 0)
+    throw new InvalidOperationException("Sharing:AccessStampThrottleMinutes must be 0 or greater.");
+
 builder.Services.AddSingleton<IObjectStorage, R2ObjectStorage>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<QuotaService>();

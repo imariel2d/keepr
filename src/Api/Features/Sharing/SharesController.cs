@@ -46,8 +46,7 @@ public class SharesController(AppDbContext db, ShareLinkService shares) : Contro
         if (!await OwnsReadyFile(id, userId, ct)) return NotFound();
 
         var (link, token) = await shares.IssueAsync(id, userId, req.ExpiresInDays, ct);
-        var url = shares.BuildUrl(shares.ResolveBaseUrl(RequestOrigin()), token);
-        return Ok(new CreatedShareResponse(link.Id, url, link.ExpiresAt));
+        return Ok(new CreatedShareResponse(link.Id, shares.BuildUrl(token), link.ExpiresAt));
     }
 
     /// <summary>List the links on a file you own, newest first. Never returns the URL.</summary>
@@ -112,6 +111,4 @@ public class SharesController(AppDbContext db, ShareLinkService shares) : Contro
 
     private static ShareLinkResponse ToResponse(ShareLink s) =>
         new(s.Id, s.CreatedAt, s.ExpiresAt, s.RevokedAt is not null, s.LastAccessedAt);
-
-    private string RequestOrigin() => $"{Request.Scheme}://{Request.Host}";
 }
