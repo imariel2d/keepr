@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Session> Sessions => Set<Session>();
     public DbSet<MediaFile> MediaFiles => Set<MediaFile>();
     public DbSet<Folder> Folders => Set<Folder>();
+    public DbSet<AdminActionLog> AdminActionLogs => Set<AdminActionLog>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -137,6 +138,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasFilter($"\"{nameof(Folder.DeletedAt)}\" IS NOT NULL");
 
             e.HasQueryFilter(x => x.DeletedAt == null);
+        });
+
+        b.Entity<AdminActionLog>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            // Deliberately no FK to Users on either actor or target: audit rows outlive the
+            // accounts they describe (a kick deletes its target). Emails are denormalized
+            // snapshots so the log stands alone. See docs/admin-console-design.md §5.
+            e.Property(x => x.ActorEmail).HasMaxLength(320).IsRequired();
+            e.Property(x => x.TargetEmail).HasMaxLength(320).IsRequired();
+            e.Property(x => x.Action).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.Details).HasColumnType("jsonb");
+
+            // The audit view lists a target's history newest-first.
+            e.HasIndex(x => new { x.TargetUserId, x.CreatedAt });
         });
     }
 }

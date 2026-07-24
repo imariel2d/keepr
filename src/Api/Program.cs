@@ -53,6 +53,7 @@ builder.Services.AddScoped<IRegistrationGate, InviteCodeRegistrationGate>();
 // Seeds the first admin at startup (env Admin__Email/Password) so the console is reachable on a
 // fresh deployment where signups are invite-gated. See docs/admin-console-design.md §3.
 builder.Services.AddScoped<AdminSeeder>();
+builder.Services.AddScoped<AdminAuditService>();
 
 // Rejects passwords found in the Have I Been Pwned corpus. Only a 5-character hash prefix ever
 // leaves the process (k-anonymity), and the check fails OPEN — a third party's outage must not be
