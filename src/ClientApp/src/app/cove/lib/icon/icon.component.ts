@@ -1,4 +1,4 @@
-import { Component, Input, ElementRef, AfterViewInit, OnChanges } from '@angular/core';
+import { Component, ElementRef, Input, OnChanges } from '@angular/core';
 
 declare const lucide: any;
 
@@ -6,17 +6,37 @@ declare const lucide: any;
 @Component({
   selector: 'cove-icon',
   standalone: true,
-  template: `<i [attr.data-lucide]="name"
-               [style.width.px]="size" [style.height.px]="size"
-               [style.display]="'inline-flex'" [style.flexShrink]="0"
-               [style.color]="color || 'currentColor'"></i>`,
+  template: '',
 })
-export class IconComponent implements AfterViewInit, OnChanges {
+export class IconComponent implements OnChanges {
   @Input() name!: string;
   @Input() size = 18;
   @Input() color?: string;
-  constructor(private el: ElementRef) {}
-  private render() { if (typeof lucide !== 'undefined') lucide.createIcons({ nameAttr: 'data-lucide', root: this.el.nativeElement }); }
-  ngAfterViewInit() { this.render(); }
-  ngOnChanges() { queueMicrotask(() => this.render()); }
+
+  constructor(private el: ElementRef<HTMLElement>) {}
+
+  // Re-render from a fresh placeholder on every change. lucide.createIcons() *replaces* the
+  // <i data-lucide> node with a brand-new <svg>, so we cannot bind attributes on it and expect
+  // later changes to take: Angular would keep updating the detached <i> while the live <svg>
+  // stayed frozen at its first value. That is exactly what made a dynamic [name] (theme toggle,
+  // the register checklist ticks) never update. Rewriting innerHTML each time makes the svg match.
+  ngOnChanges(): void {
+    if (typeof lucide === 'undefined') return;
+
+    const host = this.el.nativeElement;
+    host.replaceChildren();
+
+    const placeholder = document.createElement('i');
+    placeholder.setAttribute('data-lucide', this.name);
+    Object.assign(placeholder.style, {
+      width: `${this.size}px`,
+      height: `${this.size}px`,
+      display: 'inline-flex',
+      flexShrink: '0',
+      color: this.color || 'currentColor',
+    });
+    host.appendChild(placeholder);
+
+    lucide.createIcons({ nameAttr: 'data-lucide', root: host });
+  }
 }
