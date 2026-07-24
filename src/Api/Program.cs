@@ -1,5 +1,6 @@
 using Keepr.Api.Data;
 using Keepr.Api.Features.Auth;
+using Keepr.Api.Features.Sharing;
 using Keepr.Api.OpenApi;
 using Keepr.Api.Services;
 using Keepr.Api.Storage;
@@ -14,6 +15,7 @@ builder.Services.Configure<AuthSessionOptions>(builder.Configuration.GetSection(
 builder.Services.Configure<QuotaOptions>(builder.Configuration.GetSection(QuotaOptions.SectionName));
 builder.Services.Configure<CleanupOptions>(builder.Configuration.GetSection(CleanupOptions.SectionName));
 builder.Services.Configure<RegistrationOptions>(builder.Configuration.GetSection(RegistrationOptions.SectionName));
+builder.Services.Configure<ShareOptions>(builder.Configuration.GetSection(ShareOptions.SectionName));
 
 // ---- Persistence -----------------------------------------------------------
 // Resolve from ConnectionStrings:Postgres (key-value or postgres:// URI) or discrete Db:* fields.
@@ -23,9 +25,20 @@ if (string.IsNullOrWhiteSpace(pgConnection))
         "No Postgres connection configured. Set ConnectionStrings__Postgres, or the discrete " +
         "Db__Host / Db__Port / Db__Name / Db__Username / Db__Password env vars.");
 builder.Services.AddDbContext<AppDbContext>(o =>
+{
     o.UseNpgsql(pgConnection, npg =>
         // Keep the migrations-history table in our schema too, not "public".
-        npg.MigrationsHistoryTable("__EFMigrationsHistory", AppDbContext.Schema)));
+        npg.MigrationsHistoryTable("__EFMigrationsHistory", AppDbContext.Schema));
+
+    // ShareLink requires MediaFile, which carries the soft-delete query filter. EF warns that
+    // loading the required navigation could surface a filtered-out (trashed) file as null. That is
+    // deliberate here and never hit: ShareLinkService.ResolveAsync never loads the file through the
+    // navigation — it re-queries MediaFile separately and maps a trashed/purged file to "Gone".
+    // See docs/shareable-links-design.md §6.
+    o.ConfigureWarnings(w => w.Ignore(
+        Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId
+            .PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning));
+});
 
 // ---- Storage + services ----------------------------------------------------
 // Fail fast with a clear message if R2 credentials are missing (otherwise the AWS SDK throws a
@@ -63,6 +76,7 @@ builder.Services.AddHttpClient<IBreachedPasswordCheck, PwnedPasswordsClient>(c =
 });
 builder.Services.AddScoped<FolderService>();
 builder.Services.AddScoped<TrashService>();
+builder.Services.AddScoped<ShareLinkService>();
 builder.Services.AddHostedService<UploadCleanupService>();
 builder.Services.AddHostedService<TrashPurgeService>();
 
