@@ -7,6 +7,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/login/login').then((m) => m.Login),
   },
   {
+    // Public share viewer — deliberately no authGuard: the token in the URL is the authorization.
+    path: 's/:token',
+    loadComponent: () => import('./features/share/share-viewer').then((m) => m.ShareViewer),
+  },
+  {
     // The folder id is in the URL so a folder is linkable and the back button walks the tree.
     // No id = the owner's root, which has no row of its own server-side.
     path: 'files',

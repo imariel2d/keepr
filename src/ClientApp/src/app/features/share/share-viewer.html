@@ -1,0 +1,77 @@
+<section class="share">
+  @switch (state()) {
+    @case ('loading') {
+      <div class="card status">
+        <cove-icon name="loader" [size]="28" />
+        <p>Loading…</p>
+      </div>
+    }
+
+    @case ('ok') {
+      <div class="card">
+        @let f = file()!;
+        <div class="file-head">
+          <cove-icon name="file" [size]="20" />
+          <div class="meta">
+            <h1 class="name" [title]="f.fileName">{{ f.fileName }}</h1>
+            <p class="sub">{{ f.sizeBytes | bytes }}</p>
+          </div>
+        </div>
+
+        @if (f.previewKind && !previewFailed()) {
+          <div class="preview">
+            @switch (f.previewKind) {
+              @case ('image') {
+                <img [src]="previewUrl()" [alt]="f.fileName" (error)="onMediaError()" />
+              }
+              @case ('pdf') {
+                @if (pdfUrl()) {
+                  <iframe [src]="pdfUrl()" [title]="f.fileName"></iframe>
+                }
+              }
+              @case ('video') {
+                <video [src]="previewUrl() ?? ''" controls (error)="onMediaError()"></video>
+              }
+              @case ('audio') {
+                <audio [src]="previewUrl() ?? ''" controls (error)="onMediaError()"></audio>
+              }
+            }
+          </div>
+        }
+
+        <cove-button variant="primary" size="lg" icon="download" class="download"
+                     (click)="download()">
+          Download
+        </cove-button>
+
+        @if (downloadError()) {
+          <p class="error" role="alert">{{ downloadError() }}</p>
+        }
+      </div>
+    }
+
+    @case ('notfound') {
+      <div class="card status">
+        <cove-icon name="link-2-off" [size]="28" />
+        <h1>Link not found</h1>
+        <p>{{ message() }}</p>
+      </div>
+    }
+
+    @case ('gone') {
+      <div class="card status">
+        <cove-icon name="clock" [size]="28" />
+        <h1>Link unavailable</h1>
+        <p>{{ message() }}</p>
+      </div>
+    }
+
+    @case ('error') {
+      <div class="card status">
+        <cove-icon name="alert-circle" [size]="28" />
+        <h1>Something went wrong</h1>
+        <p>We couldn't load this file. Please try again later.</p>
+      </div>
+    }
+  }
+</section>

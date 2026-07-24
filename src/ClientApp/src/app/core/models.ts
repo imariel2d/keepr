@@ -62,6 +62,31 @@ export interface DownloadUrlResponse {
   expiresAt: string;
 }
 
+/** Public viewer metadata for a shared file (GET /api/share/{token}). No owner/internal ids. */
+export interface SharePublicResponse {
+  fileName: string;
+  contentType: string | null;
+  sizeBytes: number;
+  previewKind: PreviewKind | null;
+  expiresAt: string;
+}
+
+/** A newly created share link. `url` is shown once — the server stores only the token's hash. */
+export interface CreatedShareResponse {
+  linkId: string;
+  url: string;
+  expiresAt: string;
+}
+
+/** A share link for management. No URL: it can't be rebuilt from the stored digest. */
+export interface ShareLinkResponse {
+  linkId: string;
+  createdAt: string;
+  expiresAt: string;
+  revoked: boolean;
+  lastAccessedAt: string | null;
+}
+
 export interface FolderItem {
   id: string;
   name: string;
