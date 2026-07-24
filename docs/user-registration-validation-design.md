@@ -232,11 +232,19 @@ and users who understand that are likelier to change it than to argue with it.
 The server stays authoritative. The client mirrors the rules to avoid teaching them one failed
 submit at a time.
 
-- A live requirements checklist under the password field in register mode, covering **every** rule
-  the browser can evaluate: minimum length, the 72-byte maximum, and the email-reuse check. The
-  checklist also gates the submit button, so the client never sends something the server is certain
-  to reject. The byte rule matters more than it looks — it is the one a naive character count would
-  miss, since 19 emoji are 19 characters but 76 bytes.
+- A live requirement under the password field in register mode for the **minimum length only**,
+  which also gates the submit button.
+
+  Mirroring *every* checkable rule was tried and reverted. The 72-byte maximum and the email-reuse
+  rule are satisfied by any normal password without the user thinking about it, so as permanent
+  checklist lines they were pure noise — two rules you almost cannot break, displayed on every
+  signup, to save a round-trip that almost never happens. They stay enforced server-side and
+  surface as a message under the field on submit, which is the right ceremony for a rule you have
+  to go out of your way to break.
+
+  The rules dropped from the checklist were dropped from the submit gating too. Hiding a rule while
+  still letting it disable the button would produce a dead submit with no explanation — strictly
+  worse than the round-trip the checklist was meant to avoid.
 - **The breach check is not mirrored.** It would mean the browser sending password hash prefixes to
   a third party. Server-only, surfaced on submit.
 - **`autocomplete` is currently wrong**: `login.html` hardcodes `current-password` in both modes. In

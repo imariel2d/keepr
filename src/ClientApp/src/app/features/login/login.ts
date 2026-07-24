@@ -8,13 +8,6 @@ import { IconComponent } from '../../cove/lib/icon/icon.component';
 /** Mirrors PasswordPolicy.MinLength. The server stays the authority; this is only guidance. */
 const MIN_PASSWORD_LENGTH = 12;
 
-/**
- * Mirrors PasswordPolicy.MaxBytes. Bytes rather than characters because BCrypt truncates at 72
- * bytes server-side, so a passphrase in a non-Latin script can cross the limit well under 72
- * visible characters.
- */
-const MAX_PASSWORD_BYTES = 72;
-
 interface Requirement {
   readonly label: string;
   readonly met: boolean;
@@ -43,38 +36,21 @@ export class Login {
   protected readonly fieldErrors = signal<Record<string, string[]>>({});
 
   /**
-   * The rules that can be checked in the browser, shown live while registering so the user isn't
-   * told the requirements one failed submit at a time.
+   * Shown live while registering so the length rule — the one people actually hit — isn't learned
+   * from a failed submit.
    *
-   * Every rule the browser can evaluate is mirrored here, so `canSubmit` below never lets through
-   * something the server is certain to reject.
-   *
-   * The breach check is the one deliberate omission: mirroring it would mean the browser sending
-   * password hash prefixes to a third party. That one stays server-side and surfaces on submit.
+   * Only this rule is mirrored, deliberately. The 72-byte maximum, the email-reuse rule, and the
+   * breach check are all still enforced server-side; they are simply not worth a permanent line of
+   * UI each, because a normal password satisfies all three without trying. They surface as a
+   * message under the field on submit, which is the right amount of ceremony for a rule you have
+   * to go out of your way to break.
    */
-  protected readonly requirements = computed<Requirement[]>(() => {
-    const password = this.password();
-    const local = this.email().split('@')[0]?.toLowerCase() ?? '';
-
-    return [
-      {
-        label: `At least ${MIN_PASSWORD_LENGTH} characters`,
-        met: [...password].length >= MIN_PASSWORD_LENGTH,
-      },
-      {
-        label: `At most ${MAX_PASSWORD_BYTES} bytes (about ${MAX_PASSWORD_BYTES} characters)`,
-        met:
-          password.length > 0 &&
-          new TextEncoder().encode(password).length <= MAX_PASSWORD_BYTES,
-      },
-      {
-        label: "Doesn't contain your email",
-        met:
-          password.length > 0 &&
-          (local.length < 3 || !password.toLowerCase().includes(local)),
-      },
-    ];
-  });
+  protected readonly requirements = computed<Requirement[]>(() => [
+    {
+      label: `At least ${MIN_PASSWORD_LENGTH} characters`,
+      met: [...this.password()].length >= MIN_PASSWORD_LENGTH,
+    },
+  ]);
 
   protected readonly canSubmit = computed(
     () => this.mode() === 'login' || this.requirements().every((r) => r.met)
