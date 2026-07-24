@@ -39,13 +39,13 @@ public class PublicShareController(
     /// </summary>
     [HttpGet("{token}")]
     [ProducesResponseType<SharePublicResponse>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status410Gone)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status410Gone)]
     public async Task<IActionResult> Resolve(string token, CancellationToken ct)
     {
         var result = await shares.ResolveAsync(token, ct);
-        if (result.Status == ShareResolveStatus.NotFound) return NotFound();
-        if (result.Status == ShareResolveStatus.Gone) return Gone();
+        if (result.Status == ShareResolveStatus.NotFound) return LinkNotFound();
+        if (result.Status == ShareResolveStatus.Gone) return LinkUnavailable();
 
         var file = result.File!;
         return Ok(new SharePublicResponse(
@@ -60,15 +60,15 @@ public class PublicShareController(
     /// </summary>
     [HttpGet("{token}/download-url")]
     [ProducesResponseType<ShareDownloadUrlResponse>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status410Gone)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status410Gone)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status415UnsupportedMediaType)]
     public async Task<IActionResult> DownloadUrl(
         string token, [FromQuery] string? disposition, CancellationToken ct)
     {
         var result = await shares.ResolveAsync(token, ct);
-        if (result.Status == ShareResolveStatus.NotFound) return NotFound();
-        if (result.Status == ShareResolveStatus.Gone) return Gone();
+        if (result.Status == ShareResolveStatus.NotFound) return LinkNotFound();
+        if (result.Status == ShareResolveStatus.Gone) return LinkUnavailable();
 
         var file = result.File!;
         var inline = string.Equals(disposition, "inline", StringComparison.OrdinalIgnoreCase);
@@ -90,8 +90,20 @@ public class PublicShareController(
             PresignExpiry));
     }
 
-    /// <summary>410 Gone: the link was valid entropy but no longer works — expired, revoked, or its
-    /// file was removed. Distinct from 404 (never existed), which the unguessable token makes safe
-    /// to expose.</summary>
-    private IActionResult Gone() => StatusCode(StatusCodes.Status410Gone);
+    /// <summary>
+    /// 404 for an unknown token. The public viewer has no context of its own, so — unlike the
+    /// owner API, which returns a bare NotFound for a missing resource — these carry a problem+json
+    /// message the page can render directly.
+    /// </summary>
+    private IActionResult LinkNotFound() =>
+        Problem("This share link doesn't exist.", statusCode: StatusCodes.Status404NotFound);
+
+    /// <summary>
+    /// 410 Gone: the token was valid entropy but the link no longer works — expired, revoked, its
+    /// file was removed, or sharing is disabled. The message stays generic across those causes so
+    /// it never claims a reason that isn't the real one. Distinct from 404 (never existed), which
+    /// the unguessable token makes safe to expose.
+    /// </summary>
+    private IActionResult LinkUnavailable() =>
+        Problem("This share link is no longer available.", statusCode: StatusCodes.Status410Gone);
 }
