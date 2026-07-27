@@ -58,9 +58,14 @@ public class AdminController(
 
         var total = await db.Users.CountAsync(ct);
 
+        // Compute the offset in long space and cap it at the row count: a huge `page` would
+        // otherwise overflow int in (page - 1) * pageSize and wrap to a negative OFFSET, which
+        // Postgres rejects. Past the last page this caps at Skip(total) — an empty final page.
+        var skip = (int)Math.Min((long)(page - 1) * pageSize, total);
+
         var items = await db.Users
             .OrderByDescending(u => u.CreatedAt)
-            .Skip((page - 1) * pageSize)
+            .Skip(skip)
             .Take(pageSize)
             .Select(u => new AdminUserListItem(
                 u.Id, u.Email, u.Role.ToString(), u.QuotaBytes, u.UsedBytes,
