@@ -174,6 +174,14 @@ public class AdminController(
         await db.Database.ExecuteSqlRawAsync(
             $"SELECT 1 FROM {AppDbContext.Schema}.\"Users\" WHERE \"Id\" = {{0}} FOR UPDATE", [id], ct);
 
+        // Re-check under the lock. The pre-lock idempotency check above can race a concurrent kick
+        // that set DeletionRequestedAt (or finished the wipe) after we loaded the user; the FOR
+        // UPDATE serialises us behind it, so reload and bail idempotently rather than revoke again
+        // and write a duplicate UserKicked audit row.
+        await db.Entry(user).ReloadAsync(ct);
+        if (db.Entry(user).State == EntityState.Detached || user.DeletionRequestedAt is not null)
+            return Accepted();
+
         // Access is gone the instant this commits, before a single byte is touched.
         await db.Sessions
             .Where(s => s.UserId == id && s.RevokedAt == null)
