@@ -72,13 +72,29 @@ public class AuthController(
         if (user is null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
             return Problem("Invalid credentials.", statusCode: StatusCodes.Status401Unauthorized);
 
-        // A kicked account still has a row until the background wipe removes it. Refuse login in
-        // that window — reported as invalid credentials, not "account removed", so the endpoint
-        // stays a poor oracle for account state. See docs/admin-console-design.md §4.2.
-        if (user.DeletionRequestedAt is not null)
+        // Serialize issuing a session against a concurrent kick on the *same user row*. Without
+        // this, a login that passed the deletion check could insert its session just after
+        // KickUser revoked all existing ones, leaving the kicked account with a live session.
+        // Both paths take FOR UPDATE on the row, so they cannot interleave: either the kick's
+        // revocation runs after this session exists (and revokes it too), or the re-read below —
+        // under the lock, hence AsNoTracking for the row's committed value — sees the account
+        // already marked and refuses. See docs/admin-console-design.md §4.2.
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var locked = await db.Users
+            .FromSqlRaw($"SELECT * FROM {AppDbContext.Schema}.\"Users\" WHERE \"Id\" = {{0}} FOR UPDATE", user.Id)
+            .AsNoTracking()
+            .SingleOrDefaultAsync(ct);
+
+        // A kicked account still has a row until the background wipe removes it (and the wipe may
+        // have removed it between the read above and this lock). Either way, refuse — reported as
+        // invalid credentials, not "account removed", so the endpoint stays a poor oracle for
+        // account state.
+        if (locked is null || locked.DeletionRequestedAt is not null)
             return Problem("Invalid credentials.", statusCode: StatusCodes.Status401Unauthorized);
 
-        return await StartSession(user, ct);
+        var result = await StartSession(locked, ct);
+        await tx.CommitAsync(ct);
+        return result;
     }
 
     /// <summary>

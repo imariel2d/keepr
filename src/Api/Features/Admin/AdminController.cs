@@ -168,6 +168,12 @@ public class AdminController(
         var now = clock.GetUtcNow();
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
+        // Take the same FOR UPDATE lock the login path holds while issuing a session, so a
+        // concurrent login cannot slip a new session in between this revocation and the commit.
+        // See docs/admin-console-design.md §4.2 and AuthController.Login.
+        await db.Database.ExecuteSqlRawAsync(
+            $"SELECT 1 FROM {AppDbContext.Schema}.\"Users\" WHERE \"Id\" = {{0}} FOR UPDATE", [id], ct);
+
         // Access is gone the instant this commits, before a single byte is touched.
         await db.Sessions
             .Where(s => s.UserId == id && s.RevokedAt == null)
