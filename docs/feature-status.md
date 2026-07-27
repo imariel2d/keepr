@@ -100,7 +100,8 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 
 - **Done (8):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
   rename/delete, trash, in-browser preview.
-- **Not started (26):** everything else. **Tier 1 is complete.**
+- **In progress (1):** #34 admin console — backend done, Angular UI pending.
+- **Not started (25):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2
 

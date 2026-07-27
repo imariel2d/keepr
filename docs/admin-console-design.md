@@ -31,7 +31,9 @@ In scope for this pass:
 1. A **role model** — `Admin` and `User`.
 2. **First-admin bootstrap** from environment variables.
 3. Admin **lists accounts** and **adjusts anyone's quota**.
-4. Admin **removes an account** ("kick"), which **wipes all of that user's files immediately**.
+4. Admin **removes an account** ("kick") — **access is revoked immediately**, and the user's files
+   and the account itself are then **hard-deleted asynchronously** after the kick is queued
+   (irreversibly, bypassing the 10-day trash grace — no recovery window).
 5. A **basic audit trail** of admin actions.
 
 ---
@@ -148,8 +150,10 @@ New `AdminController` at `api/admin`, entirely `[Authorize(Policy = "Admin")]`.
 
 ### 4.2 Kick — remove access and wipe files
 
-Decided semantics (Ariel, 2026-07-24): **full account deletion** and **immediate, irreversible
-hard delete** of all files — bypassing the normal 10-day trash grace.
+Decided semantics (Ariel, 2026-07-24): **full account deletion** and an **irreversible hard delete**
+of all files, **bypassing the normal 10-day trash grace** (no recovery window). "Bypassing the
+grace" is about *reversibility*, not *timing*: **access is revoked immediately**, but the hard
+delete itself is **asynchronous** — the kick only queues it, and a background sweep carries it out.
 
 A user may own thousands of objects, so this is **not** done entirely in the request. Two phases:
 
