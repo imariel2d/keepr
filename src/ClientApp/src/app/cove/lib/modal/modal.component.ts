@@ -17,10 +17,10 @@ import { IconButtonComponent } from '../icon-button/icon-button.component';
           <div [ngStyle]="{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '18px', color: 'var(--text-primary)' }">{{ title }}</div>
           <cove-icon-button icon="x" label="Close" (click)="close.emit()"></cove-icon-button>
         </div>
-        <div [ngStyle]="{ padding: '20px', overflowY: 'auto' }"><ng-content></ng-content></div>
-        <div [ngStyle]="{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 20px', borderTop: '1px solid var(--border-subtle)' }">
-          <ng-content select="[footer]"></ng-content>
-        </div>
+        <!-- Body is a flex column with a gap so the trailing action row (the .foot div) is
+             always separated from the content above it. Every modal in the app follows the
+             [content block, .foot] shape, so one gap lands exactly between them. -->
+        <div [ngStyle]="{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '20px', overflowY: 'auto' }"><ng-content></ng-content></div>
       </div>
     </div>`,
 })
