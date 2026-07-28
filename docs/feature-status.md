@@ -3,8 +3,8 @@
 Tracking the planned feature set against what is actually implemented in the codebase.
 
 Keepr is a **personal media store** with a folder hierarchy, rename, and a 10-day trash:
-single-owner (no sharing yet). Of the 33 planned features, **9 are complete** (backend + UI)
-and 24 are not started.
+single-owner (no user-to-user sharing yet). Of the 34 planned features, **10 are complete**
+(backend + UI) and 24 are not started.
 
 **Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
@@ -42,6 +42,7 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 | 27 | Change email | ❌ | `Email` is already unique + normalized (`AppDbContext`). A change must re-run `EmailPolicy` and, once #26's verification exists, re-verify the new address before it takes effect |
 | 28 | Change password | ❌ | Needs current-password confirmation, re-runs `PasswordPolicy` + the breach check, re-hashes with BCrypt, and revokes the user's other sessions — "sign out everywhere" is nearly free given the `Sessions` table ([cookie-session-design.md](cookie-session-design.md) Q-C3) |
 | 29 | Profile: first & last name | ❌ | `User` has no name fields today (`src/Api/Domain/User.cs`) — needs a migration plus a `PATCH /api/me` (`MeController` is GET-only). `cove-avatar` already derives initials from a whitespace-split name, so first + last would populate it |
+| 34 | Admin panel — account administration | ✅ | **Backend + Angular UI done.** Design: [admin-console-design.md](admin-console-design.md). Introduces the **role/authorization model** (`Role` enum on `User`, a `role` claim, an `"Admin"` policy) that was the hard prerequisite, plus an env-driven first-admin bootstrap (`AdminSeeder`). `AdminController` lists accounts, adjusts quota, and kicks (`DELETE` revokes sessions + marks for deletion; `AccountWipeService` then hard-deletes all files and the account). Audited to `AdminActionLogs`. Force sign-out as a standalone action is deferred (Q-A3); reset-password/disable are covered by the self-service items above. This is the account-focused slice of the broader **#21** admin console |
 
 ## Localization
 
@@ -96,8 +97,8 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 
 ## Summary
 
-- **Done (9):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
-  rename/delete, trash, in-browser preview, shareable links.
+- **Done (10):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
+  rename/delete, trash, in-browser preview, shareable links, admin console.
 - **Not started (24):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2

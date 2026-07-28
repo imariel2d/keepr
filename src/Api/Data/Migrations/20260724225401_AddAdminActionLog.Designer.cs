@@ -3,6 +3,7 @@ using System;
 using Keepr.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Keepr.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260724225401_AddAdminActionLog")]
+    partial class AddAdminActionLog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -236,45 +239,6 @@ namespace Keepr.Api.Data.Migrations
                     b.ToTable("Sessions", "keepr");
                 });
 
-            modelBuilder.Entity("Keepr.Api.Domain.ShareLink", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset?>("LastAccessedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("MediaFileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("RevokedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MediaFileId");
-
-                    b.HasIndex("Token")
-                        .IsUnique();
-
-                    b.ToTable("ShareLinks", "keepr");
-                });
-
             modelBuilder.Entity("Keepr.Api.Domain.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -282,9 +246,6 @@ namespace Keepr.Api.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset?>("DeletionRequestedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
@@ -362,17 +323,6 @@ namespace Keepr.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Keepr.Api.Domain.ShareLink", b =>
-                {
-                    b.HasOne("Keepr.Api.Domain.MediaFile", "File")
-                        .WithMany()
-                        .HasForeignKey("MediaFileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("File");
                 });
 
             modelBuilder.Entity("Keepr.Api.Domain.Folder", b =>

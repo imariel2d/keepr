@@ -1,0 +1,106 @@
+<section class="admin">
+  <header class="head">
+    <h1>Accounts</h1>
+    @if (!loading()) { <span class="count">{{ total() }} total</span> }
+  </header>
+
+  @if (notice()) {
+    <p class="notice" role="status">
+      <cove-icon name="check" [size]="15" /> {{ notice() }}
+    </p>
+  }
+
+  @if (loading()) {
+    <p class="muted">Loading accounts…</p>
+  } @else if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  } @else {
+    <div class="table-wrap">
+      <table class="users">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Storage</th>
+            <th class="num">Sessions</th>
+            <th>Joined</th>
+            <th class="actions-col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of users(); track u.id) {
+            <tr>
+              <td class="email">{{ u.email }}@if (isSelf(u)) { <span class="you">you</span> }</td>
+              <td><span class="badge" [attr.data-role]="u.role">{{ u.role }}</span></td>
+              <td class="storage">{{ u.usedBytes | bytes }} <span class="of">of</span> {{ u.quotaBytes | bytes }}</td>
+              <td class="num">{{ u.activeSessions }}</td>
+              <td class="muted">{{ formatDate(u.createdAt) }}</td>
+              <td class="row-actions">
+                <cove-button variant="ghost" size="sm" icon="sliders-horizontal"
+                             (click)="openQuota(u)">Quota</cove-button>
+                <cove-button variant="ghost" size="sm" icon="user-x" [disabled]="isSelf(u)"
+                             (click)="openKick(u)">Remove</cove-button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="pager">
+      <span class="muted">Showing {{ rangeStart() }}–{{ rangeEnd() }} of {{ total() }}</span>
+      <div class="buttons">
+        <cove-button variant="secondary" size="sm" icon="chevron-left"
+                     [disabled]="!hasPrev()" (click)="go(-1)">Prev</cove-button>
+        <cove-button variant="secondary" size="sm" icon="chevron-right" iconPosition="right"
+                     [disabled]="!hasNext()" (click)="go(1)">Next</cove-button>
+      </div>
+    </footer>
+  }
+</section>
+
+<!-- Set quota -->
+<cove-modal [open]="quotaTarget() !== null" [title]="'Set storage quota'" [width]="440"
+            (close)="quotaTarget.set(null)">
+  @if (quotaTarget(); as u) {
+    <div class="dialog">
+      <p class="dialog-sub">{{ u.email }} — currently using {{ u.usedBytes | bytes }}.</p>
+      <label class="field">
+        <span>New quota (GB)</span>
+        <cove-input type="number" [value]="quotaGb()" (valueChange)="quotaGb.set($event)" />
+      </label>
+      <p class="hint">Setting it below current usage is allowed — it just blocks new uploads.</p>
+      @if (dialogError()) { <p class="error" role="alert">{{ dialogError() }}</p> }
+    </div>
+    <div class="foot">
+      <cove-button variant="ghost" (click)="quotaTarget.set(null)">Cancel</cove-button>
+      <cove-button variant="primary" [disabled]="saving()" (click)="saveQuota()">Save</cove-button>
+    </div>
+  }
+</cove-modal>
+
+<!-- Remove account -->
+<cove-modal [open]="kickTarget() !== null" [title]="'Remove account'" [width]="460"
+            (close)="kickTarget.set(null)">
+  @if (kickTarget(); as u) {
+    <div class="dialog">
+      <p>Remove <strong>{{ u.email }}</strong>?</p>
+      <p class="danger-note">
+        <cove-icon name="alert-triangle" [size]="15" />
+        This signs them out immediately and permanently deletes their account and all files —
+        including trash. There is no recovery.
+      </p>
+      <label class="field">
+        <span>Type <strong>{{ u.email }}</strong> to confirm</span>
+        <cove-input [value]="kickConfirm()" (valueChange)="kickConfirm.set($event)" />
+      </label>
+      @if (dialogError()) { <p class="error" role="alert">{{ dialogError() }}</p> }
+    </div>
+    <div class="foot">
+      <cove-button variant="ghost" (click)="kickTarget.set(null)">Cancel</cove-button>
+      <cove-button variant="danger" [disabled]="kicking() || !kickReady()" (click)="confirmKick()">
+        Remove account
+      </cove-button>
+    </div>
+  }
+</cove-modal>

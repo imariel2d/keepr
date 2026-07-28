@@ -11,6 +11,10 @@ public class User
     public string Email { get; set; } = default!;
     public string PasswordHash { get; set; } = default!;
 
+    /// <summary>Authorization level. Defaults to <see cref="Role.User"/>; only the bootstrap
+    /// admin or an existing admin's promotion sets <see cref="Role.Admin"/>.</summary>
+    public Role Role { get; set; } = Role.User;
+
     /// <summary>Total storage the user is allowed. Default 5 GB.</summary>
     public long QuotaBytes { get; set; } = 5L * 1024 * 1024 * 1024;
 
@@ -18,6 +22,14 @@ public class User
     public long UsedBytes { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>
+    /// Set when an admin kicks this account. From this moment the account is disabled — login is
+    /// refused and its sessions are already revoked — and the background <c>AccountWipeService</c>
+    /// hard-deletes every file it owns before removing the row. Null for a normal, live account.
+    /// See docs/admin-console-design.md §4.2.
+    /// </summary>
+    public DateTimeOffset? DeletionRequestedAt { get; set; }
 
     public ICollection<MediaFile> Files { get; set; } = new List<MediaFile>();
     public ICollection<Session> Sessions { get; set; } = new List<Session>();

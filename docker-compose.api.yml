@@ -1,11 +1,10 @@
-# Overlay that adds the API to the local stack, so the whole backend
-# (API + Postgres + MinIO) runs in Docker while the Angular SPA stays on the
-# host with `npm start` for hot reload.
+# Overlay that adds the whole app to the local stack, so `docker compose up` runs everything —
+# API + Angular client + Postgres + MinIO — with nothing left on the host.
 #
 #   docker compose -f docker-compose.yml -f docker-compose.api.yml up -d --build
 #
-# The API hot-reloads too: src/Api is bind-mounted and the container runs
-# `dotnet watch` (see src/Api/Dockerfile.dev).
+# Both app tiers hot-reload: src/Api is bind-mounted under `dotnet watch` (Dockerfile.dev), and
+# src/ClientApp is bind-mounted under `ng serve`. Open the app at http://localhost:4200.
 services:
   api:
     build:
@@ -23,6 +22,9 @@ services:
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=media;Username=media;Password=media"
       # Invite code required to register. Empty would close signups entirely.
       Registration__InviteCode: keepr-dev
+      # Seed a dev admin so /admin is reachable without a manual role promote (local-only creds).
+      Admin__Email: admin@keepr.local
+      Admin__Password: keepr-dev-admin
       Storage__AccessKey: minioadmin
       Storage__SecretKey: minioadmin
       Storage__Bucket: media
@@ -43,5 +45,27 @@ services:
       # Persist the NuGet cache so restores after `down` stay fast.
       - nuget:/root/.nuget/packages
 
+  # Angular dev server. Serves the SPA on 4200 and proxies /api and /health to the api container.
+  # The browser still loads everything from http://localhost:4200, so MinIO's CORS allow-origin
+  # (see docker-compose.yml) is unchanged.
+  client:
+    image: node:22-slim
+    working_dir: /app
+    depends_on:
+      - api
+    environment:
+      # Inside the container, localhost is the container — reach the API by its compose name.
+      API_PROXY_TARGET: "http://api:5080"
+    # Install deps into the named volume on first run (it shadows the host's node_modules, so a
+    # Windows/macOS host's native binaries never leak into the Linux container), then serve.
+    # --poll: bind-mount file events aren't delivered reliably across the Docker boundary.
+    command: sh -c "npm install && npm start -- --host 0.0.0.0 --poll 2000"
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./src/ClientApp:/app
+      - client_node_modules:/app/node_modules
+
 volumes:
   nuget:
+  client_node_modules:

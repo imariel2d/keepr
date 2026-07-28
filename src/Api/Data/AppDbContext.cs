@@ -16,6 +16,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ShareLink> ShareLinks => Set<ShareLink>();
     public DbSet<MediaFile> MediaFiles => Set<MediaFile>();
     public DbSet<Folder> Folders => Set<Folder>();
+    public DbSet<AdminActionLog> AdminActionLogs => Set<AdminActionLog>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -31,6 +32,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Email).IsUnique();
             e.Property(x => x.Email).HasMaxLength(320).IsRequired();
             e.Property(x => x.PasswordHash).IsRequired();
+
+            // Stored as a string like MediaFile.Status, so the column reads 'User'/'Admin' rather
+            // than an opaque int. The default backfills every pre-existing row to User — no
+            // account is silently promoted by the migration.
+            e.Property(x => x.Role).HasConversion<string>().HasMaxLength(16)
+                .HasDefaultValue(Role.User);
         });
 
         b.Entity<Session>(e =>
@@ -152,6 +159,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasFilter($"\"{nameof(Folder.DeletedAt)}\" IS NOT NULL");
 
             e.HasQueryFilter(x => x.DeletedAt == null);
+        });
+
+        b.Entity<AdminActionLog>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            // Deliberately no FK to Users on either actor or target: audit rows outlive the
+            // accounts they describe (a kick deletes its target). Emails are denormalized
+            // snapshots so the log stands alone. See docs/admin-console-design.md §5.
+            e.Property(x => x.ActorEmail).HasMaxLength(320).IsRequired();
+            e.Property(x => x.TargetEmail).HasMaxLength(320).IsRequired();
+            e.Property(x => x.Action).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.Details).HasColumnType("jsonb");
+
+            // The audit view lists a target's history newest-first.
+            e.HasIndex(x => new { x.TargetUserId, x.CreatedAt });
         });
     }
 }

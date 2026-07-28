@@ -1,4 +1,5 @@
 using Keepr.Api.Data;
+using Keepr.Api.Domain;
 using Keepr.Api.Features.Auth;
 using Keepr.Api.Features.Sharing;
 using Keepr.Api.OpenApi;
@@ -16,6 +17,7 @@ builder.Services.Configure<QuotaOptions>(builder.Configuration.GetSection(QuotaO
 builder.Services.Configure<CleanupOptions>(builder.Configuration.GetSection(CleanupOptions.SectionName));
 builder.Services.Configure<RegistrationOptions>(builder.Configuration.GetSection(RegistrationOptions.SectionName));
 builder.Services.Configure<ShareOptions>(builder.Configuration.GetSection(ShareOptions.SectionName));
+builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection(AdminOptions.SectionName));
 
 // ---- Persistence -----------------------------------------------------------
 // Resolve from ConnectionStrings:Postgres (key-value or postgres:// URI) or discrete Db:* fields.
@@ -78,6 +80,11 @@ builder.Services.AddSingleton<SessionCookie>();
 // allow-list, an approval queue) without touching AuthController.
 builder.Services.AddScoped<IRegistrationGate, InviteCodeRegistrationGate>();
 
+// Seeds the first admin at startup (env Admin__Email/Password) so the console is reachable on a
+// fresh deployment where signups are invite-gated. See docs/admin-console-design.md §3.
+builder.Services.AddScoped<AdminSeeder>();
+builder.Services.AddScoped<AdminAuditService>();
+
 // Rejects passwords found in the Have I Been Pwned corpus. Only a 5-character hash prefix ever
 // leaves the process (k-anonymity), and the check fails OPEN — a third party's outage must not be
 // able to close registration. See docs/user-registration-validation-design.md (§5.3).
@@ -96,6 +103,7 @@ builder.Services.AddScoped<TrashService>();
 builder.Services.AddScoped<ShareLinkService>();
 builder.Services.AddHostedService<UploadCleanupService>();
 builder.Services.AddHostedService<TrashPurgeService>();
+builder.Services.AddHostedService<AccountWipeService>();
 
 // ---- Auth ------------------------------------------------------------------
 // The session lives in an HttpOnly cookie holding an opaque id, not a JWT: a JWT stays valid
@@ -104,7 +112,13 @@ builder.Services.AddHostedService<TrashPurgeService>();
 builder.Services.AddAuthentication(SessionAuthenticationHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, SessionAuthenticationHandler>(
         SessionAuthenticationHandler.SchemeName, null);
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // The privileged gate for /api/admin. RequireClaim over the role emitted by the session
+    // handler: a User-role caller is authenticated but 403s, anonymous 401s. See
+    // docs/admin-console-design.md §2.2.
+    options.AddPolicy("Admin", p => p.RequireClaim(KeeprClaims.Role, nameof(Role.Admin)));
+});
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -120,6 +134,9 @@ using (var scope = app.Services.CreateScope())
     // owner can create a schema even when CREATE on "public" is denied (managed Postgres).
     db.Database.ExecuteSqlRaw($"CREATE SCHEMA IF NOT EXISTS \"{AppDbContext.Schema}\"");
     db.Database.Migrate();
+
+    // After migrations so the Role column exists: make sure the instance has an admin.
+    await scope.ServiceProvider.GetRequiredService<AdminSeeder>().EnsureSeededAsync();
 }
 
 // OpenAPI spec at /openapi/v1.json and Swagger UI at /swagger (Development only).
