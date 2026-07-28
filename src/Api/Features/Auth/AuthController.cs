@@ -17,8 +17,10 @@ public record LoginRequest(string Email, string Password);
 /// <summary>
 /// Who the caller is. Carries no credential: the session lives in an HttpOnly cookie that
 /// JavaScript cannot read, so this is the client's only way to answer "am I signed in?".
+/// <paramref name="Role"/> ("User"/"Admin") lets the client gate admin-only UI — the server still
+/// enforces access on every /api/admin call, so this is for presentation, not security.
 /// </summary>
-public record SessionResponse(string Email);
+public record SessionResponse(string Email, string Role);
 
 [ApiController]
 [Route("api/auth")]
@@ -123,7 +125,9 @@ public class AuthController(
     [ProducesResponseType<SessionResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public ActionResult<SessionResponse> Current() =>
-        new SessionResponse(User.FindFirst(KeeprClaims.Email)?.Value ?? string.Empty);
+        new SessionResponse(
+            User.FindFirst(KeeprClaims.Email)?.Value ?? string.Empty,
+            User.FindFirst(KeeprClaims.Role)?.Value ?? nameof(Role.User));
 
     /// <summary>
     /// Applies the email and password rules, returning a 400 when anything fails and null when
@@ -171,7 +175,7 @@ public class AuthController(
             ct);
 
         cookie.Set(Response, token);
-        return Ok(new SessionResponse(user.Email));
+        return Ok(new SessionResponse(user.Email, user.Role.ToString()));
     }
 }
 

@@ -17,6 +17,9 @@ export class AuthService {
   private readonly user = signal<SessionResponse | null>(null);
   readonly isAuthenticated = computed(() => this.user() !== null);
   readonly email = computed(() => this.user()?.email ?? null);
+  /** Gates admin-only UI. The server enforces every /api/admin call regardless — this is for
+   *  presentation, so a non-admin simply never sees the console. */
+  readonly isAdmin = computed(() => this.user()?.role === 'Admin');
 
   /**
    * Cached so the probe runs once per app load however many guards await it. Without the cache

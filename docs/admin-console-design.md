@@ -4,7 +4,8 @@
 > #21 admin console. Status: **backend implemented** (`src/Api/Features/Admin/AdminController.cs`,
 > `Services/AdminAuditService.cs`, `Services/AccountWipeService.cs`, `Features/Auth/AdminSeeder.cs`;
 > migrations `AddUserRole`, `AddAdminActionLog`, `AddUserDeletionRequestedAt`). **Angular UI (§6)
-> pending.**
+> implemented** (`src/ClientApp/src/app/features/admin/`, `core/admin.service.ts`,
+> `core/admin.guard.ts`; `SessionResponse` extended with `role`).
 >
 > Decided by Ariel, 2026-07-24. This doc introduces the **role/authorization model** that #34
 > names as its hard prerequisite ("every account is an equal owner today"), and specifies the
@@ -255,6 +256,12 @@ see the entry point, and the API refuses them regardless.
 
 `SessionResponse` gaining `role` is the one auth-contract change the SPA depends on; everything else
 is new endpoints.
+
+**List excludes kicked accounts.** `GET /api/admin/users` (and `GET /api/admin/users/{id}`) filter
+out rows whose `DeletionRequestedAt` is set. A kick only *queues* the hard delete (the async
+`AccountWipeService` removes the row later), so without this filter a just-removed account would
+linger in the table — contradicting the "removed" toast and inviting a confusing second kick. From
+the admin's point of view a kicked account is gone the moment the toast appears.
 
 ---
 

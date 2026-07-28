@@ -1,9 +1,33 @@
 // API contract types. Mirror the DTOs in src/Api/Features/*.
 // Full contract + behaviour notes: docs/api-changes-frontend.md.
 
-/** Who the caller is. Carries no token: the session is an HttpOnly cookie the client can't read. */
+export type Role = 'User' | 'Admin';
+
+/** Who the caller is. Carries no token: the session is an HttpOnly cookie the client can't read.
+ *  `role` gates admin-only UI; the server still enforces every /api/admin call. */
 export interface SessionResponse {
   email: string;
+  role: Role;
+}
+
+/** One account in the admin users table. `activeSessions` = live (not revoked, not expired). */
+export interface AdminUserListItem {
+  id: string;
+  email: string;
+  role: Role;
+  quotaBytes: number;
+  usedBytes: number;
+  remainingBytes: number;
+  createdAt: string;
+  activeSessions: number;
+}
+
+/** A page of results plus the total, so the table can show "1–50 of 213". */
+export interface PagedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface Usage {

@@ -56,14 +56,19 @@ public class AdminController(
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
         var now = clock.GetUtcNow();
 
-        var total = await db.Users.CountAsync(ct);
+        // Exclude accounts already kicked (deletion pending): they are gone from the admin's point
+        // of view, and the background wipe removes the row shortly. Showing them would make a just-
+        // removed account linger in the table and invite a confusing second kick.
+        var visible = db.Users.Where(u => u.DeletionRequestedAt == null);
+
+        var total = await visible.CountAsync(ct);
 
         // Compute the offset in long space and cap it at the row count: a huge `page` would
         // otherwise overflow int in (page - 1) * pageSize and wrap to a negative OFFSET, which
         // Postgres rejects. Past the last page this caps at Skip(total) — an empty final page.
         var skip = (int)Math.Min((long)(page - 1) * pageSize, total);
 
-        var items = await db.Users
+        var items = await visible
             .OrderByDescending(u => u.CreatedAt)
             .Skip(skip)
             .Take(pageSize)
@@ -84,7 +89,8 @@ public class AdminController(
     public async Task<ActionResult<AdminUserDetail>> GetUser(Guid id, CancellationToken ct)
     {
         var user = await db.Users.FindAsync([id], ct);
-        if (user is null) return NotFound();
+        // A kicked account (deletion pending) is gone from the admin's view — see ListUsers.
+        if (user is null || user.DeletionRequestedAt is not null) return NotFound();
 
         var trashed = await trash.TrashedBytesAsync(id, ct);
         var active = await db.Sessions.CountAsync(
