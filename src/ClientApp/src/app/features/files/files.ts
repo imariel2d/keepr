@@ -83,7 +83,6 @@ export class Files {
   }
 
   private readonly moveDialog = viewChild(MoveDialog);
-  private readonly shareDialog = viewChild(ShareDialog);
 
   /** Current folder from the URL; null at the root. */
   protected readonly folderId = toSignal(
@@ -327,7 +326,8 @@ export class Files {
   protected openShare(target: DragPayload): void {
     this.shareTarget.set(target);
     this.shareOpen.set(true);
-    void this.shareDialog()?.load();
+    // The dialog loads itself once its [open]/[fileId] inputs are set (see ShareDialog.ngOnChanges).
+    // Calling load() here ran before the [fileId] binding flushed, so it fetched /api/media//shares.
   }
 
   protected async onMoveConfirmed(destination: string | null): Promise<void> {

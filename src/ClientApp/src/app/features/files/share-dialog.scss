@@ -62,6 +62,12 @@
     align-items: center;
     gap: var(--space-2);
 
+    .copied {
+      font-size: var(--text-sm);
+      font-weight: var(--weight-medium);
+      color: var(--success, var(--accent));
+    }
+
     select {
       height: 32px;
       padding: 0 var(--space-2);

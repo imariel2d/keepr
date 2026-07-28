@@ -1,8 +1,9 @@
-import { Component, EventEmitter, Input, Output, computed, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, computed, inject, signal } from '@angular/core';
 import { ShareService } from '../../core/share.service';
 import { ShareLinkResponse } from '../../core/models';
 import { ButtonComponent } from '../../cove/lib/button/button.component';
-import { IconComponent } from '../../cove/lib/icon/icon.component';
+import { IconButtonComponent } from '../../cove/lib/icon-button/icon-button.component';
+import { ContextMenuComponent, ContextMenuItem } from '../../cove/lib/context-menu/context-menu.component';
 import { ModalComponent } from '../../cove/lib/modal/modal.component';
 
 interface ExpiryOption {
@@ -25,7 +26,7 @@ const EXPIRY_OPTIONS: ExpiryOption[] = [
  */
 @Component({
   selector: 'app-share-dialog',
-  imports: [ModalComponent, ButtonComponent, IconComponent],
+  imports: [ModalComponent, ButtonComponent, IconButtonComponent, ContextMenuComponent],
   template: `
     <cove-modal [open]="open" [title]="'Share ' + fileName" [width]="560" (close)="close.emit()">
       <div class="share-body">
@@ -58,23 +59,17 @@ const EXPIRY_OPTIONS: ExpiryOption[] = [
                   <span class="dates">Expires {{ formatDate(link.expiresAt) }}</span>
                 </div>
                 <div class="link-actions">
-                  @if (status(link) === 'Active') {
-                    <cove-button variant="secondary" size="sm"
-                                 [icon]="copiedId() === link.linkId ? 'check' : 'copy'"
-                                 (click)="copy(link)">
-                      {{ copiedId() === link.linkId ? 'Copied' : 'Copy link' }}
-                    </cove-button>
-                  }
                   <select [value]="''" (change)="extend(link, $event)" title="Change expiry">
                     <option value="" disabled>Change expiry…</option>
                     @for (o of options; track o.days) {
                       <option [value]="o.days">{{ o.label }}</option>
                     }
                   </select>
-                  <cove-button variant="ghost" size="sm" icon="x" [disabled]="busy()"
-                               (click)="revoke(link)">
-                    Revoke
-                  </cove-button>
+                  @if (copiedId() === link.linkId) {
+                    <span class="copied">Copied</span>
+                  }
+                  <cove-icon-button icon="more-vertical" label="Link actions" [size]="32"
+                                    (click)="openLinkMenu(link, $event)" />
                 </div>
               </div>
             }
@@ -95,10 +90,17 @@ const EXPIRY_OPTIONS: ExpiryOption[] = [
         <cove-button variant="ghost" (click)="close.emit()">Done</cove-button>
       </div>
     </cove-modal>
+
+    <cove-context-menu
+      [open]="menuOpen()"
+      [x]="menuX()"
+      [y]="menuY()"
+      [items]="menuItems()"
+      (closed)="menuOpen.set(false)" />
   `,
   styleUrl: './share-dialog.scss',
 })
-export class ShareDialog {
+export class ShareDialog implements OnChanges {
   private readonly api = inject(ShareService);
 
   @Input() open = false;
@@ -115,13 +117,31 @@ export class ShareDialog {
   protected readonly loading = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
-  /** The link whose "Copy link" was just clicked, so only that button reads "Copied". */
+  /** The link just copied, so its row briefly shows a "Copied" chip. */
   protected readonly copiedId = signal<string | null>(null);
+
+  // Per-link actions (copy / revoke) live in a three-dot menu to keep each row uncluttered.
+  protected readonly menuOpen = signal(false);
+  protected readonly menuX = signal(0);
+  protected readonly menuY = signal(0);
+  protected readonly menuItems = signal<ContextMenuItem[]>([]);
 
   /** Revoked links are dead and can't be re-shared, so they're hidden from the list. */
   protected readonly visibleLinks = computed(() => this.links().filter((l) => !l.revoked));
 
-  /** Called by the parent each time the dialog opens, to load the file's links fresh. */
+  /**
+   * Load the file's links whenever the dialog opens (or its target file changes while open).
+   * Inputs are all assigned before ngOnChanges runs, so `fileId` is populated here — unlike the
+   * old parent-driven `load()` call, which fired before the [fileId] binding flushed and hit
+   * `/api/media//shares` with an empty id.
+   */
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['open']?.currentValue === true && this.fileId) {
+      void this.load();
+    }
+  }
+
+  /** Fetches the file's links fresh. */
   async load(): Promise<void> {
     this.copiedId.set(null);
     this.error.set(null);
@@ -143,10 +163,10 @@ export class ShareDialog {
     this.busy.set(true);
     this.error.set(null);
     try {
-      const res = await this.api.create(this.fileId, this.days());
+      await this.api.create(this.fileId, this.days());
       this.links.set(await this.api.list(this.fileId));
-      // Copy the new link straight to the clipboard — it's the thing the user just asked for.
-      await this.copyUrl(res.url, res.linkId);
+      // The new link appears in the list; the owner copies it from the row's actions menu when
+      // they want it (auto-copying on create was removed per product decision).
       this.changed.emit();
     } catch {
       this.error.set('Could not create the link.');
@@ -207,10 +227,26 @@ export class ShareDialog {
     return this.copyUrl(link.url, link.linkId);
   }
 
+  /** Opens the per-link actions menu at the click position: copy (active links only) + revoke. */
+  protected openLinkMenu(link: ShareLinkResponse, event: MouseEvent): void {
+    event.stopPropagation();
+    const items: ContextMenuItem[] = [];
+    if (this.status(link) === 'Active') {
+      items.push({ label: 'Copy link', icon: 'copy', onSelect: () => void this.copy(link) });
+    }
+    items.push({ label: 'Revoke', icon: 'link-2-off', danger: true, onSelect: () => void this.revoke(link) });
+    this.menuItems.set(items);
+    this.menuX.set(event.clientX);
+    this.menuY.set(event.clientY);
+    this.menuOpen.set(true);
+  }
+
   private async copyUrl(url: string, linkId: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(url);
       this.copiedId.set(linkId);
+      // Auto-clear the "Copied" chip; the menu has already closed, so there's no button to reset.
+      setTimeout(() => this.copiedId() === linkId && this.copiedId.set(null), 1500);
     } catch {
       // Clipboard blocked (e.g. an insecure context); surface it rather than fail silently.
       this.error.set('Copying isn’t available here — select and copy the link manually.');
