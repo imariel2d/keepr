@@ -17,8 +17,10 @@ public record LoginRequest(string Email, string Password);
 /// <summary>
 /// Who the caller is. Carries no credential: the session lives in an HttpOnly cookie that
 /// JavaScript cannot read, so this is the client's only way to answer "am I signed in?".
+/// <paramref name="Role"/> ("User"/"Admin") lets the client gate admin-only UI — the server still
+/// enforces access on every /api/admin call, so this is for presentation, not security.
 /// </summary>
-public record SessionResponse(string Email);
+public record SessionResponse(string Email, string Role);
 
 [ApiController]
 [Route("api/auth")]
@@ -72,7 +74,29 @@ public class AuthController(
         if (user is null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
             return Problem("Invalid credentials.", statusCode: StatusCodes.Status401Unauthorized);
 
-        return await StartSession(user, ct);
+        // Serialize issuing a session against a concurrent kick on the *same user row*. Without
+        // this, a login that passed the deletion check could insert its session just after
+        // KickUser revoked all existing ones, leaving the kicked account with a live session.
+        // Both paths take FOR UPDATE on the row, so they cannot interleave: either the kick's
+        // revocation runs after this session exists (and revokes it too), or the re-read below —
+        // under the lock, hence AsNoTracking for the row's committed value — sees the account
+        // already marked and refuses. See docs/admin-console-design.md §4.2.
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var locked = await db.Users
+            .FromSqlRaw($"SELECT * FROM {AppDbContext.Schema}.\"Users\" WHERE \"Id\" = {{0}} FOR UPDATE", user.Id)
+            .AsNoTracking()
+            .SingleOrDefaultAsync(ct);
+
+        // A kicked account still has a row until the background wipe removes it (and the wipe may
+        // have removed it between the read above and this lock). Either way, refuse — reported as
+        // invalid credentials, not "account removed", so the endpoint stays a poor oracle for
+        // account state.
+        if (locked is null || locked.DeletionRequestedAt is not null)
+            return Problem("Invalid credentials.", statusCode: StatusCodes.Status401Unauthorized);
+
+        var result = await StartSession(locked, ct);
+        await tx.CommitAsync(ct);
+        return result;
     }
 
     /// <summary>
@@ -101,7 +125,9 @@ public class AuthController(
     [ProducesResponseType<SessionResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public ActionResult<SessionResponse> Current() =>
-        new SessionResponse(User.FindFirst(KeeprClaims.Email)?.Value ?? string.Empty);
+        new SessionResponse(
+            User.FindFirst(KeeprClaims.Email)?.Value ?? string.Empty,
+            User.FindFirst(KeeprClaims.Role)?.Value ?? nameof(Role.User));
 
     /// <summary>
     /// Applies the email and password rules, returning a 400 when anything fails and null when
@@ -149,7 +175,7 @@ public class AuthController(
             ct);
 
         cookie.Set(Response, token);
-        return Ok(new SessionResponse(user.Email));
+        return Ok(new SessionResponse(user.Email, user.Role.ToString()));
     }
 }
 

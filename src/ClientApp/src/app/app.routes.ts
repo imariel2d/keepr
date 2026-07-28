@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
+import { adminGuard } from './core/admin.guard';
 
 export const routes: Routes = [
   {
@@ -22,6 +23,11 @@ export const routes: Routes = [
     path: 'trash',
     canActivate: [authGuard],
     loadComponent: () => import('./features/trash/trash').then((m) => m.Trash),
+  },
+  {
+    path: 'admin',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () => import('./features/admin/admin').then((m) => m.Admin),
   },
   { path: '', pathMatch: 'full', redirectTo: 'files' },
   { path: '**', redirectTo: 'files' },

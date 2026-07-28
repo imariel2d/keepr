@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from './core/auth.service';
@@ -30,17 +30,25 @@ export class App {
   private readonly bytes = new BytesPipe();
 
   /** Which sidebar entry is highlighted, derived from the URL. */
-  protected readonly section = signal<'files' | 'trash'>('files');
+  protected readonly section = signal<'files' | 'trash' | 'admin'>('files');
 
-  protected readonly navItems: NavItem[] = [
-    { key: 'files', label: 'My Files', icon: 'folder' },
-    { key: 'trash', label: 'Trash', icon: 'trash-2' },
-  ];
+  /** Admin gets an extra entry; the console is server-gated regardless of this link. */
+  protected readonly navItems = computed<NavItem[]>(() => {
+    const items: NavItem[] = [
+      { key: 'files', label: 'My Files', icon: 'folder' },
+      { key: 'trash', label: 'Trash', icon: 'trash-2' },
+    ];
+    if (this.auth.isAdmin()) items.push({ key: 'admin', label: 'Admin', icon: 'shield' });
+    return items;
+  });
 
   constructor() {
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe((e) => this.section.set(e.urlAfterRedirects.startsWith('/trash') ? 'trash' : 'files'));
+      .subscribe((e) => {
+        const url = e.urlAfterRedirects;
+        this.section.set(url.startsWith('/trash') ? 'trash' : url.startsWith('/admin') ? 'admin' : 'files');
+      });
   }
 
   protected quotaLabel(): string {
@@ -65,7 +73,7 @@ export class App {
   }
 
   protected navigate(key: string): void {
-    this.router.navigate([key === 'trash' ? '/trash' : '/files']);
+    this.router.navigate(['/' + key]);
   }
 
   /**

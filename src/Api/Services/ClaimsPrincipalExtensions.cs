@@ -14,6 +14,10 @@ public static class KeeprClaims
 {
     public const string Sub = "sub";
     public const string Email = "email";
+
+    /// <summary>The account's <see cref="Domain.Role"/>, as its enum name ("User"/"Admin").
+    /// Backs the "Admin" authorization policy. Not a JWT registered name — Keepr's own claim.</summary>
+    public const string Role = "role";
 }
 
 public static class ClaimsPrincipalExtensions
