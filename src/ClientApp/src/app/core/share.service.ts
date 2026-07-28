@@ -54,8 +54,11 @@ export class ShareService {
 
   // ---- Owner (authenticated) -----------------------------------------------
 
-  /** Mint a link for a file. `url` in the response is the one and only chance to copy it. */
-  create(fileId: string, expiresInDays: number): Promise<CreatedShareResponse> {
+  /**
+   * Mint a link for a file. `url` in the response is the one and only chance to copy it.
+   * Pass `null` for `expiresInDays` to create a link that never expires.
+   */
+  create(fileId: string, expiresInDays: number | null): Promise<CreatedShareResponse> {
     return firstValueFrom(
       this.http.post<CreatedShareResponse>(`/api/media/${fileId}/share`, { expiresInDays })
     );
@@ -66,8 +69,8 @@ export class ShareService {
     return firstValueFrom(this.http.get<ShareLinkResponse[]>(`/api/media/${fileId}/shares`));
   }
 
-  /** Change a link's expiry. Rejected (409) on a revoked link. */
-  updateExpiry(linkId: string, expiresInDays: number): Promise<ShareLinkResponse> {
+  /** Change a link's expiry (or `null` to never expire). Rejected (409) on a revoked link. */
+  updateExpiry(linkId: string, expiresInDays: number | null): Promise<ShareLinkResponse> {
     return firstValueFrom(
       this.http.patch<ShareLinkResponse>(`/api/shares/${linkId}`, { expiresInDays })
     );

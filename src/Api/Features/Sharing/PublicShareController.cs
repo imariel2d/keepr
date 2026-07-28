@@ -7,9 +7,10 @@ using Microsoft.Extensions.Options;
 namespace Keepr.Api.Features.Sharing;
 
 /// <summary>What the public viewer page needs to render — and nothing more. No owner identity, no
-/// folder, no internal file id: a link discloses exactly the one file it is for.</summary>
+/// folder, no internal file id: a link discloses exactly the one file it is for. <c>ExpiresAt</c>
+/// is null when the link never expires.</summary>
 public record SharePublicResponse(
-    string FileName, string? ContentType, long SizeBytes, string? PreviewKind, DateTimeOffset ExpiresAt);
+    string FileName, string? ContentType, long SizeBytes, string? PreviewKind, DateTimeOffset? ExpiresAt);
 
 /// <summary>A short-TTL presigned URL for the shared file, minted fresh per request.</summary>
 /// <param name="Url">The presigned storage URL to fetch the bytes from directly.</param>

@@ -8,17 +8,18 @@ using Microsoft.EntityFrameworkCore;
 namespace Keepr.Api.Features.Sharing;
 
 /// <param name="ExpiresInDays">How long the link stays live. Below 1 is rejected; above the
-/// configured maximum is capped, not refused.</param>
-public record CreateShareRequest(int ExpiresInDays);
-public record UpdateShareRequest(int ExpiresInDays);
+/// configured maximum is capped, not refused. Null means the link never expires.</param>
+public record CreateShareRequest(int? ExpiresInDays);
+public record UpdateShareRequest(int? ExpiresInDays);
 
 /// <summary>The link URL, returned only at creation — the token is never stored, so this is the
-/// one chance to copy it. See docs/shareable-links-design.md §3.1.</summary>
-public record CreatedShareResponse(Guid LinkId, string Url, DateTimeOffset ExpiresAt);
+/// one chance to copy it. <c>ExpiresAt</c> is null for a link that never expires. See §3.1.</summary>
+public record CreatedShareResponse(Guid LinkId, string Url, DateTimeOffset? ExpiresAt);
 
-/// <summary>A link for management, including the URL so an active link can be re-copied (Q-S5).</summary>
+/// <summary>A link for management, including the URL so an active link can be re-copied (Q-S5).
+/// <c>ExpiresAt</c> is null when the link never expires.</summary>
 public record ShareLinkResponse(
-    Guid LinkId, string Url, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt, bool Revoked,
+    Guid LinkId, string Url, DateTimeOffset CreatedAt, DateTimeOffset? ExpiresAt, bool Revoked,
     DateTimeOffset? LastAccessedAt);
 
 public record StopSharingResponse(int Revoked);
@@ -38,7 +39,8 @@ public class SharesController(AppDbContext db, ShareLinkService shares) : Contro
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Create(Guid id, CreateShareRequest req, CancellationToken ct)
     {
-        if (req.ExpiresInDays < 1)
+        // Null = never expires; any provided value must be at least a day.
+        if (req.ExpiresInDays is < 1)
             return Problem("A link must be valid for at least one day.",
                 statusCode: StatusCodes.Status400BadRequest);
 
@@ -83,7 +85,8 @@ public class SharesController(AppDbContext db, ShareLinkService shares) : Contro
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> UpdateExpiry(Guid linkId, UpdateShareRequest req, CancellationToken ct)
     {
-        if (req.ExpiresInDays < 1)
+        // Null = switch the link to never-expires; any provided value must be at least a day.
+        if (req.ExpiresInDays is < 1)
             return Problem("A link must be valid for at least one day.",
                 statusCode: StatusCodes.Status400BadRequest);
 

@@ -59,9 +59,10 @@ public class ShareLinkService(AppDbContext db, IOptions<ShareOptions> options, T
     /// <summary>
     /// Creates a link for a file and returns the raw token — the only time it is available, since
     /// only the digest is stored (design §3.1). The caller must have verified file ownership.
+    /// A null <paramref name="expiresInDays"/> mints a link that never expires (design §4).
     /// </summary>
     public async Task<(ShareLink Link, string Token)> IssueAsync(
-        Guid mediaFileId, Guid ownerId, int expiresInDays, CancellationToken ct)
+        Guid mediaFileId, Guid ownerId, int? expiresInDays, CancellationToken ct)
     {
         var now = clock.GetUtcNow();
         var token = GenerateToken();
@@ -72,7 +73,7 @@ public class ShareLinkService(AppDbContext db, IOptions<ShareOptions> options, T
             CreatedByUserId = ownerId,
             Token = token,
             CreatedAt = now,
-            ExpiresAt = now.Add(ClampWindow(expiresInDays))
+            ExpiresAt = ExpiryFor(now, expiresInDays)
         };
         db.ShareLinks.Add(link);
         await db.SaveChangesAsync(ct);
@@ -126,18 +127,18 @@ public class ShareLinkService(AppDbContext db, IOptions<ShareOptions> options, T
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, clock.GetUtcNow()), ct);
 
     /// <summary>
-    /// Changes a link's expiry, measured from now. An expired-but-not-revoked link can be brought
-    /// back this way; a revoked link is terminal (design §4).
+    /// Changes a link's expiry, measured from now — or clears it (null days = never expires). An
+    /// expired-but-not-revoked link can be brought back this way; a revoked link is terminal (§4).
     /// </summary>
     public async Task<(UpdateExpiryStatus Status, ShareLink? Link)> UpdateExpiryAsync(
-        Guid linkId, Guid ownerId, int expiresInDays, CancellationToken ct)
+        Guid linkId, Guid ownerId, int? expiresInDays, CancellationToken ct)
     {
         var link = await db.ShareLinks.SingleOrDefaultAsync(
             s => s.Id == linkId && s.CreatedByUserId == ownerId, ct);
         if (link is null) return (UpdateExpiryStatus.NotFound, null);
         if (link.RevokedAt is not null) return (UpdateExpiryStatus.Revoked, null);
 
-        link.ExpiresAt = clock.GetUtcNow().Add(ClampWindow(expiresInDays));
+        link.ExpiresAt = ExpiryFor(clock.GetUtcNow(), expiresInDays);
         await db.SaveChangesAsync(ct);
         return (UpdateExpiryStatus.Ok, link);
     }
@@ -158,6 +159,10 @@ public class ShareLinkService(AppDbContext db, IOptions<ShareOptions> options, T
     /// </summary>
     public string BuildUrl(string token) =>
         $"{_opt.PublicBaseUrl.TrimEnd('/')}/s/{token}";
+
+    /// <summary>Absolute expiry for a create/update: null days = never, otherwise clamped to the window.</summary>
+    private DateTimeOffset? ExpiryFor(DateTimeOffset now, int? days) =>
+        days is null ? null : now.Add(ClampWindow(days.Value));
 
     private TimeSpan ClampWindow(int days) =>
         TimeSpan.FromDays(Math.Clamp(days, 1, _opt.MaxExpiryDays));

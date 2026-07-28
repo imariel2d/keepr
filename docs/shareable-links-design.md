@@ -6,7 +6,7 @@
 > public `/s/:token` viewer page, the owner share UI, and the end-to-end run against Postgres.
 >
 > Decided by Ariel, 2026-07-24: let the owner mint an unguessable link that anyone can open to
-> view or download **one file**, without an account. Links carry an expiry and can be revoked.
+> view or download **one file**, without an account. Links carry an expiry (or never expire) and can be revoked.
 >
 > This is distinct from #6 *sharing with specific users* — see §1.
 
@@ -54,7 +54,8 @@ what Keepr actually is today, and does not generalize to #6:
 
 This is a genuine acceptance of residual risk, not a claim of zero risk. So it comes with bounds:
 
-1. **Expiry is mandatory** (§4) — no link lives forever, so a leak self-heals.
+1. **Expiry is the default** (§4) — links are created with a window (default 7 days) so a leak
+   self-heals, though the owner may opt a link into never-expires when a durable link is wanted.
 2. **Revocation** (§6) — the owner can kill any link immediately.
 3. **A global kill-switch** — a single config flag disables *all* public link resolution without a
    deploy, for the "take it all down now" case.
@@ -101,9 +102,14 @@ Revoked links are never shown in the management list — they are dead and canno
 
 ## 4. Lifetime
 
-`ExpiresAt` is **required** — there is no "never expires" option. The owner chooses a window at
-creation (the UI offers 1 / 7 / 30 days; the API takes a day count and caps it). Mandatory expiry is
-the cheapest bound on a leaked link: it stops working on its own without anyone noticing the leak.
+`ExpiresAt` is nullable: the owner chooses a window at creation (the UI offers 1 / 7 / 30 days or
+**Never**; the API takes a day count and caps it, or `null` for no expiry). A timed window is the
+cheapest bound on a leaked link — it stops working on its own without anyone noticing the leak — so
+the default is 7 days. **Never** trades that self-healing away for links meant to stay live
+indefinitely; such a link only stops working when the owner revokes it (§6) or the file is removed,
+and the global kill-switch (§2) still covers the "take it all down" case. This relaxes the original
+"expiry is mandatory" bound — a deliberate choice, made because these are single-owner links to the
+owner's own files, not strangers' uploads.
 
 Unlike a session, a link's expiry does **not** slide automatically — a shared link is a fixed
 grant, not a live thing being kept warm by use.
@@ -153,9 +159,9 @@ the same instinct as the invite-code and storage-credential checks.
 
 | Method | Route | Purpose |
 |---|---|---|
-| `POST` | `/api/media/{id}/share` | Create a link for a file the caller owns. Body `{ expiresInDays }`. Returns `{ linkId, url, expiresAt }` |
+| `POST` | `/api/media/{id}/share` | Create a link for a file the caller owns. Body `{ expiresInDays }` (`null` = never expires). Returns `{ linkId, url, expiresAt }` (`expiresAt` null when never) |
 | `GET` | `/api/media/{id}/shares` | List the file's links with each active link's `url` (§3.1), so the owner can re-copy. Revoked links are omitted |
-| `PATCH` | `/api/shares/{linkId}` | **Change the expiry.** Body `{ expiresInDays }` → new `ExpiresAt` measured from now, same cap as create. Owner-scoped. Rejected (`409`) on a revoked link — revocation is terminal (§4) |
+| `PATCH` | `/api/shares/{linkId}` | **Change the expiry.** Body `{ expiresInDays }` → new `ExpiresAt` measured from now (same cap as create), or `null` to switch to never-expires. Owner-scoped. Rejected (`409`) on a revoked link — revocation is terminal (§4) |
 | `DELETE` | `/api/shares/{linkId}` | **Stop sharing — one link.** Sets `RevokedAt`; idempotent; owner-scoped |
 | `DELETE` | `/api/media/{id}/shares` | **Stop sharing the file.** Revokes every live link on the file at once — the "make this file private again" button, without hunting down individual links |
 
@@ -189,7 +195,7 @@ Honest limits, in the spirit of the registration-gate doc's §7:
 - **A valid link is bearer access.** Anyone it is forwarded to can open the file until it expires or
   is revoked. That is the feature, not a flaw — but it means a link is as sensitive as the file.
 - **Bandwidth abuse is the real residual risk.** A leaked-but-still-valid link can be fetched
-  repeatedly, driving R2 egress. Mitigations: mandatory expiry, revoke, the global kill-switch, and
+  repeatedly, driving R2 egress. Mitigations: expiry (default, though a link may be set to never), revoke, the global kill-switch, and
   — if it becomes a problem — a per-link access cap (Q-S2) or rate limiting on the public endpoints
   (the still-open Q-R1 from the registration-gate doc applies here too, and matters more now that
   there are unauthenticated endpoints).
@@ -208,7 +214,7 @@ public class ShareLink
     public Guid CreatedByUserId { get; set; }
     public string Token { get; set; }              // the capability itself; unique index (§3.1)
     public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset ExpiresAt { get; set; }  // required
+    public DateTimeOffset? ExpiresAt { get; set; } // null = never expires (§4)
     public DateTimeOffset? RevokedAt { get; set; }
     public DateTimeOffset? LastAccessedAt { get; set; } // nice-to-have; nothing depends on it
 }

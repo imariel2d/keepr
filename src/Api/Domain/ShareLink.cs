@@ -27,10 +27,11 @@ public class ShareLink
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     /// <summary>
-    /// Required — there is no "never expires". Owner-editable after creation (extend or shorten),
-    /// which is how a still-circulating link is kept alive without recreating it. See design §4.
+    /// When the link stops granting access, or <c>null</c> for a link that never expires.
+    /// Owner-editable after creation (extend, shorten, or switch to/from never), which is how a
+    /// still-circulating link is kept alive without recreating it. See design §4.
     /// </summary>
-    public DateTimeOffset ExpiresAt { get; set; }
+    public DateTimeOffset? ExpiresAt { get; set; }
 
     /// <summary>
     /// Set when the owner stops sharing. Terminal: a revoked link cannot be re-extended, and
@@ -43,7 +44,7 @@ public class ShareLink
 
     /// <summary>
     /// Whether the link itself still grants access. Independent of the file's own state — a live
-    /// link to a trashed file is handled at resolve time, not here.
+    /// link to a trashed file is handled at resolve time, not here. A null expiry never lapses.
     /// </summary>
-    public bool IsLive(DateTimeOffset now) => RevokedAt is null && ExpiresAt > now;
+    public bool IsLive(DateTimeOffset now) => RevokedAt is null && (ExpiresAt is null || ExpiresAt > now);
 }

@@ -92,14 +92,16 @@ export interface SharePublicResponse {
   contentType: string | null;
   sizeBytes: number;
   previewKind: PreviewKind | null;
-  expiresAt: string;
+  /** null when the link never expires. */
+  expiresAt: string | null;
 }
 
 /** A newly created share link. `url` is shown once — the server stores only the token's hash. */
 export interface CreatedShareResponse {
   linkId: string;
   url: string;
-  expiresAt: string;
+  /** null when the link never expires. */
+  expiresAt: string | null;
 }
 
 /** A share link for management, including the URL so an active link can be re-copied. */
@@ -107,7 +109,8 @@ export interface ShareLinkResponse {
   linkId: string;
   url: string;
   createdAt: string;
-  expiresAt: string;
+  /** null when the link never expires. */
+  expiresAt: string | null;
   revoked: boolean;
   lastAccessedAt: string | null;
 }

@@ -8,13 +8,18 @@ import { ModalComponent } from '../../cove/lib/modal/modal.component';
 
 interface ExpiryOption {
   readonly label: string;
-  readonly days: number;
+  /** null = the link never expires. */
+  readonly days: number | null;
 }
+
+/** Non-empty sentinel for the "Never" option so it's distinct from the empty placeholder value. */
+const NEVER = 'never';
 
 const EXPIRY_OPTIONS: ExpiryOption[] = [
   { label: '1 day', days: 1 },
   { label: '7 days', days: 7 },
   { label: '30 days', days: 30 },
+  { label: 'Never', days: null },
 ];
 
 /**
@@ -34,9 +39,9 @@ const EXPIRY_OPTIONS: ExpiryOption[] = [
         <div class="create">
           <label>
             Link expires in
-            <select [value]="days()" (change)="onDaysChange($event)">
-              @for (o of options; track o.days) {
-                <option [value]="o.days">{{ o.label }}</option>
+            <select [value]="days() ?? NEVER" (change)="onDaysChange($event)">
+              @for (o of options; track o.label) {
+                <option [value]="o.days ?? NEVER">{{ o.label }}</option>
               }
             </select>
           </label>
@@ -56,13 +61,16 @@ const EXPIRY_OPTIONS: ExpiryOption[] = [
               <div class="link" [class.dead]="status(link) !== 'Active'">
                 <div class="link-info">
                   <span class="badge" [attr.data-state]="status(link)">{{ status(link) }}</span>
-                  <span class="dates">Expires {{ formatDate(link.expiresAt) }}</span>
+                  <span class="dates">
+                    @if (link.expiresAt) { Expires {{ formatDate(link.expiresAt) }} }
+                    @else { Never expires }
+                  </span>
                 </div>
                 <div class="link-actions">
                   <select [value]="''" (change)="extend(link, $event)" title="Change expiry">
                     <option value="" disabled>Change expiry…</option>
-                    @for (o of options; track o.days) {
-                      <option [value]="o.days">{{ o.label }}</option>
+                    @for (o of options; track o.label) {
+                      <option [value]="o.days ?? NEVER">{{ o.label }}</option>
                     }
                   </select>
                   @if (copiedId() === link.linkId) {
@@ -112,6 +120,7 @@ export class ShareDialog implements OnChanges {
   @Output() changed = new EventEmitter<void>();
 
   protected readonly options = EXPIRY_OPTIONS;
+  protected readonly NEVER = NEVER;
   protected readonly days = signal(EXPIRY_OPTIONS[1].days); // default 7
   protected readonly links = signal<ShareLinkResponse[]>([]);
   protected readonly loading = signal(false);
@@ -156,7 +165,8 @@ export class ShareDialog implements OnChanges {
   }
 
   protected onDaysChange(event: Event): void {
-    this.days.set(Number((event.target as HTMLSelectElement).value));
+    const value = (event.target as HTMLSelectElement).value;
+    this.days.set(value === NEVER ? null : Number(value));
   }
 
   protected async create(): Promise<void> {
@@ -177,9 +187,10 @@ export class ShareDialog implements OnChanges {
 
   protected async extend(link: ShareLinkResponse, event: Event): Promise<void> {
     const select = event.target as HTMLSelectElement;
-    const days = Number(select.value);
+    const value = select.value;
     select.value = ''; // reset the picker back to its placeholder
-    if (!days) return;
+    if (value === '') return; // the placeholder was re-selected — no change
+    const days = value === NEVER ? null : Number(value);
 
     this.busy.set(true);
     this.error.set(null);
@@ -255,6 +266,7 @@ export class ShareDialog implements OnChanges {
 
   protected status(link: ShareLinkResponse): 'Active' | 'Expired' | 'Revoked' {
     if (link.revoked) return 'Revoked';
+    if (link.expiresAt === null) return 'Active'; // never expires
     return new Date(link.expiresAt).getTime() <= Date.now() ? 'Expired' : 'Active';
   }
 
