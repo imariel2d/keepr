@@ -290,7 +290,16 @@ export class Files {
 
   // ---- data ---------------------------------------------------------------
 
+  /** Bumped per refresh so a slow fetch that resolves after a newer one can be discarded. */
+  private refreshSeq = 0;
+
   private async refresh(): Promise<void> {
+    // Type "a" then "ab" and the two fetches race; if "a" lands last it would overwrite the "ab"
+    // results while the URL and heading still say "ab". Each refresh claims a sequence number and
+    // only writes if it is still the latest — stale completions are dropped.
+    const seq = ++this.refreshSeq;
+    const isLatest = () => seq === this.refreshSeq;
+
     this.loading.set(true);
     this.error.set(null);
     const q = this.searchQuery();
@@ -302,17 +311,22 @@ export class Files {
         // Search results reuse the folder-contents shape so the grid renders unchanged; there is
         // no current folder or breadcrumb trail, and every item carries its own `location`.
         const results = await this.search.search(q);
+        if (!isLatest()) return;
         this.contents.set({ folder: null, breadcrumbs: [], folders: results.folders, files: results.files });
       } else {
-        this.contents.set(await this.folderApi.contents(this.folderId()));
+        const folder = await this.folderApi.contents(this.folderId());
+        if (!isLatest()) return;
+        this.contents.set(folder);
       }
     } catch (e) {
+      if (!isLatest()) return;
       this.error.set(this.messageOf(e, q ? 'Search failed.' : 'Could not load this folder.'));
       this.contents.set(null);
     } finally {
-      this.loading.set(false);
+      // Guarded so a superseded fetch can't clear the spinner while the newer one is still running.
+      if (isLatest()) this.loading.set(false);
     }
-    void this.usage.refresh();
+    if (isLatest()) void this.usage.refresh();
   }
 
   /** The display path for a search hit: the client owns the "My Files" root label. */
