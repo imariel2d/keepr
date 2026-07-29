@@ -4,7 +4,8 @@
     <div class="trail search-head" aria-live="polite">
       <h1 class="search-heading">Results for “{{ searchQuery() }}”</h1>
       @if (searchBusy()) {
-        <cove-spinner [size]="16" label="Searching" />
+        <!-- Decorative: the skeleton's sr-only status is the single "Searching" announcement. -->
+        <cove-spinner [size]="16" aria-hidden="true" />
       } @else {
         <span class="search-count">{{ itemCount() }} {{ plural(itemCount(), 'result') }}</span>
       }
@@ -105,8 +106,9 @@
 
 @if (skeletonVisible()) {
   <!-- Placeholder grid while a search resolves (debounce + fetch), so typing has an immediate,
-       steady response instead of stale results sitting frozen. Decorative; the header spinner
-       and this status line carry the "loading" meaning for assistive tech. -->
+       steady response instead of stale results sitting frozen. The grid is decorative; this
+       status line is the single "Searching" announcement for assistive tech — it is present in
+       every skeleton case, including the initial-search debounce when the header spinner isn't. -->
   <span class="sr-only" role="status">Searching…</span>
   <div class="skeleton" aria-hidden="true">
     <cove-skeleton class="skeleton-title" width="70px" height="13px" />
