@@ -66,8 +66,10 @@ export class ContextMenuComponent implements OnChanges {
       case 'ArrowUp': event.preventDefault(); this.focusItem(current - 1); break;
       case 'Home': event.preventDefault(); this.focusItem(0); break;
       case 'End': event.preventDefault(); this.focusItem(items.length - 1); break;
-      case 'Escape': event.preventDefault(); this.closed.emit(); break;
-      case 'Tab': event.preventDefault(); this.closed.emit(); break; // a menu closes on Tab
+      // stopPropagation so these keys don't also reach a parent modal's document:keydown
+      // listener — otherwise Escape/Tab in a menu nested in a modal would close the modal too.
+      case 'Escape': event.preventDefault(); event.stopPropagation(); this.closed.emit(); break;
+      case 'Tab': event.preventDefault(); event.stopPropagation(); this.closed.emit(); break; // a menu closes on Tab
       // Enter/Space activate the focused <button> natively → its (click) runs select().
     }
   }
