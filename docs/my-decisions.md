@@ -82,6 +82,10 @@ _(Record confirmed choices here as we go.)_
   focus, semantics) at the Cove component level before per-screen work, so every screen inherits it
   at once. On mobile (<720px) the primary nav is a **hamburger off-canvas drawer**, not a bottom tab
   bar or a stacked strip. See [accessibility-mobile-design.md](accessibility-mobile-design.md) (#35).
+- 2026-07-29 — **Search (#9): topbar box that filters My Files, matching files *and* folders.**
+  Search lives in the **topbar** and drives the existing My Files grid into a flat results mode via
+  `?q=` (no separate `/search` route), and it matches **both files and folders** by name — not
+  files-only. Case-insensitive substring. See [search-design.md](search-design.md).
 
 <!--
 Example:

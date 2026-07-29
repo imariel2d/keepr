@@ -78,6 +78,12 @@ export interface MediaListItem {
    * allowlist lives on the server.
    */
   previewKind: PreviewKind | null;
+
+  /**
+   * Search-only: the containing folder's path as ancestor names, root first (empty at the root).
+   * Undefined outside a search result — the browse listing doesn't carry it.
+   */
+  location?: string[];
 }
 
 export interface DownloadUrlResponse {
@@ -122,6 +128,12 @@ export interface FolderItem {
   parentId: string | null;
   createdAt: string;
   updatedAt: string;
+
+  /**
+   * Search-only: the parent folder's path as ancestor names, root first (empty at the root).
+   * Undefined outside a search result.
+   */
+  location?: string[];
 }
 
 export interface Breadcrumb {
@@ -133,6 +145,15 @@ export interface Breadcrumb {
 export interface FolderContents {
   folder: FolderItem | null;
   breadcrumbs: Breadcrumb[];
+  folders: FolderItem[];
+  files: MediaListItem[];
+}
+
+/**
+ * Results of a name search across the whole tree (GET /api/search). Every item carries a
+ * `location` (its containing folder's path) since results span folders.
+ */
+export interface SearchResults {
   folders: FolderItem[];
   files: MediaListItem[];
 }

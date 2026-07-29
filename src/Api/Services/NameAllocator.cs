@@ -61,8 +61,7 @@ public static partial class NameAllocator
         if (match.Success) stem = match.Groups["base"].Value;
 
         // Escape LIKE wildcards so a file literally named "50%_off.pdf" doesn't match everything.
-        var escaped = stem.ToLowerInvariant()
-            .Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+        var escaped = LikeEscape.Escape(stem.ToLowerInvariant());
         return $"{escaped}%{ext.ToLowerInvariant()}";
     }
 

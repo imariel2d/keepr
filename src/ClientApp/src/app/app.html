@@ -15,6 +15,26 @@
     <span class="name">Keepr</span>
   </div>
 
+  @if (auth.isAuthenticated()) {
+    <form class="search" role="search" (submit)="$event.preventDefault(); submitSearch()">
+      <cove-icon class="search-icon" name="search" [size]="18" aria-hidden="true" />
+      <label class="sr-only" for="topbar-search">Search files and folders</label>
+      <input
+        id="topbar-search"
+        type="search"
+        class="search-input"
+        placeholder="Search files and folders"
+        autocomplete="off"
+        [value]="searchTerm()"
+        (input)="onSearchInput($any($event.target).value)" />
+      @if (searchTerm()) {
+        <button type="button" class="search-clear" aria-label="Clear search" (click)="clearSearch()">
+          <cove-icon name="x" [size]="16" aria-hidden="true" />
+        </button>
+      }
+    </form>
+  }
+
   <div class="actions">
     <cove-icon-button
       [icon]="theme.theme() === 'dark' ? 'sun' : 'moon'"

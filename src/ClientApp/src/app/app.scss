@@ -60,6 +60,68 @@
   }
 }
 
+// Grows to fill the space between brand and actions; capped so it doesn't sprawl on wide screens.
+.search {
+  flex: 1 1 auto;
+  max-width: 480px;
+  margin: 0 var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  height: 40px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full, 999px);
+
+  &:focus-within {
+    border-color: var(--accent);
+  }
+
+  .search-icon {
+    color: var(--text-tertiary);
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+
+  .search-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+
+    &::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    // Hide the native clear affordance on WebKit; we render our own so it can also drop the ?q=.
+    &::-webkit-search-cancel-button {
+      appearance: none;
+    }
+  }
+
+  .search-clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-1);
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-full, 999px);
+    color: var(--text-tertiary);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--text-primary);
+      background: var(--surface-sunken);
+    }
+  }
+}
+
 .actions {
   display: flex;
   align-items: center;
@@ -135,6 +197,19 @@
 
   .menu-btn {
     display: inline-flex;
+  }
+
+  // The topbar is too tight for brand + search + actions on one line, so the search wraps to its
+  // own full-width row beneath them.
+  .topbar {
+    flex-wrap: wrap;
+  }
+
+  .search {
+    order: 3;
+    flex-basis: 100%;
+    max-width: none;
+    margin: var(--space-3) 0 0;
   }
 
   .content {

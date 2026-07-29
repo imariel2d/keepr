@@ -15,6 +15,27 @@
   min-width: 0;
 }
 
+.search-head {
+  gap: var(--space-3);
+}
+
+.search-heading {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-extrabold);
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-count {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
 .crumb {
   display: inline-flex;
   align-items: center;
@@ -191,10 +212,86 @@
   outline: 2px solid transparent;
   outline-offset: 2px;
   transition: outline-color var(--duration-fast) var(--ease-standard);
+  // Each card eases in as it mounts, so a new result set (or folder) arrives instead of snapping.
+  // The reduced-motion guard collapses this to an instant appearance.
+  animation: cell-in var(--duration-base) var(--ease-standard) both;
 
   &.drop {
     outline-color: var(--accent);
   }
+}
+
+@keyframes cell-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// Wraps the grid sections so a re-fetch can fade the current results down and back up rather
+// than blanking the view. Kept mounted across fetches; the cards inside animate individually.
+.results {
+  transition: opacity var(--duration-base) var(--ease-standard);
+}
+
+.results--busy {
+  opacity: 0.45;
+  pointer-events: none; // clicks shouldn't land on results about to be replaced
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-10) var(--space-4);
+  color: var(--text-tertiary);
+}
+
+// Mirrors the results layout (Folders section, then Files) so the placeholders occupy the same
+// footprint the real grid will.
+.skeleton {
+  animation: cell-in var(--duration-base) var(--ease-standard) both;
+}
+
+.skeleton-title {
+  display: block;
+  margin: var(--space-5) 0 var(--space-3);
+}
+
+.skeleton-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.skeleton-card {
+  width: 190px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  overflow: hidden;
+}
+
+.skeleton-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+// Matches the folder card: a horizontal row with an icon slot and a name.
+.skeleton-folder {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 220px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+}
+
+.skeleton-folder-name {
+  flex: 1;
 }
 
 .empty {
@@ -205,6 +302,7 @@
   padding: var(--space-10) var(--space-4);
   color: var(--text-tertiary);
   text-align: center;
+  animation: cell-in var(--duration-base) var(--ease-standard) both;
 }
 
 .muted {
