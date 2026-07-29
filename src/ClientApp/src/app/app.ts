@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, ElementRef, HostListener, inject, signal, ViewChild } from '@angular/core';
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from './core/auth.service';
@@ -31,6 +31,16 @@ export class App {
 
   /** Which sidebar entry is highlighted, derived from the URL. */
   protected readonly section = signal<'files' | 'trash' | 'admin'>('files');
+
+  /** The off-canvas nav drawer (mobile only). Behaves as a modal: scrim, ESC, focus trap. */
+  protected readonly drawerOpen = signal(false);
+  @ViewChild('drawer') private drawerRef?: ElementRef<HTMLElement>;
+  private drawerReturnFocus: HTMLElement | null = null;
+
+  private static readonly focusableSelector = [
+    'a[href]', 'button:not([disabled])', 'textarea:not([disabled])',
+    'input:not([disabled])', 'select:not([disabled])', '[tabindex]:not([tabindex="-1"])',
+  ].join(',');
 
   /** Admin gets an extra entry; the console is server-gated regardless of this link. */
   protected readonly navItems = computed<NavItem[]>(() => {
@@ -74,6 +84,60 @@ export class App {
 
   protected navigate(key: string): void {
     this.router.navigate(['/' + key]);
+    this.closeDrawer(); // a nav choice on mobile should dismiss the drawer
+  }
+
+  protected openDrawer(): void {
+    this.drawerReturnFocus = document.activeElement as HTMLElement | null;
+    this.drawerOpen.set(true);
+    queueMicrotask(() => {
+      const panel = this.drawerRef?.nativeElement;
+      const first = panel?.querySelector<HTMLElement>(App.focusableSelector);
+      (first ?? panel)?.focus();
+    });
+  }
+
+  protected closeDrawer(): void {
+    if (!this.drawerOpen()) return;
+    this.drawerOpen.set(false);
+    this.drawerReturnFocus?.focus?.();
+    this.drawerReturnFocus = null;
+  }
+
+  protected toggleDrawer(): void {
+    this.drawerOpen() ? this.closeDrawer() : this.openDrawer();
+  }
+
+  /** A drawer is a modal on mobile: ESC dismisses it and Tab stays inside. */
+  @HostListener('document:keydown', ['$event'])
+  protected onDrawerKeydown(event: KeyboardEvent): void {
+    if (!this.drawerOpen()) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closeDrawer();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+
+    const panel = this.drawerRef?.nativeElement;
+    if (!panel) return;
+    const items = Array.from(panel.querySelectorAll<HTMLElement>(App.focusableSelector))
+      .filter((el) => el.offsetParent !== null);
+    if (items.length === 0) {
+      event.preventDefault();
+      panel.focus();
+      return;
+    }
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (event.shiftKey && (active === first || !panel.contains(active))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   /**

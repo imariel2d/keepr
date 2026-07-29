@@ -1,5 +1,16 @@
+<a class="skip-link" href="#main-content">Skip to content</a>
+
 <header class="topbar">
   <div class="brand">
+    @if (auth.isAuthenticated()) {
+      <cove-icon-button
+        class="menu-btn"
+        icon="menu"
+        label="Open navigation menu"
+        [ariaExpanded]="drawerOpen()"
+        ariaControls="nav-drawer"
+        (click)="toggleDrawer()" />
+    }
     <img class="logo" src="cove-mark.svg" alt="" width="34" height="34" aria-hidden="true" />
     <span class="name">Keepr</span>
   </div>
@@ -18,7 +29,7 @@
 
 @if (auth.isAuthenticated()) {
   <div class="shell">
-    <nav class="side">
+    <aside class="side">
       <cove-sidebar
         brand="Keepr"
         brandMark="cove-mark.svg"
@@ -30,13 +41,31 @@
         [quotaLabel]="quotaLabel()"
         [quotaNote]="quotaNote()"
         (navigate)="navigate($event)" />
-    </nav>
-    <main class="content">
+    </aside>
+    <main id="main-content" tabindex="-1" class="content">
       <router-outlet />
     </main>
   </div>
+
+  @if (drawerOpen()) {
+    <div class="drawer-scrim" (click)="closeDrawer()"></div>
+    <div #drawer id="nav-drawer" class="drawer" role="dialog" aria-modal="true"
+         aria-label="Navigation" tabindex="-1">
+      <cove-sidebar
+        brand="Keepr"
+        brandMark="cove-mark.svg"
+        [items]="navItems()"
+        [active]="section()"
+        [showUpload]="false"
+        [quotaUsed]="usedPercent()"
+        [quotaTotal]="100"
+        [quotaLabel]="quotaLabel()"
+        [quotaNote]="quotaNote()"
+        (navigate)="navigate($event)" />
+    </div>
+  }
 } @else {
-  <main class="content content--centered">
+  <main id="main-content" tabindex="-1" class="content content--centered">
     <router-outlet />
   </main>
 }

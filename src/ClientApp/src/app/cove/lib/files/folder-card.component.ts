@@ -9,7 +9,10 @@ import { CheckboxComponent } from '../checkbox/checkbox.component';
   standalone: true,
   imports: [CommonModule, IconComponent, IconButtonComponent, CheckboxComponent],
   template: `
-    <div (mouseenter)="hover = true" (mouseleave)="hover = false"
+    <div tabindex="0" role="button" [attr.aria-label]="ariaLabel"
+         (mouseenter)="hover = true" (mouseleave)="hover = false"
+         (focusin)="focused = true" (focusout)="onFocusOut($event)"
+         (keydown)="onKeydown($event)"
          (click)="cardClick.emit($event)" (dblclick)="openItem.emit()"
          (contextmenu)="$event.preventDefault(); menu.emit($event)" [ngStyle]="cardStyle()">
       <!-- Fixed-width slot so swapping the icon for the checkbox never resizes the row. -->
@@ -18,8 +21,8 @@ import { CheckboxComponent } from '../checkbox/checkbox.component';
         (click)="$event.stopPropagation(); toggleSelect.emit()"
         (dblclick)="$event.stopPropagation()"
         (mousedown)="$event.stopPropagation()">
-        <cove-checkbox *ngIf="hover || selected" [checked]="selected"></cove-checkbox>
-        <cove-icon *ngIf="!(hover || selected)" name="folder" [size]="28" color="var(--teal-500)"></cove-icon>
+        <cove-checkbox *ngIf="revealed || selected" [checked]="selected"></cove-checkbox>
+        <cove-icon *ngIf="!(revealed || selected)" name="folder" [size]="28" color="var(--teal-500)"></cove-icon>
       </span>
       <div [ngStyle]="{ flex: 1, minWidth: 0 }">
         <div [ngStyle]="{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }">{{ name }}</div>
@@ -30,7 +33,7 @@ import { CheckboxComponent } from '../checkbox/checkbox.component';
            nudged the whole grid. Visibility is toggled instead of the element. -->
       <cove-icon-button icon="more-vertical" label="More actions"
         (click)="$event.stopPropagation(); menu.emit($event)"
-        [ngStyle]="{ opacity: hover ? 1 : 0, pointerEvents: hover ? 'auto' : 'none',
+        [ngStyle]="{ opacity: revealed ? 1 : 0, pointerEvents: revealed ? 'auto' : 'none',
                      transition: 'opacity var(--duration-fast) var(--ease-standard)' }"></cove-icon-button>
     </div>`,
 })
@@ -48,6 +51,37 @@ export class FolderCardComponent {
   /** Raw click on the card body; the host decides whether it selects or does nothing. */
   @Output() cardClick = new EventEmitter<MouseEvent>();
   hover = false;
+  focused = false;
+
+  /** Controls (checkbox, more-actions) show on hover OR keyboard focus, so they are reachable
+      without a mouse. */
+  get revealed() { return this.hover || this.focused; }
+
+  /** e.g. "Reports, folder, 12 items" — read out when the card gets focus. */
+  get ariaLabel() {
+    const count = this.itemCount != null ? `, ${this.itemCount} items` : '';
+    return `${this.name}, folder${count}`;
+  }
+
+  /** Enter opens the folder; Space toggles its selection — matching file-manager conventions.
+      Ignored when a nested control (the more-actions button) is focused, so it keeps its own keys. */
+  onKeydown(event: KeyboardEvent): void {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this.openItem.emit();
+    } else if (event.key === ' ' || event.key === 'Spacebar') {
+      event.preventDefault();
+      this.toggleSelect.emit();
+    }
+  }
+
+  /** Keep controls revealed while focus is anywhere inside the card; hide once it leaves. */
+  onFocusOut(event: FocusEvent): void {
+    const card = event.currentTarget as HTMLElement;
+    if (!card.contains(event.relatedTarget as Node)) this.focused = false;
+  }
+
   cardStyle() {
     const lit = this.selected || this.active;
     return {

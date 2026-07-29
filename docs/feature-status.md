@@ -3,8 +3,8 @@
 Tracking the planned feature set against what is actually implemented in the codebase.
 
 Keepr is a **personal media store** with a folder hierarchy, rename, and a 10-day trash:
-single-owner (no user-to-user sharing yet). Of the 34 planned features, **10 are complete**
-(backend + UI) and 24 are not started.
+single-owner (no user-to-user sharing yet). Of the 35 planned features, **10 are complete**
+(backend + UI), 1 is partial, and 24 are not started.
 
 **Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
@@ -93,12 +93,20 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 | 32 | Terms & Conditions page | ❌ | No public route exists — every route but `/login` is behind `authGuard`, and there is no footer or public layout to link from. The engineering is small (a public route + a content component); the real dependency is the **legal copy itself**, which has to be authored, not built |
 | 33 | Privacy Notice page | ❌ | Same shape as #32, but more than a formality here: the app stores personal data (account email, uploaded files), and this is the disclosure side of that. Naturally paired with the register flow (a link or consent checkbox on signup) and with account data handling (#26–29, especially account/data deletion) |
 
+## Accessibility & responsive UI
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 35 | Accessibility & mobile responsiveness | 🟡 | [accessibility-mobile-design.md](accessibility-mobile-design.md). **Foundation + mobile drawer done, per-screen sweep ongoing.** Fixed at the Cove component level so every screen benefits: outline-based `:focus-visible` ring (`styles.scss`), `prefers-reduced-motion` guard, skip link + landmarks, keyboard-operable sidebar nav (`<button>` + `aria-current`), accessible modal (`role="dialog"`, ESC, focus trap + restore), keyboard-operable file/folder cards (`role="button"`, Enter=open/Space=select, controls reveal on focus), accessible context menu (`role="menu"`, arrow-key nav, focus restore) + keyboard-aware positioning (`core/menu-anchor.ts`), and Enter-to-submit inputs. Mobile (<720px): hamburger **off-canvas drawer** (`role="dialog"`, focus trap, ESC) replacing the desktop rail. **Pending:** per-screen sweep (trash/admin/login/upload-toast/preview/share-viewer), `aria-haspopup`/`aria-expanded` on the ⋮ trigger, optional roving-`tabindex` grid nav, and the Tab-in-menu decision (Q-A1). Interactive changes are compile- + semantics-verified; the focus traps were not exercised live (need the backend) |
+
 ---
 
 ## Summary
 
 - **Done (10):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
   rename/delete, trash, in-browser preview, shareable links, admin console.
+- **Partial (1):** accessibility & mobile responsiveness (#35) — component-level foundation and the
+  mobile drawer are in; a per-screen sweep and a few keyboard-nav decisions remain.
 - **Not started (24):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2

@@ -11,18 +11,21 @@ export interface NavItem { key: string; label: string; icon: string; }
   standalone: true,
   imports: [CommonModule, IconComponent, ButtonComponent, ProgressBarComponent],
   template: `
-    <div [ngStyle]="{ width: '240px', display: 'flex', flexDirection: 'column', gap: '20px', padding: '20px 12px', fontFamily: 'var(--font-body)', height: '100%' }">
+    <div [ngStyle]="{ width: '100%', display: 'flex', flexDirection: 'column', gap: '20px', padding: '20px 12px', fontFamily: 'var(--font-body)', height: '100%' }">
       <div [ngStyle]="{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px' }">
         <img *ngIf="brandMark; else glyph" [src]="brandMark" alt="" width="24" height="24" [ngStyle]="{ display: 'block' }" />
         <ng-template #glyph><cove-icon name="cloud" [size]="22" color="var(--accent)"></cove-icon></ng-template>
         <span [ngStyle]="{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '20px', color: 'var(--text-primary)' }">{{ brand }}</span>
       </div>
       <cove-button *ngIf="showUpload" icon="upload-cloud" [ngStyle]="{ margin: '0 8px', display: 'block' }" (click)="upload.emit()">Upload</cove-button>
-      <div [ngStyle]="{ display: 'flex', flexDirection: 'column', gap: '2px' }">
-        <div *ngFor="let item of items" (click)="navigate.emit(item.key)" [ngStyle]="navStyle(item)">
+      <nav aria-label="Primary" [ngStyle]="{ display: 'flex', flexDirection: 'column', gap: '2px' }">
+        <button *ngFor="let item of items" type="button"
+                (click)="navigate.emit(item.key)"
+                [attr.aria-current]="active === item.key ? 'page' : null"
+                [ngStyle]="navStyle(item)">
           <cove-icon [name]="item.icon" [size]="18"></cove-icon>{{ item.label }}
-        </div>
-      </div>
+        </button>
+      </nav>
       <div [ngStyle]="{ marginTop: 'auto', padding: '0 8px', display: 'flex', flexDirection: 'column', gap: '8px' }">
         <cove-progress-bar [value]="pct" [tone]="pct > 85 ? 'warning' : 'accent'"></cove-progress-bar>
         <div [ngStyle]="{ fontSize: '12px', color: 'var(--text-tertiary)' }">{{ quotaLabel || defaultQuotaLabel }}</div>
@@ -60,6 +63,9 @@ export class SidebarComponent {
   navStyle(item: NavItem) {
     const on = this.active === item.key;
     return {
+      // Button reset — these render as <button> for keyboard/AT support, so strip the
+      // native chrome and make them fill the row like the old <div> did.
+      width: '100%', border: 'none', textAlign: 'left', fontFamily: 'inherit', appearance: 'none',
       display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: 'var(--radius-md)',
       cursor: 'pointer', fontSize: '14px', fontWeight: 600,
       background: on ? 'var(--accent-subtle)' : 'transparent',

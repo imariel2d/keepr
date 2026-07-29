@@ -14,6 +14,7 @@ import { IconComponent } from '../../cove/lib/icon/icon.component';
 import { InputComponent } from '../../cove/lib/input/input.component';
 import { ModalComponent } from '../../cove/lib/modal/modal.component';
 import { ContextMenuComponent, ContextMenuItem } from '../../cove/lib/context-menu/context-menu.component';
+import { menuAnchor } from '../../core/menu-anchor';
 import { FileCardComponent } from '../../cove/lib/files/file-card.component';
 import { FolderCardComponent } from '../../cove/lib/files/folder-card.component';
 import { FileType } from '../../cove/lib/files/file-type-meta';
@@ -561,8 +562,9 @@ export class Files {
   }
 
   private showMenu(event: MouseEvent, items: ContextMenuItem[]): void {
-    this.menuX.set(event.clientX);
-    this.menuY.set(event.clientY);
+    const { x, y } = menuAnchor(event);
+    this.menuX.set(x);
+    this.menuY.set(y);
     this.menuItems.set(items);
     this.menuOpen.set(true);
   }

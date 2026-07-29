@@ -7,7 +7,8 @@ import { IconComponent } from '../icon/icon.component';
   standalone: true,
   imports: [CommonModule, IconComponent],
   template: `
-    <button [attr.aria-label]="label" [title]="label" [ngStyle]="style()"
+    <button type="button" [attr.aria-label]="label" [title]="label" [ngStyle]="style()"
+            [attr.aria-expanded]="ariaExpanded" [attr.aria-controls]="ariaControls"
             (mouseenter)="hover = true" (mouseleave)="hover = false">
       <cove-icon [name]="icon" [size]="round(size * 0.5)"></cove-icon>
     </button>`,
@@ -17,6 +18,9 @@ export class IconButtonComponent {
   @Input() label!: string;
   @Input() size = 36;
   @Input() active = false;
+  /** For buttons that toggle a disclosure (e.g. a drawer); forwarded to the inner button. */
+  @Input() ariaExpanded?: boolean;
+  @Input() ariaControls?: string;
   hover = false;
   round(n: number) { return Math.round(n); }
   style() {
