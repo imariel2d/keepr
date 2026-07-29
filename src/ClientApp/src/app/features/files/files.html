@@ -1,4 +1,13 @@
 <header class="head">
+  @if (searchMode()) {
+    <!-- Search replaces the breadcrumb trail: results are global, so there is no path to show. -->
+    <div class="trail search-head" aria-live="polite">
+      <h1 class="search-heading">Results for “{{ searchQuery() }}”</h1>
+      @if (!loading()) {
+        <span class="search-count">{{ itemCount() }} {{ plural(itemCount(), 'result') }}</span>
+      }
+    </div>
+  } @else {
   <!-- Breadcrumbs double as drop targets: dragging a card onto an ancestor moves it up. -->
   <nav class="trail" aria-label="Breadcrumb">
     <button
@@ -33,6 +42,7 @@
     <cove-button variant="ghost" icon="folder-plus" (click)="openCreate()">New folder</cove-button>
     <cove-button variant="primary" icon="upload-cloud" (click)="onBrowse()">Upload</cove-button>
   </div>
+  }
 </header>
 
 @if (notice(); as n) {
@@ -94,9 +104,14 @@
 @if (loading()) {
   <p class="muted">Loading…</p>
 } @else if (isEmpty()) {
-  <div class="empty">
-    <cove-icon name="folder-open" [size]="34" color="var(--text-tertiary)" />
-    <p>This folder is empty — drop files anywhere here, or create a subfolder.</p>
+  <div class="empty" aria-live="polite">
+    @if (searchMode()) {
+      <cove-icon name="search" [size]="34" color="var(--text-tertiary)" />
+      <p>No files or folders match “{{ searchQuery() }}”.</p>
+    } @else {
+      <cove-icon name="folder-open" [size]="34" color="var(--text-tertiary)" />
+      <p>This folder is empty — drop files anywhere here, or create a subfolder.</p>
+    }
   </div>
 } @else {
   @if (folders().length) {
@@ -114,6 +129,7 @@
           (drop)="onFolderDrop($event, f.id)">
           <cove-folder-card
             [name]="f.name"
+            [location]="searchMode() ? locationLabel(f) : undefined"
             [selected]="isSelected('folder', f.id)"
             [active]="dropTarget() === f.id"
             (toggleSelect)="toggleSelect('folder', f.id)"
@@ -139,6 +155,7 @@
             [name]="f.originalName"
             [type]="fileType(f.contentType)"
             [thumbnail]="thumbnails()[f.id]"
+            [location]="searchMode() ? locationLabel(f) : undefined"
             [modified]="(f.sizeBytes | bytes) + ' · ' + formatDate(f.createdAt)"
             [selected]="isSelected('file', f.id)"
             (toggleSelect)="toggleSelect('file', f.id)"

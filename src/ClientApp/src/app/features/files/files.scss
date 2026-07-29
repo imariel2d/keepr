@@ -15,6 +15,27 @@
   min-width: 0;
 }
 
+.search-head {
+  gap: var(--space-3);
+}
+
+.search-heading {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-extrabold);
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-count {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
 .crumb {
   display: inline-flex;
   align-items: center;

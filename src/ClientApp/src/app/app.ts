@@ -1,10 +1,11 @@
 import { Component, computed, ElementRef, HostListener, inject, signal, ViewChild } from '@angular/core';
-import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs';
+import { ActivatedRoute, Router, RouterOutlet, NavigationEnd } from '@angular/router';
+import { Subject, debounceTime, distinctUntilChanged, filter } from 'rxjs';
 import { AuthService } from './core/auth.service';
 import { ThemeService } from './core/theme.service';
 import { UsageStore } from './core/usage.store';
 import { ButtonComponent } from './cove/lib/button/button.component';
+import { IconComponent } from './cove/lib/icon/icon.component';
 import { IconButtonComponent } from './cove/lib/icon-button/icon-button.component';
 import { NavItem, SidebarComponent } from './cove/lib/sidebar/sidebar.component';
 import { BytesPipe } from './core/bytes.pipe';
@@ -15,6 +16,7 @@ import { UploadToast } from './features/uploads/upload-toast';
   imports: [
     RouterOutlet,
     ButtonComponent,
+    IconComponent,
     IconButtonComponent,
     SidebarComponent,
     UploadToast,
@@ -27,10 +29,19 @@ export class App {
   protected readonly theme = inject(ThemeService);
   protected readonly usage = inject(UsageStore);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly bytes = new BytesPipe();
 
   /** Which sidebar entry is highlighted, derived from the URL. */
   protected readonly section = signal<'files' | 'trash' | 'admin'>('files');
+
+  /**
+   * The topbar search box. Its value mirrors the `?q=` on the URL, and typing pushes a debounced
+   * `?q=` onto `/files` — the Files view reads it and switches into search mode. Keeping the state
+   * in the URL means the box and the results can't disagree, and a search survives a reload.
+   */
+  protected readonly searchTerm = signal('');
+  private readonly searchInput$ = new Subject<string>();
 
   /** The off-canvas nav drawer (mobile only). Behaves as a modal: scrim, ESC, focus trap. */
   protected readonly drawerOpen = signal(false);
@@ -59,6 +70,39 @@ export class App {
         const url = e.urlAfterRedirects;
         this.section.set(url.startsWith('/trash') ? 'trash' : url.startsWith('/admin') ? 'admin' : 'files');
       });
+
+    // Keep the box in step with the URL: a reload, a shared /files?q= link, or clearing the
+    // search by navigating into a folder all flow back into the input this way.
+    this.route.queryParamMap.subscribe((pm) => this.searchTerm.set(pm.get('q') ?? ''));
+
+    // Debounce keystrokes into a single navigation, so a burst of typing is one route change.
+    this.searchInput$
+      .pipe(debounceTime(250), distinctUntilChanged())
+      .subscribe((term) => this.applySearch(term));
+  }
+
+  protected onSearchInput(value: string): void {
+    this.searchTerm.set(value);
+    this.searchInput$.next(value);
+  }
+
+  /** Enter submits immediately rather than waiting out the debounce. */
+  protected submitSearch(): void {
+    this.applySearch(this.searchTerm());
+  }
+
+  protected clearSearch(): void {
+    this.searchTerm.set('');
+    this.applySearch('');
+  }
+
+  /**
+   * Push the term onto `/files` as `?q=`. An empty term drops the param (back to browse). Always
+   * targets the files root, so searching from inside a folder or from Trash lands on global results.
+   */
+  private applySearch(term: string): void {
+    const q = term.trim();
+    void this.router.navigate(['/files'], { queryParams: { q: q || null } });
   }
 
   protected quotaLabel(): string {

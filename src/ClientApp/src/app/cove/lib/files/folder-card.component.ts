@@ -27,6 +27,12 @@ import { CheckboxComponent } from '../checkbox/checkbox.component';
       <div [ngStyle]="{ flex: 1, minWidth: 0 }">
         <div [ngStyle]="{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }">{{ name }}</div>
         <div *ngIf="itemCount != null" [ngStyle]="{ fontSize: '12px', color: 'var(--text-tertiary)' }">{{ itemCount }} items</div>
+        <!-- Search results span folders, so each hit shows where it lives. -->
+        <div *ngIf="location" [attr.title]="location"
+             [ngStyle]="{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--text-tertiary)', overflow: 'hidden' }">
+          <cove-icon name="folder" [size]="12"></cove-icon>
+          <span [ngStyle]="{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }">{{ location }}</span>
+        </div>
       </div>
       <cove-icon *ngIf="shared" name="users" [size]="15" color="var(--text-tertiary)"></cove-icon>
       <!-- Always rendered so it reserves its 36px: mounting it on hover grew the row and
@@ -40,6 +46,8 @@ import { CheckboxComponent } from '../checkbox/checkbox.component';
 export class FolderCardComponent {
   @Input() name!: string;
   @Input() itemCount?: number;
+  /** Search-only: the parent folder's display path (e.g. "My Files / Reports"). */
+  @Input() location?: string;
   @Input() shared = false;
   /** Part of the current selection: ticks the checkbox and tints the card. */
   @Input() selected = false;
@@ -60,7 +68,8 @@ export class FolderCardComponent {
   /** e.g. "Reports, folder, 12 items" — read out when the card gets focus. */
   get ariaLabel() {
     const count = this.itemCount != null ? `, ${this.itemCount} items` : '';
-    return `${this.name}, folder${count}`;
+    const where = this.location ? `, in ${this.location}` : '';
+    return `${this.name}, folder${count}${where}`;
   }
 
   /** Enter opens the folder; Space toggles its selection — matching file-manager conventions.

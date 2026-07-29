@@ -37,6 +37,12 @@ import { FileType, TYPE_META } from './file-type-meta';
           <cove-avatar *ngIf="owner" [name]="owner" [size]="18"></cove-avatar>
           <span [ngStyle]="{ fontSize: '12px', color: 'var(--text-tertiary)' }">{{ modified }}</span>
         </div>
+        <!-- Search results span folders, so each hit shows where it lives. -->
+        <div *ngIf="location" [attr.title]="location"
+             [ngStyle]="{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '12px', color: 'var(--text-tertiary)', overflow: 'hidden' }">
+          <cove-icon name="folder" [size]="12"></cove-icon>
+          <span [ngStyle]="{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }">{{ location }}</span>
+        </div>
       </div>
     </div>`,
 })
@@ -46,6 +52,8 @@ export class FileCardComponent {
   @Input() thumbnail?: string;
   @Input() owner?: string;
   @Input() modified?: string;
+  /** Search-only: the containing folder's display path (e.g. "My Files / Reports"). */
+  @Input() location?: string;
   @Input() selected = false;
   @Output() openItem = new EventEmitter<void>();
   @Output() menu = new EventEmitter<MouseEvent>();
@@ -63,7 +71,8 @@ export class FileCardComponent {
   /** e.g. "budget.xlsx, file, modified 2 days ago" — read out when the card gets focus. */
   get ariaLabel() {
     const when = this.modified ? `, modified ${this.modified}` : '';
-    return `${this.name}, file${when}`;
+    const where = this.location ? `, in ${this.location}` : '';
+    return `${this.name}, file${when}${where}`;
   }
 
   /** Enter opens the file; Space toggles its selection — matching file-manager conventions.

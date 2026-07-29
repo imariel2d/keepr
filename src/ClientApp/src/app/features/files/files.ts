@@ -1,9 +1,10 @@
 import { Component, ElementRef, HostBinding, HostListener, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs';
+import { combineLatest, map } from 'rxjs';
 import { FolderService } from '../../core/folder.service';
 import { MediaService } from '../../core/media.service';
+import { SearchService } from '../../core/search.service';
 import { UploadService } from '../../core/upload.service';
 import { UsageStore } from '../../core/usage.store';
 import { BytesPipe } from '../../core/bytes.pipe';
@@ -72,6 +73,7 @@ const THUMBNAIL_MAX_BYTES = 500 * 1024;
 export class Files {
   private readonly folderApi = inject(FolderService);
   private readonly media = inject(MediaService);
+  private readonly search = inject(SearchService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly uploads = inject(UploadService);
@@ -90,6 +92,13 @@ export class Files {
     this.route.paramMap.pipe(map((p) => p.get('folderId'))),
     { initialValue: null }
   );
+
+  /**
+   * The active search term from `?q=`, or null when browsing. Driven from the topbar box (which
+   * owns the URL); when set, the grid shows global name-search results instead of a folder.
+   */
+  protected readonly searchQuery = signal<string | null>(null);
+  protected readonly searchMode = computed(() => this.searchQuery() !== null);
 
   protected readonly contents = signal<FolderContents | null>(null);
   protected readonly loading = signal(true);
@@ -227,8 +236,13 @@ export class Files {
   }
 
   constructor() {
-    // Re-fetch whenever the route id changes, including back/forward navigation.
-    this.route.paramMap.subscribe(() => void this.refresh());
+    // Re-fetch whenever the folder id (path) or the search term (?q=) changes — including
+    // back/forward navigation. combineLatest fires on either, and refresh() reads the term to
+    // decide between a folder listing and a global search.
+    combineLatest([this.route.paramMap, this.route.queryParamMap]).subscribe(([, query]) => {
+      this.searchQuery.set(query.get('q')?.trim() || null);
+      void this.refresh();
+    });
   }
 
   // ---- navigation ---------------------------------------------------------
@@ -249,18 +263,31 @@ export class Files {
   private async refresh(): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
+    const q = this.searchQuery();
     try {
       this.thumbnails.set({});
       // Ids are folder-scoped; carrying them across a reload would keep phantom items selected.
       this.clearSelection();
-      this.contents.set(await this.folderApi.contents(this.folderId()));
+      if (q) {
+        // Search results reuse the folder-contents shape so the grid renders unchanged; there is
+        // no current folder or breadcrumb trail, and every item carries its own `location`.
+        const results = await this.search.search(q);
+        this.contents.set({ folder: null, breadcrumbs: [], folders: results.folders, files: results.files });
+      } else {
+        this.contents.set(await this.folderApi.contents(this.folderId()));
+      }
     } catch (e) {
-      this.error.set(this.messageOf(e, 'Could not load this folder.'));
+      this.error.set(this.messageOf(e, q ? 'Search failed.' : 'Could not load this folder.'));
       this.contents.set(null);
     } finally {
       this.loading.set(false);
     }
     void this.usage.refresh();
+  }
+
+  /** The display path for a search hit: the client owns the "My Files" root label. */
+  protected locationLabel(item: { location?: string[] }): string {
+    return ['My Files', ...(item.location ?? [])].join(' / ');
   }
 
   // ---- create / rename ----------------------------------------------------
@@ -583,6 +610,8 @@ export class Files {
   @HostListener('mousedown', ['$event'])
   protected onMarqueeDown(event: MouseEvent): void {
     if (event.button !== 0) return;
+    // A cross-folder result set has no spatial layout to rubber-band over.
+    if (this.searchMode()) return;
     const target = event.target as HTMLElement | null;
     if (!target || target.closest(MARQUEE_IGNORE)) return;
 
@@ -640,6 +669,11 @@ export class Files {
   // ---- drag and drop ------------------------------------------------------
 
   protected onItemDragStart(event: DragEvent, payload: DragPayload): void {
+    // No move target makes sense in a flat, cross-folder result set — drop is disabled too.
+    if (this.searchMode()) {
+      event.preventDefault();
+      return;
+    }
     event.dataTransfer?.setData(DRAG_TYPE, JSON.stringify(payload));
     event.dataTransfer?.setData('text/plain', payload.name);
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
@@ -735,6 +769,8 @@ export class Files {
 
   /** True only for a drag carrying OS files, so internal card moves never raise the overlay. */
   private isFileDrag(event: DragEvent): boolean {
+    // Search results are global, so there is no "current folder" to upload a dropped file into.
+    if (this.searchMode()) return false;
     return !this.isInternal(event) && (event.dataTransfer?.types.includes('Files') ?? false);
   }
 
