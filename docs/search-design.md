@@ -116,6 +116,30 @@ Everything reuses the existing paths:
 - No matches → "No files or folders match '…'." (reuses the empty-state slot).
 - The result count is announced for assistive tech (§4).
 
+### 3.3 Motion: a steady response while typing
+
+Search-as-you-type re-fetches on every (debounced) keystroke, so the naive version blanked the
+grid to a "Loading…" line and snapped the next set in — a flicker that read as broken. The states:
+
+- **While a search resolves — the debounce window *and* the fetch — a skeleton grid** of
+  placeholder cards replaces the results (`skeletonVisible`). The skeleton comes up the instant a
+  keystroke makes the box diverge from the loaded query (`pendingSearch`), *before* navigation or
+  any request — so typing has an immediate, stable response rather than stale results sitting
+  frozen. A small `cove-spinner` replaces the result count in the header throughout.
+- Detecting the debounce window needs the live box text in the view, which owns none of it — so
+  the topbar publishes it to a tiny [`SearchStore`](../src/ClientApp/src/app/core/search.store.ts)
+  the Files view reads. `pendingSearch = liveTerm ≠ loadedQuery`.
+- Each result card **eases in on mount** (`cell-in`: fade + 6px rise). The grid tracks by id, so on
+  a plain folder navigation only genuinely new cards animate.
+- **Folder browsing** keeps a lighter treatment — the current grid stays and dims in place
+  (`.results--busy`) during its fetch — since there's no per-keystroke churn to cover. The
+  full-screen spinner is first-load only.
+- New shared Cove components:
+  [`cove-spinner`](../src/ClientApp/src/app/cove/lib/spinner/spinner.component.ts) and
+  [`cove-skeleton`](../src/ClientApp/src/app/cove/lib/skeleton/skeleton.component.ts) (a shimmering
+  box you compose into card shapes). Every animation here collapses to an instant state change
+  under the global `prefers-reduced-motion` guard, so it's a11y-safe by construction.
+
 ---
 
 ## 4. Accessibility & mobile

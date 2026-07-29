@@ -4,6 +4,7 @@ import { Subject, debounceTime, distinctUntilChanged, filter } from 'rxjs';
 import { AuthService } from './core/auth.service';
 import { ThemeService } from './core/theme.service';
 import { UsageStore } from './core/usage.store';
+import { SearchStore } from './core/search.store';
 import { ButtonComponent } from './cove/lib/button/button.component';
 import { IconComponent } from './cove/lib/icon/icon.component';
 import { IconButtonComponent } from './cove/lib/icon-button/icon-button.component';
@@ -28,6 +29,7 @@ export class App {
   protected readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
   protected readonly usage = inject(UsageStore);
+  private readonly searchStore = inject(SearchStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly bytes = new BytesPipe();
@@ -40,7 +42,8 @@ export class App {
    * `?q=` onto `/files` — the Files view reads it and switches into search mode. Keeping the state
    * in the URL means the box and the results can't disagree, and a search survives a reload.
    */
-  protected readonly searchTerm = signal('');
+  /** Shared with the Files view so it can show a skeleton during the debounce (see SearchStore). */
+  protected readonly searchTerm = this.searchStore.term;
   private readonly searchInput$ = new Subject<string>();
 
   /** The off-canvas nav drawer (mobile only). Behaves as a modal: scrim, ESC, focus trap. */

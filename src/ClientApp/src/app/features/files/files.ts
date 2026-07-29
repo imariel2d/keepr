@@ -5,6 +5,7 @@ import { combineLatest, map } from 'rxjs';
 import { FolderService } from '../../core/folder.service';
 import { MediaService } from '../../core/media.service';
 import { SearchService } from '../../core/search.service';
+import { SearchStore } from '../../core/search.store';
 import { UploadService } from '../../core/upload.service';
 import { UsageStore } from '../../core/usage.store';
 import { BytesPipe } from '../../core/bytes.pipe';
@@ -14,6 +15,8 @@ import { ButtonComponent } from '../../cove/lib/button/button.component';
 import { IconComponent } from '../../cove/lib/icon/icon.component';
 import { InputComponent } from '../../cove/lib/input/input.component';
 import { ModalComponent } from '../../cove/lib/modal/modal.component';
+import { SpinnerComponent } from '../../cove/lib/spinner/spinner.component';
+import { SkeletonComponent } from '../../cove/lib/skeleton/skeleton.component';
 import { ContextMenuComponent, ContextMenuItem } from '../../cove/lib/context-menu/context-menu.component';
 import { menuAnchor } from '../../core/menu-anchor';
 import { FileCardComponent } from '../../cove/lib/files/file-card.component';
@@ -59,6 +62,8 @@ const THUMBNAIL_MAX_BYTES = 500 * 1024;
     IconComponent,
     InputComponent,
     ModalComponent,
+    SpinnerComponent,
+    SkeletonComponent,
     ContextMenuComponent,
     FileCardComponent,
     FolderCardComponent,
@@ -74,6 +79,7 @@ export class Files {
   private readonly folderApi = inject(FolderService);
   private readonly media = inject(MediaService);
   private readonly search = inject(SearchService);
+  private readonly searchStore = inject(SearchStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly uploads = inject(UploadService);
@@ -99,6 +105,30 @@ export class Files {
    */
   protected readonly searchQuery = signal<string | null>(null);
   protected readonly searchMode = computed(() => this.searchQuery() !== null);
+
+  /**
+   * A new search is queued but not yet reflected on screen: the live box term differs from the
+   * query actually loaded. True through the topbar's debounce window, before any fetch starts —
+   * which is exactly when we want a skeleton up.
+   */
+  protected readonly pendingSearch = computed(
+    () => this.searchStore.term().trim() !== (this.searchQuery() ?? '')
+  );
+
+  /** Search is busy — pending (debouncing) or fetching. Drives the header spinner. */
+  protected readonly searchBusy = computed(() => this.pendingSearch() || this.loading());
+
+  /**
+   * Show the skeleton grid instead of results while a search resolves — both the debounce window
+   * and the fetch. Folder browsing keeps its dim-in-place behaviour (no term pending, no ?q=).
+   */
+  protected readonly skeletonVisible = computed(
+    () => this.pendingSearch() || (this.loading() && this.searchQuery() !== null)
+  );
+
+  /** Fixed sets of placeholder cards to render while the skeleton is up. */
+  protected readonly skeletonFolderSlots = Array.from({ length: 2 });
+  protected readonly skeletonSlots = Array.from({ length: 10 });
 
   protected readonly contents = signal<FolderContents | null>(null);
   protected readonly loading = signal(true);

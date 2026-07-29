@@ -3,7 +3,9 @@
     <!-- Search replaces the breadcrumb trail: results are global, so there is no path to show. -->
     <div class="trail search-head" aria-live="polite">
       <h1 class="search-heading">Results for “{{ searchQuery() }}”</h1>
-      @if (!loading()) {
+      @if (searchBusy()) {
+        <cove-spinner [size]="16" label="Searching" />
+      } @else {
         <span class="search-count">{{ itemCount() }} {{ plural(itemCount(), 'result') }}</span>
       }
     </div>
@@ -101,8 +103,41 @@
   </div>
 }
 
-@if (loading()) {
-  <p class="muted">Loading…</p>
+@if (skeletonVisible()) {
+  <!-- Placeholder grid while a search resolves (debounce + fetch), so typing has an immediate,
+       steady response instead of stale results sitting frozen. Decorative; the header spinner
+       and this status line carry the "loading" meaning for assistive tech. -->
+  <span class="sr-only" role="status">Searching…</span>
+  <div class="skeleton" aria-hidden="true">
+    <cove-skeleton class="skeleton-title" width="70px" height="13px" />
+    <div class="skeleton-grid">
+      @for (s of skeletonFolderSlots; track $index) {
+        <div class="skeleton-folder">
+          <cove-skeleton width="28px" height="28px" />
+          <cove-skeleton class="skeleton-folder-name" width="55%" height="14px" />
+        </div>
+      }
+    </div>
+
+    <cove-skeleton class="skeleton-title" width="48px" height="13px" />
+    <div class="skeleton-grid">
+      @for (s of skeletonSlots; track $index) {
+        <div class="skeleton-card">
+          <cove-skeleton width="100%" height="120px" radius="0" />
+          <div class="skeleton-meta">
+            <cove-skeleton width="78%" height="14px" />
+            <cove-skeleton width="45%" height="12px" />
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+} @else if (loading() && !contents()) {
+  <!-- First load only: subsequent fetches keep the current grid on screen, dimmed (below). -->
+  <div class="loading-state">
+    <cove-spinner [size]="28" />
+    <span class="muted">Loading…</span>
+  </div>
 } @else if (isEmpty()) {
   <div class="empty" aria-live="polite">
     @if (searchMode()) {
@@ -114,6 +149,8 @@
     }
   </div>
 } @else {
+  <!-- Dimmed while a new fetch is in flight, so results ease out and back rather than blinking. -->
+  <div class="results" [class.results--busy]="loading()">
   @if (folders().length) {
     <h2 class="section-title">Folders</h2>
     <div class="grid">
@@ -166,6 +203,7 @@
       }
     </div>
   }
+  </div>
 }
 
 <cove-context-menu
