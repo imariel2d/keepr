@@ -3,9 +3,8 @@
 Tracking the planned feature set against what is actually implemented in the codebase.
 
 Keepr is a **personal media store** with a folder hierarchy, rename, and a 10-day trash:
-single-owner (no sharing yet). Of the 34 planned features, **8 are complete** (backend + UI),
-1 is in progress (#34, admin console — backend done, Angular UI pending;
-[admin-console-design.md](admin-console-design.md)), and 25 are not started.
+single-owner (no user-to-user sharing yet). Of the 34 planned features, **10 are complete**
+(backend + UI) and 24 are not started.
 
 **Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
@@ -26,7 +25,7 @@ single-owner (no sharing yet). Of the 34 planned features, **8 are complete** (b
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
 | 6 | Sharing with specific users (view/edit) | ❌ | No share/permission model; everything is owner-scoped |
-| 7 | Shareable links | ❌ | Download URLs are short-TTL internal presigns, not user-facing links |
+| 7 | Shareable links | ✅ | [shareable-links-design.md](shareable-links-design.md). Single-file capability URLs (`src/Api/Features/Sharing/`), owner-editable expiry (1/7/30 days or never), per-link + whole-file revoke, presigned-R2 resolve gated by `PreviewPolicy`. UI: public `/s/:token` viewer + an owner Share dialog (create, copy active links, edit expiry, revoke). Verified end-to-end against the dockerised stack. Tokens are stored so links are re-copyable (Q-S5); Q5 risk accepted for single-owner sharing, scanning still required before #6 |
 | 8 | Trash / soft delete with restore | ✅ | `DeletedAt`/`DeletedRootId`, EF global query filters, `TrashController`, `TrashPurgeService` sweeper at 10 days. UI: `features/trash/` with restore, purge, empty, and a "in Trash" line on the quota meter. **Overrides Q9 hard delete** |
 | 9 | Search by file name | ❌ | List endpoint has no search/filter |
 | 10 | In-browser preview (images, PDFs) | ✅ | Full-screen overlay with prev/next + keyboard (`features/files/preview-overlay.ts`). Server-side allowlist (`PreviewPolicy`) decides what may render; images/SVG via `<img>`, PDFs via `<iframe>` with a forced content type, plus video/audio. Lazy size-capped grid thumbnails |
@@ -43,7 +42,7 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 | 27 | Change email | ❌ | `Email` is already unique + normalized (`AppDbContext`). A change must re-run `EmailPolicy` and, once #26's verification exists, re-verify the new address before it takes effect |
 | 28 | Change password | ❌ | Needs current-password confirmation, re-runs `PasswordPolicy` + the breach check, re-hashes with BCrypt, and revokes the user's other sessions — "sign out everywhere" is nearly free given the `Sessions` table ([cookie-session-design.md](cookie-session-design.md) Q-C3) |
 | 29 | Profile: first & last name | ❌ | `User` has no name fields today (`src/Api/Domain/User.cs`) — needs a migration plus a `PATCH /api/me` (`MeController` is GET-only). `cove-avatar` already derives initials from a whitespace-split name, so first + last would populate it |
-| 34 | Admin panel — account administration | 🟡 | **Backend done, Angular UI pending.** Design: [admin-console-design.md](admin-console-design.md). Introduces the **role/authorization model** (`Role` enum on `User`, a `role` claim, an `"Admin"` policy) that was the hard prerequisite, plus an env-driven first-admin bootstrap (`AdminSeeder`). `AdminController` lists accounts, adjusts quota, and kicks (`DELETE` revokes sessions + marks for deletion; `AccountWipeService` then hard-deletes all files and the account). Audited to `AdminActionLogs`. Force sign-out as a standalone action is deferred (Q-A3); reset-password/disable are covered by the self-service items above. This is the account-focused slice of the broader **#21** admin console |
+| 34 | Admin panel — account administration | ✅ | **Backend + Angular UI done.** Design: [admin-console-design.md](admin-console-design.md). Introduces the **role/authorization model** (`Role` enum on `User`, a `role` claim, an `"Admin"` policy) that was the hard prerequisite, plus an env-driven first-admin bootstrap (`AdminSeeder`). `AdminController` lists accounts, adjusts quota, and kicks (`DELETE` revokes sessions + marks for deletion; `AccountWipeService` then hard-deletes all files and the account). Audited to `AdminActionLogs`. Force sign-out as a standalone action is deferred (Q-A3); reset-password/disable are covered by the self-service items above. This is the account-focused slice of the broader **#21** admin console |
 
 ## Localization
 
@@ -98,10 +97,9 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 
 ## Summary
 
-- **Done (8):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
-  rename/delete, trash, in-browser preview.
-- **In progress (1):** #34 admin console — backend done, Angular UI pending.
-- **Not started (25):** everything else. **Tier 1 is complete.**
+- **Done (10):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
+  rename/delete, trash, in-browser preview, shareable links, admin console.
+- **Not started (24):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2
 

@@ -234,3 +234,9 @@
   [sourceFolderId]="folderId()"
   (confirm)="onMoveConfirmed($event)"
   (cancel)="moveOpen.set(false)" />
+
+<app-share-dialog
+  [open]="shareOpen()"
+  [fileId]="shareTarget()?.id ?? ''"
+  [fileName]="shareTarget()?.name ?? ''"
+  (close)="shareOpen.set(false)" />

@@ -32,6 +32,7 @@ AI recommends **presigned direct-to-R2** for large files, optional **proxy** for
 ### Q5 — Virus scanning / content moderation ✅
 - **Decision:** **No scanning for MVP.** Keep only cheap magic-byte structural validation (D6).
 - ⚠️ **Future:** **users WILL be able to share files with each other.** Once sharing ships, malware scanning *and* content moderation (CSAM/illegal content) become important — legal exposure, not just security. Revisit before the sharing feature launches. Storage stays private-per-owner until then.
+- 📐 **2026-07-24 — scoped exception for shareable links (#7).** [shareable-links-design.md](shareable-links-design.md) §2 accepts this risk *only* for single-owner link sharing (the owner shares their own self-uploaded files), bounded by mandatory expiry, revoke, and a global kill-switch. This exception is **scoped, not reusable**: scanning + moderation remain a hard prerequisite for #6 (multi-user sharing), where untrusted uploads enter.
 
 ### Q6 — Post-processing ✅
 - **Decision:** **None for MVP.** Store files as-is. No thumbnails, transcoding, or EXIF stripping yet. Revisit after MVP (transcoding will need a separate worker since App Platform is stateless).

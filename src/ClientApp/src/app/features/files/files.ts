@@ -18,6 +18,7 @@ import { FileCardComponent } from '../../cove/lib/files/file-card.component';
 import { FolderCardComponent } from '../../cove/lib/files/folder-card.component';
 import { FileType } from '../../cove/lib/files/file-type-meta';
 import { MoveDialog } from './move-dialog';
+import { ShareDialog } from './share-dialog';
 import { PreviewOverlay } from './preview-overlay';
 import { InViewDirective } from '../../core/in-view.directive';
 import { saveFile } from '../../core/save-file';
@@ -36,7 +37,7 @@ const MARQUEE_THRESHOLD_PX = 5;
  * Cards are excluded so dragging a card still moves it rather than drawing a rectangle.
  */
 const MARQUEE_IGNORE =
-  '.cell, button, input, a, label, cove-modal, cove-context-menu, app-move-dialog, app-preview-overlay, .selbar, .head, .banner';
+  '.cell, button, input, a, label, cove-modal, cove-context-menu, app-move-dialog, app-share-dialog, app-preview-overlay, .selbar, .head, .banner';
 
 /** Marks a drag as ours, so an OS file-drop and an internal move are never confused. */
 const DRAG_TYPE = 'application/x-keepr-item';
@@ -60,6 +61,7 @@ const THUMBNAIL_MAX_BYTES = 500 * 1024;
     FileCardComponent,
     FolderCardComponent,
     MoveDialog,
+    ShareDialog,
     PreviewOverlay,
     InViewDirective,
   ],
@@ -116,6 +118,9 @@ export class Files {
 
   protected readonly confirmOpen = signal(false);
   protected readonly confirmTargets = signal<DragPayload[]>([]);
+
+  protected readonly shareOpen = signal(false);
+  protected readonly shareTarget = signal<DragPayload | null>(null);
 
   /**
    * Selected items as `kind:id` keys. Folders and files share one set so a marquee, the
@@ -316,6 +321,15 @@ export class Files {
     void this.moveDialog()?.reset();
   }
 
+  // ---- share --------------------------------------------------------------
+
+  protected openShare(target: DragPayload): void {
+    this.shareTarget.set(target);
+    this.shareOpen.set(true);
+    // The dialog loads itself once its [open]/[fileId] inputs are set (see ShareDialog.ngOnChanges).
+    // Calling load() here ran before the [fileId] binding flushed, so it fetched /api/media//shares.
+  }
+
   protected async onMoveConfirmed(destination: string | null): Promise<void> {
     const targets = this.moveTargets();
     this.moveOpen.set(false);
@@ -504,6 +518,7 @@ export class Files {
     }
     this.showMenu(event, [
       { label: 'Download', icon: 'download', onSelect: () => void this.download(f) },
+      { label: 'Share…', icon: 'link', onSelect: () => this.openShare(payload) },
       { label: 'Rename', icon: 'edit-2', onSelect: () => this.openRename(payload) },
       { label: 'Move to…', icon: 'move', onSelect: () => this.openMove(payload) },
       { divider: true },
