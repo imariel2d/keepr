@@ -14,6 +14,7 @@ type Size = 'sm' | 'md' | 'lg';
       <input [placeholder]="placeholder" [value]="value" [type]="type"
              [attr.autocomplete]="autocomplete" [attr.name]="name" [attr.required]="required || null"
              (input)="valueChange.emit(input.value)" #input
+             (keydown.enter)="enter.emit()"
              (focus)="focus = true" (blur)="focus = false" [ngStyle]="inputStyle" />
       <ng-content select="[trailing]"></ng-content>
     </div>`,
@@ -28,6 +29,8 @@ export class InputComponent {
   @Input() name?: string;
   @Input() required = false;
   @Output() valueChange = new EventEmitter<string>();
+  /** Fires when Enter is pressed in the field, so a modal can submit on Enter. */
+  @Output() enter = new EventEmitter<void>();
   focus = false;
   private heights: Record<Size, string> = { sm: '32px', md: '40px', lg: '48px' };
   // boxShadow:none overrides the global `*:focus-visible` ring. The wrapper already shows focus

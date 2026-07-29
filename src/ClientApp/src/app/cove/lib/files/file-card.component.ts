@@ -11,17 +11,20 @@ import { FileType, TYPE_META } from './file-type-meta';
   standalone: true,
   imports: [CommonModule, IconComponent, IconButtonComponent, CheckboxComponent, AvatarComponent],
   template: `
-    <div (mouseenter)="hover = true" (mouseleave)="hover = false"
+    <div tabindex="0" role="button" [attr.aria-label]="ariaLabel"
+         (mouseenter)="hover = true" (mouseleave)="hover = false"
+         (focusin)="focused = true" (focusout)="onFocusOut($event)"
+         (keydown)="onKeydown($event)"
          (click)="cardClick.emit($event)" (dblclick)="openItem.emit()"
          (contextmenu)="$event.preventDefault(); menu.emit($event)" [ngStyle]="cardStyle()">
-      <span *ngIf="hover || selected" draggable="false"
+      <span *ngIf="revealed || selected" draggable="false"
         [ngStyle]="{ position: 'absolute', top: '10px', left: '10px', zIndex: 2, padding: '4px', margin: '-4px', cursor: 'pointer' }"
         (click)="$event.stopPropagation(); toggleSelect.emit()"
         (dblclick)="$event.stopPropagation()"
         (mousedown)="$event.stopPropagation()">
         <cove-checkbox [checked]="selected"></cove-checkbox>
       </span>
-      <cove-icon-button *ngIf="hover || selected" icon="more-vertical" label="More actions"
+      <cove-icon-button *ngIf="revealed || selected" icon="more-vertical" label="More actions"
         (click)="$event.stopPropagation(); menu.emit($event)"
         [ngStyle]="{ position: 'absolute', top: '6px', right: '6px', zIndex: 2, background: 'var(--surface-card)' }"></cove-icon-button>
       <div [ngStyle]="{ height: '120px', background: 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }">
@@ -50,7 +53,37 @@ export class FileCardComponent {
   /** Raw click on the card body; the host decides whether it selects, extends, or does nothing. */
   @Output() cardClick = new EventEmitter<MouseEvent>();
   hover = false;
+  focused = false;
   get meta() { return TYPE_META[this.type] || TYPE_META.default; }
+
+  /** Controls (checkbox, more-actions) show on hover OR keyboard focus, so they are reachable
+      without a mouse. */
+  get revealed() { return this.hover || this.focused; }
+
+  /** e.g. "budget.xlsx, file, modified 2 days ago" — read out when the card gets focus. */
+  get ariaLabel() {
+    const when = this.modified ? `, modified ${this.modified}` : '';
+    return `${this.name}, file${when}`;
+  }
+
+  /** Enter opens the file; Space toggles its selection — matching file-manager conventions.
+      Ignored when a nested control (the more-actions button) is focused, so it keeps its own keys. */
+  onKeydown(event: KeyboardEvent): void {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this.openItem.emit();
+    } else if (event.key === ' ' || event.key === 'Spacebar') {
+      event.preventDefault();
+      this.toggleSelect.emit();
+    }
+  }
+
+  /** Keep controls revealed while focus is anywhere inside the card; hide once it leaves. */
+  onFocusOut(event: FocusEvent): void {
+    const card = event.currentTarget as HTMLElement;
+    if (!card.contains(event.relatedTarget as Node)) this.focused = false;
+  }
   cardStyle() {
     return {
       width: '190px', borderRadius: 'var(--radius-lg)',

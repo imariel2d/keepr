@@ -164,7 +164,11 @@
   --shadow-sm: 0 2px 6px rgba(34, 29, 24, 0.08);
   --shadow-md: 0 8px 24px rgba(34, 29, 24, 0.10);
   --shadow-lg: 0 16px 40px rgba(34, 29, 24, 0.14);
-  --shadow-focus: 0 0 0 3px var(--accent-subtle);
+  /* Visible focus ring: a surface-coloured gap then a solid accent ring, so the
+     indicator reads against both the element's own fill and the page behind it
+     (WCAG 2.4.11). Overridable per-surface by redefining --focus-ring-gap. */
+  --focus-ring-gap: var(--surface-app);
+  --shadow-focus: 0 0 0 2px var(--focus-ring-gap), 0 0 0 4px var(--focus-ring);
 
   --ease-standard: cubic-bezier(0.2, 0.7, 0.3, 1);
   --duration-fast: 120ms;

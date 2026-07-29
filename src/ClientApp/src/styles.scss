@@ -18,8 +18,24 @@ h1, h2, h3 {
   margin: 0;
 }
 
+/* Focus ring uses `outline`, not `box-shadow`: several components (file/folder cards, etc.)
+   set an inline `box-shadow`, and inline styles win over any stylesheet rule — so a box-shadow
+   ring would silently vanish on exactly those elements. `outline` is a separate property nothing
+   sets inline, follows border-radius, and is the orange ring we want. */
 *:focus-visible {
-  outline: none;
-  box-shadow: var(--shadow-focus);
-  border-radius: var(--radius-sm);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Respect users who ask for less motion: collapse animations/transitions to a
+   near-instant, non-looping form rather than removing them outright. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

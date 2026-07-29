@@ -4,6 +4,7 @@ import { ShareLinkResponse } from '../../core/models';
 import { ButtonComponent } from '../../cove/lib/button/button.component';
 import { IconButtonComponent } from '../../cove/lib/icon-button/icon-button.component';
 import { ContextMenuComponent, ContextMenuItem } from '../../cove/lib/context-menu/context-menu.component';
+import { menuAnchor } from '../../core/menu-anchor';
 import { ModalComponent } from '../../cove/lib/modal/modal.component';
 
 interface ExpiryOption {
@@ -247,8 +248,9 @@ export class ShareDialog implements OnChanges {
     }
     items.push({ label: 'Revoke', icon: 'link-2-off', danger: true, onSelect: () => void this.revoke(link) });
     this.menuItems.set(items);
-    this.menuX.set(event.clientX);
-    this.menuY.set(event.clientY);
+    const { x, y } = menuAnchor(event);
+    this.menuX.set(x);
+    this.menuY.set(y);
     this.menuOpen.set(true);
   }
 

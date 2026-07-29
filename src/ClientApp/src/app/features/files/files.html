@@ -163,7 +163,8 @@
   <cove-input
     placeholder="Folder name"
     [value]="createName()"
-    (valueChange)="createName.set($event)" />
+    (valueChange)="createName.set($event)"
+    (enter)="submitCreate()" />
   <div class="foot">
     <cove-button variant="ghost" (click)="createOpen.set(false)">Cancel</cove-button>
     <cove-button variant="primary" (click)="submitCreate()">Create</cove-button>
@@ -179,7 +180,8 @@
   <cove-input
     placeholder="New name"
     [value]="renameValue()"
-    (valueChange)="renameValue.set($event)" />
+    (valueChange)="renameValue.set($event)"
+    (enter)="submitRename()" />
   <div class="foot">
     <cove-button variant="ghost" (click)="renameOpen.set(false)">Cancel</cove-button>
     <cove-button variant="primary" (click)="submitRename()">Rename</cove-button>

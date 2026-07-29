@@ -78,6 +78,10 @@ _(Record confirmed choices here as we go.)_
   Delete → Trash → purged permanently after 10 days. Makes recursive folder delete safe, so it
   ships in the first folder release. See [trash-soft-delete-design.md](trash-soft-delete-design.md).
 - 2026-07-21 — **Folder depth capped at 32** (`Path` = `varchar(1200)`).
+- 2026-07-29 — **Accessibility & mobile: foundation-first, hamburger drawer.** Fix a11y (keyboard,
+  focus, semantics) at the Cove component level before per-screen work, so every screen inherits it
+  at once. On mobile (<720px) the primary nav is a **hamburger off-canvas drawer**, not a bottom tab
+  bar or a stacked strip. See [accessibility-mobile-design.md](accessibility-mobile-design.md) (#35).
 
 <!--
 Example:
