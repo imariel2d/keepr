@@ -29,7 +29,7 @@ public class SessionCookie(IOptions<AuthSessionOptions> options, IWebHostEnviron
         // Lax, not Strict: Strict also withholds the cookie when the user follows an external link
         // into the app, which would bounce a logged-in user to /login until they reloaded. Lax
         // still blocks every cross-site fetch and every cross-site POST/PATCH/DELETE, which is
-        // every state-changing endpoint here. See docs/cookie-session-design.md (§5).
+        // every state-changing endpoint here. See docs/feature-3-cookie-session.md (§5).
         SameSite = SameSiteMode.Lax,
 
         // Local development is served over plain http, where a Secure cookie would be dropped.

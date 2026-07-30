@@ -29,7 +29,7 @@ public record SearchResults(
 /// <summary>
 /// Owner-scoped name search across the whole tree. Matches files and folders by a case-insensitive
 /// substring on their pre-lowercased name columns; trash is excluded by the soft-delete query
-/// filters. See docs/search-design.md.
+/// filters. See docs/feature-9-search.md.
 /// </summary>
 [ApiController]
 [Authorize]

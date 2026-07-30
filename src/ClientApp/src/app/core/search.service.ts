@@ -6,7 +6,7 @@ import { SearchResults } from './models';
 /**
  * Owner-scoped name search across the whole folder tree. Matches files and folders by a
  * case-insensitive substring; each hit carries its `location` (containing-folder path) because
- * results span folders. See docs/search-design.md.
+ * results span folders. See docs/feature-9-search.md.
  */
 @Injectable({ providedIn: 'root' })
 export class SearchService {

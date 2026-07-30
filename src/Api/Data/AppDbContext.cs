@@ -167,7 +167,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
             // Deliberately no FK to Users on either actor or target: audit rows outlive the
             // accounts they describe (a kick deletes its target). Emails are denormalized
-            // snapshots so the log stands alone. See docs/admin-console-design.md §5.
+            // snapshots so the log stands alone. See docs/feature-34-admin-console.md §5.
             e.Property(x => x.ActorEmail).HasMaxLength(320).IsRequired();
             e.Property(x => x.TargetEmail).HasMaxLength(320).IsRequired();
             e.Property(x => x.Action).HasConversion<string>().HasMaxLength(32);

@@ -32,7 +32,7 @@ AI recommends **presigned direct-to-R2** for large files, optional **proxy** for
 ### Q5 — Virus scanning / content moderation ✅
 - **Decision:** **No scanning for MVP.** Keep only cheap magic-byte structural validation (D6).
 - ⚠️ **Future:** **users WILL be able to share files with each other.** Once sharing ships, malware scanning *and* content moderation (CSAM/illegal content) become important — legal exposure, not just security. Revisit before the sharing feature launches. Storage stays private-per-owner until then.
-- 📐 **2026-07-24 — scoped exception for shareable links (#7).** [shareable-links-design.md](shareable-links-design.md) §2 accepts this risk *only* for single-owner link sharing (the owner shares their own self-uploaded files), bounded by mandatory expiry, revoke, and a global kill-switch. This exception is **scoped, not reusable**: scanning + moderation remain a hard prerequisite for #6 (multi-user sharing), where untrusted uploads enter.
+- 📐 **2026-07-24 — scoped exception for shareable links (#7).** [feature-7-shareable-links.md](feature-7-shareable-links.md) §2 accepts this risk *only* for single-owner link sharing (the owner shares their own self-uploaded files), bounded by mandatory expiry, revoke, and a global kill-switch. This exception is **scoped, not reusable**: scanning + moderation remain a hard prerequisite for #6 (multi-user sharing), where untrusted uploads enter.
 
 ### Q6 — Post-processing ✅
 - **Decision:** **None for MVP.** Store files as-is. No thumbnails, transcoding, or EXIF stripping yet. Revisit after MVP (transcoding will need a separate worker since App Platform is stateless).
@@ -47,7 +47,7 @@ AI recommends **presigned direct-to-R2** for large files, optional **proxy** for
 - ~~**Decision:** **Hard delete.**~~ **Now: soft delete + 10-day trash.** Deleting moves the item
   to Trash (a `DeletedAt` stamp, no R2 call); a background sweeper permanently purges after
   10 days, freeing quota then. Trashed bytes still count against quota until purge.
-  See [trash-soft-delete-design.md](trash-soft-delete-design.md).
+  See [feature-8-trash-soft-delete.md](feature-8-trash-soft-delete.md).
 - The original hard-delete note called this exact upgrade path — "a soft-delete/trash layer can
   be added later by introducing a `deleted_at` column, no painful migration" — and that held:
   the migration is two nullable columns per table.
@@ -69,23 +69,23 @@ _(Record confirmed choices here as we go.)_
 - 2026-07-19 — **Hard delete** (Q9). No trash/restore for MVP.
 - 2026-07-21 — **Folder name collisions auto-suffix** (`Photos (2)`), never 409. Applies to
   folder create/move and to file upload/rename. See
-  [folder-hierarchy-design.md](folder-hierarchy-design.md) Q-A/§4.0.
+  [feature-2-folder-hierarchy.md](feature-2-folder-hierarchy.md) Q-A/§4.0.
 - 2026-07-21 — **No duplicate file names within a folder** (Dropbox-style, not Drive-style).
   Enforced by a partial unique index; collisions auto-suffix per the decision above. Requires
   narrowing `OriginalName` to 255 chars and de-duplicating existing rows at migration time —
-  see folder-hierarchy-design.md Q-B/§5.
+  see feature-2-folder-hierarchy.md Q-B/§5.
 - 2026-07-21 — **Soft delete with a 10-day trash, replacing hard delete (overrides Q9).**
   Delete → Trash → purged permanently after 10 days. Makes recursive folder delete safe, so it
-  ships in the first folder release. See [trash-soft-delete-design.md](trash-soft-delete-design.md).
+  ships in the first folder release. See [feature-8-trash-soft-delete.md](feature-8-trash-soft-delete.md).
 - 2026-07-21 — **Folder depth capped at 32** (`Path` = `varchar(1200)`).
 - 2026-07-29 — **Accessibility & mobile: foundation-first, hamburger drawer.** Fix a11y (keyboard,
   focus, semantics) at the Cove component level before per-screen work, so every screen inherits it
   at once. On mobile (<720px) the primary nav is a **hamburger off-canvas drawer**, not a bottom tab
-  bar or a stacked strip. See [accessibility-mobile-design.md](accessibility-mobile-design.md) (#35).
+  bar or a stacked strip. See [feature-35-accessibility-mobile.md](feature-35-accessibility-mobile.md) (#35).
 - 2026-07-29 — **Search (#9): topbar box that filters My Files, matching files *and* folders.**
   Search lives in the **topbar** and drives the existing My Files grid into a flat results mode via
   `?q=` (no separate `/search` route), and it matches **both files and folders** by name — not
-  files-only. Case-insensitive substring. See [search-design.md](search-design.md).
+  files-only. Case-insensitive substring. See [feature-9-search.md](feature-9-search.md).
 
 <!--
 Example:

@@ -6,7 +6,7 @@ namespace Api.Tests;
 /// The rule that decides whether a link still grants access. It is a pure function of the clock,
 /// so it is tested here directly; the service's persistence paths are covered end-to-end (they
 /// lean on Postgres-only ExecuteUpdate/DateTimeOffset translation, like the session cleanup).
-/// See docs/shareable-links-design.md.
+/// See docs/feature-7-shareable-links.md.
 /// </summary>
 public class ShareLinkTests
 {

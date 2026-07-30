@@ -16,7 +16,7 @@ public class AuthSessionOptions
 
     /// <summary>
     /// How stale <see cref="Session.LastSeenAt"/> may get before a request bothers to write it
-    /// back. Keeps reads off the write path — see docs/cookie-session-design.md (§4.1).
+    /// back. Keeps reads off the write path — see docs/feature-3-cookie-session.md (§4.1).
     /// </summary>
     public int RenewAfterHours { get; set; } = 24;
 

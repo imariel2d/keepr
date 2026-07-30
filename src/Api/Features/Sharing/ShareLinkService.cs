@@ -25,7 +25,7 @@ public class ShareOptions
     /// <summary>
     /// Global kill-switch. When false, **all** public link resolution is refused without a deploy —
     /// the "take it all down now" lever from the design's Q5 risk acceptance. Owner management still
-    /// works so links can be cleaned up. See docs/shareable-links-design.md §2.
+    /// works so links can be cleaned up. See docs/feature-7-shareable-links.md §2.
     /// </summary>
     public bool PublicAccessEnabled { get; set; } = true;
 
@@ -50,7 +50,7 @@ public enum UpdateExpiryStatus { NotFound, Revoked, Ok }
 
 /// <summary>
 /// Mints, resolves, and manages "anyone with the link" grants. A link's token is the whole
-/// authorization; the row stores only its digest. See docs/shareable-links-design.md.
+/// authorization; the row stores only its digest. See docs/feature-7-shareable-links.md.
 /// </summary>
 public class ShareLinkService(AppDbContext db, IOptions<ShareOptions> options, TimeProvider clock)
 {

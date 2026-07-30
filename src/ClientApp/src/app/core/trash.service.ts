@@ -5,7 +5,7 @@ import { RestoreResponse, TrashItem } from './models';
 
 /**
  * The trash. Deleting a file or folder puts it here; it stays recoverable until `purgesAt`,
- * then a server-side sweeper removes it permanently. See docs/trash-soft-delete-design.md.
+ * then a server-side sweeper removes it permanently. See docs/feature-8-trash-soft-delete.md.
  *
  * Trashed bytes keep counting against the quota until purged — that's what `usage.trashedBytes`
  * is for.

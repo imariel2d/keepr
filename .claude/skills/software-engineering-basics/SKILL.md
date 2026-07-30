@@ -80,9 +80,11 @@ the moment you actually understand the change well enough to explain it.
 
 In this repo specifically:
 
-- `docs/` holds design docs (`*-design.md`) that record not just *what* was built but *why* — the
-  alternatives weighed and rejected. When you make a decision worth that treatment, write one in
-  the same style; when you change something an existing doc describes, update that doc.
+- `docs/` holds design docs that record not just *what* was built but *why* — the alternatives
+  weighed and rejected. When you make a decision worth that treatment, write one in the same style;
+  when you change something an existing doc describes, update that doc. Name docs per the
+  **docs-naming** skill — feature design docs are `feature-<N>-<slug>.md`, numbered off
+  `feature-status.md`.
 - `docs/feature-status.md` tracks planned vs. implemented features. Adjust it when a feature's
   status changes, and keep any counts or cross-references consistent.
 - Touch the `README.md` when you change how the app is run, configured, or deployed.

@@ -21,7 +21,7 @@ public record ShareDownloadUrlResponse(string Url, DateTimeOffset ExpiresAt);
 /// <summary>
 /// The anonymous read side of a shareable link. The token in the URL is the whole authorization;
 /// there is no account here. These are the app's first unauthenticated content endpoints.
-/// See docs/shareable-links-design.md.
+/// See docs/feature-7-shareable-links.md.
 /// </summary>
 [ApiController]
 [AllowAnonymous]

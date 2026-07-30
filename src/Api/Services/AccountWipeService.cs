@@ -8,7 +8,7 @@ namespace Keepr.Api.Services;
 /// Phase 2 of a kick: hard-deletes every file owned by an account an admin marked for deletion
 /// (<c>User.DeletionRequestedAt</c>), then removes the account. Unlike <see cref="TrashPurgeService"/>
 /// this ignores the retention clock and the trash/live distinction entirely — a kicked user's
-/// files all go, immediately and unrecoverably. See docs/admin-console-design.md §4.2.
+/// files all go, immediately and unrecoverably. See docs/feature-34-admin-console.md §4.2.
 ///
 /// A background job for the same reason purge is: it is the step that spans the database and R2
 /// without a shared transaction, so it retries on the next tick instead of failing in the admin's

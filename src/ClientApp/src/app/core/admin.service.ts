@@ -5,7 +5,7 @@ import { AdminUserListItem, PagedResponse } from './models';
 
 /**
  * The admin account-administration API (`/api/admin`). Every call is server-gated by the "Admin"
- * policy, so a non-admin reaching these would get 403. See docs/admin-console-design.md.
+ * policy, so a non-admin reaching these would get 403. See docs/feature-34-admin-console.md.
  */
 @Injectable({ providedIn: 'root' })
 export class AdminService {

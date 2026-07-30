@@ -80,7 +80,7 @@ public class AuthController(
         // Both paths take FOR UPDATE on the row, so they cannot interleave: either the kick's
         // revocation runs after this session exists (and revokes it too), or the re-read below —
         // under the lock, hence AsNoTracking for the row's committed value — sees the account
-        // already marked and refuses. See docs/admin-console-design.md §4.2.
+        // already marked and refuses. See docs/feature-34-admin-console.md §4.2.
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         var locked = await db.Users
             .FromSqlRaw($"SELECT * FROM {AppDbContext.Schema}.\"Users\" WHERE \"Id\" = {{0}} FOR UPDATE", user.Id)

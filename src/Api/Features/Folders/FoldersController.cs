@@ -30,7 +30,7 @@ public record FolderContents(
 
 /// <summary>
 /// Folder tree: create, browse, rename, move, and delete-to-trash.
-/// See docs/folder-hierarchy-design.md.
+/// See docs/feature-2-folder-hierarchy.md.
 /// </summary>
 [ApiController]
 [Authorize]

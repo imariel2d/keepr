@@ -22,7 +22,7 @@ public record TrashEntry(
 /// <summary>
 /// Soft delete: deleting stamps <c>DeletedAt</c> and is fully transactional with no object-storage
 /// calls, so it is instant and reversible. Bytes are freed only when the retention window expires
-/// and <see cref="TrashPurgeService"/> purges. See docs/trash-soft-delete-design.md.
+/// and <see cref="TrashPurgeService"/> purges. See docs/feature-8-trash-soft-delete.md.
 /// </summary>
 public class TrashService(
     AppDbContext db,

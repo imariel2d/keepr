@@ -137,7 +137,7 @@ INDEX  (OwnerId, Path)                                          -- subtree scans
 
 The `DeletedAt IS NULL` filter comes from the trash decision (Q-C): a name held by a folder
 sitting in the trash must not block reusing it. See
-[trash-soft-delete-design.md §2.2](trash-soft-delete-design.md#22-index-changes).
+[feature-8-trash-soft-delete.md §2.2](feature-8-trash-soft-delete.md#22-index-changes).
 
 `NULLS NOT DISTINCT` (Postgres 15+, and we target 16 per ai-design-decisions §5) is what makes
 the uniqueness actually hold at the root, where `ParentId` is null. In EF/Npgsql that's
@@ -303,7 +303,7 @@ Moving a **file** is far simpler: validate the destination folder is owned by th
 ### 4.3 Delete → **superseded by Q-C: this is now a soft delete**
 `DELETE /api/folders/{id}` stamps `DeletedAt` across the subtree in one transaction with no R2
 calls, and a background sweeper purges after 10 days. See
-[trash-soft-delete-design.md §4](trash-soft-delete-design.md#4-operations). The section below is
+[feature-8-trash-soft-delete.md §4](feature-8-trash-soft-delete.md#4-operations). The section below is
 retained because the purge job's object-before-row ordering comes from it.
 
 <details>
@@ -435,7 +435,7 @@ Consequences this decision pulled in, none of which existed before it:
 Delete moves to Trash and purges after 10 days, which makes recursive delete transactional and
 reversible — so the "empty folders only" restriction is unnecessary and `DELETE
 /api/folders/{id}` is recursive from day one. **This overrides Q9 (hard delete).** Full design:
-[trash-soft-delete-design.md](trash-soft-delete-design.md). The analysis that led here is kept
+[feature-8-trash-soft-delete.md](feature-8-trash-soft-delete.md). The analysis that led here is kept
 below because it explains *why* the ordering in the purge job is what it is.
 
 <details>
@@ -505,7 +505,7 @@ For reference: 64 levels → `varchar(2200)`, still comfortably inside the btree
 </details>
 
 ### ⏳ Q-E, Q-F, Q-G — trash retention, sweeper leasing, downloading trashed files
-Moved to [trash-soft-delete-design.md §8](trash-soft-delete-design.md#8-open-questions).
+Moved to [feature-8-trash-soft-delete.md §8](feature-8-trash-soft-delete.md#8-open-questions).
 
 ### 🔄 Q-H — Should `Path`/`Depth` exist at all? (raised by Ariel, 2026-07-21)
 
@@ -533,7 +533,7 @@ that were never going to be slow.
 **Revised recommendation: drop `Path` and `Depth`; pure adjacency list.** Knock-on effects:
 - §3.1 loses two columns; §3.2 loses the `(OwnerId, Path)` index.
 - §4.1 depth check, §4.2 cycle check, and §8.6 become recursive CTEs / a one-row UPDATE.
-- [Trash §4.1](trash-soft-delete-design.md#41-trash-a-folder-recursive-one-transaction-zero-r2-calls)'s
+- [Trash §4.1](feature-8-trash-soft-delete.md#41-trash-a-folder-recursive-one-transaction-zero-r2-calls)'s
   `LIKE` cascade becomes a `WITH RECURSIVE` UPDATE.
 - **Q-D changes character:** the depth cap was forced by `Path` being a bounded `varchar`.
   Without it, 32 becomes an application guard against runaway nesting (still worth having, e.g.

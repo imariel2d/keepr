@@ -8,7 +8,7 @@ namespace Keepr.Api.Storage;
 ///
 /// This is the only way the browser can learn a file's real name: storage keys are opaque
 /// (`{ownerId}/{uuid}.jpg`) by design, so without an explicit Content-Disposition a "Save as"
-/// suggests the UUID. See docs/folder-hierarchy-design.md (FD1) for why keys stay opaque.
+/// suggests the UUID. See docs/feature-2-folder-hierarchy.md (FD1) for why keys stay opaque.
 /// </summary>
 public readonly record struct PresignHeaders(
     string? FileName = null,

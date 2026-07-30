@@ -4,7 +4,7 @@ namespace Keepr.Api.Services;
 
 /// <summary>
 /// Picks a non-colliding name by appending a counter — "Photos" → "Photos (2)" → "Photos (3)".
-/// Collisions never fail a request; they rename. See docs/folder-hierarchy-design.md (Q-A, §4.0).
+/// Collisions never fail a request; they rename. See docs/feature-2-folder-hierarchy.md (Q-A, §4.0).
 ///
 /// The result is advisory: the unique index is the referee, so callers must still retry on a
 /// 23505 from a racing writer (see <see cref="NameConflict"/>).

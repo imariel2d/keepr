@@ -10,7 +10,7 @@ namespace Keepr.Api.Features.Auth;
 /// <c>Admin__Password</c>). Both blank is the safe default — no admin is created. The password is
 /// an <em>initial</em> secret only: once the account exists the DB hash is the source of truth,
 /// and editing this value later does nothing (that would be reset-password, #28). See
-/// docs/admin-console-design.md §3 and Q-A1.
+/// docs/feature-34-admin-console.md §3 and Q-A1.
 /// </summary>
 public class AdminOptions
 {

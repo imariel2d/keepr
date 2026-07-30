@@ -8,7 +8,7 @@ namespace Keepr.Api.Services;
 /// Permanently deletes trashed items once the retention window expires — the only place bytes
 /// actually leave R2 and quota is freed. Deliberately a background job: it is the one step that
 /// spans two systems without a shared transaction, so it retries on the next tick instead of
-/// failing in a user's request. See docs/trash-soft-delete-design.md (§4.4).
+/// failing in a user's request. See docs/feature-8-trash-soft-delete.md (§4.4).
 ///
 /// Single-instance safe, same caveat as <see cref="UploadCleanupService"/>: two instances
 /// sweeping at once would double-release quota. Add an advisory lock before scaling out.

@@ -5,7 +5,7 @@ namespace Api.Tests;
 /// <summary>
 /// The two rules that decide whether a cookie still works, and how often the row behind it is
 /// rewritten. Both are pure functions of the clock, so they are tested here rather than through a
-/// database — see docs/cookie-session-design.md (§8) for why the persistence layer is covered
+/// database — see docs/feature-3-cookie-session.md (§8) for why the persistence layer is covered
 /// end-to-end instead.
 /// </summary>
 public class SessionTests

@@ -21,7 +21,7 @@ public class FolderException(string message, int statusCode = StatusCodes.Status
 /// representation — so a move is a one-row update and nothing can drift out of sync. Ancestor
 /// and subtree walks use recursive CTEs against the (OwnerId, ParentId) index; they run on the
 /// write path and on breadcrumb rendering, never on the hot "list this folder" query.
-/// See docs/folder-hierarchy-design.md (Q-H).
+/// See docs/feature-2-folder-hierarchy.md (Q-H).
 /// </summary>
 public class FolderService(AppDbContext db)
 {

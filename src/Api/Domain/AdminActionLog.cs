@@ -14,7 +14,7 @@ public enum AdminActionType
 /// One audited admin action. Deliberately has <b>no foreign keys to <see cref="User"/></b>: an
 /// audit row must outlive the account it describes — the whole point of logging a kick is that the
 /// record survives the target's deletion. Actor and target email are therefore denormalized
-/// snapshots, so the log is readable on its own. See docs/admin-console-design.md §5 and Q-A2.
+/// snapshots, so the log is readable on its own. See docs/feature-34-admin-console.md §5 and Q-A2.
 /// </summary>
 public class AdminActionLog
 {

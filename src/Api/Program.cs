@@ -36,7 +36,7 @@ builder.Services.AddDbContext<AppDbContext>(o =>
     // loading the required navigation could surface a filtered-out (trashed) file as null. That is
     // deliberate here and never hit: ShareLinkService.ResolveAsync never loads the file through the
     // navigation — it re-queries MediaFile separately and maps a trashed/purged file to "Gone".
-    // See docs/shareable-links-design.md §6.
+    // See docs/feature-7-shareable-links.md §6.
     o.ConfigureWarnings(w => w.Ignore(
         Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId
             .PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning));
@@ -65,7 +65,7 @@ if (!Uri.TryCreate(shareCfg.PublicBaseUrl, UriKind.Absolute, out var shareUri) |
     throw new InvalidOperationException(
         "Sharing:PublicBaseUrl must be an absolute http(s) URL — the public origin the share-link " +
         "viewer is served from (e.g. https://your-app.example, or http://localhost:4200 in dev). " +
-        "Set Sharing__PublicBaseUrl. See docs/shareable-links-design.md.");
+        "Set Sharing__PublicBaseUrl. See docs/feature-7-shareable-links.md.");
 if (shareCfg.MaxExpiryDays < 1)
     throw new InvalidOperationException("Sharing:MaxExpiryDays must be at least 1.");
 if (shareCfg.AccessStampThrottleMinutes < 0)
@@ -81,13 +81,13 @@ builder.Services.AddSingleton<SessionCookie>();
 builder.Services.AddScoped<IRegistrationGate, InviteCodeRegistrationGate>();
 
 // Seeds the first admin at startup (env Admin__Email/Password) so the console is reachable on a
-// fresh deployment where signups are invite-gated. See docs/admin-console-design.md §3.
+// fresh deployment where signups are invite-gated. See docs/feature-34-admin-console.md §3.
 builder.Services.AddScoped<AdminSeeder>();
 builder.Services.AddScoped<AdminAuditService>();
 
 // Rejects passwords found in the Have I Been Pwned corpus. Only a 5-character hash prefix ever
 // leaves the process (k-anonymity), and the check fails OPEN — a third party's outage must not be
-// able to close registration. See docs/user-registration-validation-design.md (§5.3).
+// able to close registration. See docs/feature-3-registration-validation.md (§5.3).
 builder.Services.AddHttpClient<IBreachedPasswordCheck, PwnedPasswordsClient>(c =>
 {
     c.BaseAddress = new Uri("https://api.pwnedpasswords.com/");
@@ -108,7 +108,7 @@ builder.Services.AddHostedService<AccountWipeService>();
 // ---- Auth ------------------------------------------------------------------
 // The session lives in an HttpOnly cookie holding an opaque id, not a JWT: a JWT stays valid
 // until it expires no matter what the server thinks, so logout could not actually end a session.
-// See docs/cookie-session-design.md.
+// See docs/feature-3-cookie-session.md.
 builder.Services.AddAuthentication(SessionAuthenticationHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, SessionAuthenticationHandler>(
         SessionAuthenticationHandler.SchemeName, null);
@@ -116,7 +116,7 @@ builder.Services.AddAuthorization(options =>
 {
     // The privileged gate for /api/admin. RequireClaim over the role emitted by the session
     // handler: a User-role caller is authenticated but 403s, anonymous 401s. See
-    // docs/admin-console-design.md §2.2.
+    // docs/feature-34-admin-console.md §2.2.
     options.AddPolicy("Admin", p => p.RequireClaim(KeeprClaims.Role, nameof(Role.Admin)));
 });
 

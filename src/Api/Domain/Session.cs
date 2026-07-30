@@ -4,7 +4,7 @@ namespace Keepr.Api.Domain;
 /// A logged-in session, addressed by an opaque random token held in an HttpOnly cookie.
 ///
 /// The row stores <see cref="TokenHash"/> — never the token itself — so a dump of this table
-/// cannot be replayed as a live session. See docs/cookie-session-design.md (§3.1).
+/// cannot be replayed as a live session. See docs/feature-3-cookie-session.md (§3.1).
 /// </summary>
 public class Session
 {

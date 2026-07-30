@@ -11,7 +11,7 @@
 > **This overrides Q9 (hard delete)** in [my-decisions.md](my-decisions.md). Decided by Ariel,
 > 2026-07-21: deleting moves an item to Trash; after **10 days** it is permanently purged.
 >
-> Companion to [folder-hierarchy-design.md](folder-hierarchy-design.md) — the two features are
+> Companion to [feature-2-folder-hierarchy.md](feature-2-folder-hierarchy.md) — the two features are
 > entangled (trashing a folder means trashing a subtree), and this doc resolves that doc's Q-C.
 
 ---
@@ -35,7 +35,7 @@ the **delete path**, which splits into three distinct operations that used to be
 The win: the risky, non-transactional, cross-system step is now the *only* one users never
 trigger directly, it runs in the background, and it can retry a failed item on the next tick
 instead of leaving a half-deleted folder in someone's face. That is exactly why
-[folder-hierarchy-design.md Q-C](folder-hierarchy-design.md#7-questions-and-decisions) argued
+[feature-2-folder-hierarchy.md Q-C](feature-2-folder-hierarchy.md#7-questions-and-decisions) argued
 for waiting — with trash in place, **recursive folder delete is safe to ship immediately**, so
 the "empty folders only" restriction is no longer needed.
 
@@ -151,7 +151,7 @@ Restore `WHERE DeletedRootId = @id` (ignoring query filters), clearing both colu
 conflicts have to be handled, and both reuse machinery that already exists:
 
 - **Name taken.** Something new now occupies `invoice.pdf`. Run the restored item through
-  [§4.0 name allocation](folder-hierarchy-design.md#40-name-allocation-q-a--q-b--used-by-create-move-rename-and-upload)
+  [§4.0 name allocation](feature-2-folder-hierarchy.md#40-name-allocation-q-a--q-b--used-by-create-move-rename-and-upload)
   → it comes back as `invoice (2).pdf`. Consistent with Q-A; never fails the restore.
 - **Parent is gone or still trashed.** Restoring `Italy/` whose parent `Photos/` was purged
   three days ago. Rule: **restore to the owner's root** (`ParentId = null` / `FolderId = null`)

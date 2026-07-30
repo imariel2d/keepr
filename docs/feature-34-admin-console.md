@@ -12,8 +12,8 @@
 > first two admin capabilities: adjust anyone's storage, and remove an account (with a full file
 > wipe).
 >
-> Relates to Q-R3 in [registration-gate-design.md](registration-gate-design.md) (first-admin
-> bootstrap) and reuses the purge path from [trash-soft-delete-design.md](trash-soft-delete-design.md).
+> Relates to Q-R3 in [feature-3-registration-gate.md](feature-3-registration-gate.md) (first-admin
+> bootstrap) and reuses the purge path from [feature-8-trash-soft-delete.md](feature-8-trash-soft-delete.md).
 
 ---
 

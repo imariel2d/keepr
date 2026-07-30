@@ -13,7 +13,7 @@ public record RestoreResponse(Guid Id, string Name);
 
 /// <summary>
 /// The trash: what's in it, restoring, and permanent deletion. Items land here from
-/// DELETE /api/folders/{id} and DELETE /api/media/{id}. See docs/trash-soft-delete-design.md.
+/// DELETE /api/folders/{id} and DELETE /api/media/{id}. See docs/feature-8-trash-soft-delete.md.
 /// </summary>
 [ApiController]
 [Authorize]

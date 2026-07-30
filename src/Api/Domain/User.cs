@@ -27,7 +27,7 @@ public class User
     /// Set when an admin kicks this account. From this moment the account is disabled — login is
     /// refused and its sessions are already revoked — and the background <c>AccountWipeService</c>
     /// hard-deletes every file it owns before removing the row. Null for a normal, live account.
-    /// See docs/admin-console-design.md §4.2.
+    /// See docs/feature-34-admin-console.md §4.2.
     /// </summary>
     public DateTimeOffset? DeletionRequestedAt { get; set; }
 

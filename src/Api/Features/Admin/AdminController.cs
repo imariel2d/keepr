@@ -29,7 +29,7 @@ public record UpdateQuotaRequest(long QuotaBytes);
 /// <summary>
 /// Account administration, restricted to admins by the "Admin" policy. A non-admin caller is
 /// authenticated but forbidden (403); an anonymous caller is unauthorized (401). See
-/// docs/admin-console-design.md.
+/// docs/feature-34-admin-console.md.
 /// </summary>
 [ApiController]
 [Authorize(Policy = "Admin")]
@@ -143,7 +143,7 @@ public class AdminController(
     /// all synchronously — then returns 202. The background <c>AccountWipeService</c> hard-deletes
     /// their files (live and trashed, no recovery window) and removes the account. Guardrails: an
     /// admin cannot kick their own account, and the last remaining admin cannot be removed. See
-    /// docs/admin-console-design.md §4.2/§4.3.
+    /// docs/feature-34-admin-console.md §4.2/§4.3.
     /// </summary>
     [HttpDelete("users/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
@@ -176,7 +176,7 @@ public class AdminController(
 
         // Take the same FOR UPDATE lock the login path holds while issuing a session, so a
         // concurrent login cannot slip a new session in between this revocation and the commit.
-        // See docs/admin-console-design.md §4.2 and AuthController.Login.
+        // See docs/feature-34-admin-console.md §4.2 and AuthController.Login.
         await db.Database.ExecuteSqlRawAsync(
             $"SELECT 1 FROM {AppDbContext.Schema}.\"Users\" WHERE \"Id\" = {{0}} FOR UPDATE", [id], ct);
 

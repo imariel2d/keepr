@@ -6,7 +6,7 @@
 >
 > All JSON is camelCase. Authenticated endpoints are authorised by the session cookie set at
 > login — there is no `Authorization` header any more, and nothing for the client to attach or
-> store. See [cookie-session-design.md](cookie-session-design.md).
+> store. See [feature-3-cookie-session.md](feature-3-cookie-session.md).
 > Errors are RFC7807 problem+json — the human-readable message is in **`detail`**.
 >
 > 💡 **Try any of this live:** run the API and open **http://localhost:5080/swagger**. Call

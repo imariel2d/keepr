@@ -16,7 +16,7 @@ type Disposition = 'inline' | 'attachment';
  *    URL is the whole authorization, so nothing here depends on a session;
  *  - the **owner** path (create/list/edit/revoke) is the authenticated management surface.
  *
- * See docs/shareable-links-design.md.
+ * See docs/feature-7-shareable-links.md.
  */
 @Injectable({ providedIn: 'root' })
 export class ShareService {

@@ -8,7 +8,7 @@ namespace Keepr.Api.Features.Auth;
 /// that guidance is withdrawn precisely because it shrinks the practical search space while
 /// producing predictable shapes like <c>Passw0rd!</c>.
 ///
-/// See docs/user-registration-validation-design.md (§5).
+/// See docs/feature-3-registration-validation.md (§5).
 /// </summary>
 public static class PasswordPolicy
 {

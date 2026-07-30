@@ -4,7 +4,7 @@ namespace Api.Tests;
 
 /// <summary>
 /// Auto-suffix rules (Q-A/Q-B). These are the edge cases that silently produce wrong filenames
-/// if the extension or counter handling is off — see docs/folder-hierarchy-design.md §4.0.
+/// if the extension or counter handling is off — see docs/feature-2-folder-hierarchy.md §4.0.
 /// </summary>
 public class NameAllocatorTests
 {

@@ -14,7 +14,7 @@ type ViewState = 'loading' | 'ok' | 'notfound' | 'gone' | 'error';
  * The public page a share link opens to (`/s/:token`). Unauthenticated — the token in the URL is
  * the whole authorization. It resolves the token to metadata, renders a preview for previewable
  * types (reusing the server's `previewKind` and `PreviewPolicy`, never sniffing here), and offers
- * a download for everything. See docs/shareable-links-design.md §5.
+ * a download for everything. See docs/feature-7-shareable-links.md §5.
  */
 @Component({
   selector: 'app-share-viewer',

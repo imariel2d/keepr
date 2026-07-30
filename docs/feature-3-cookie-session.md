@@ -282,7 +282,7 @@ sweeper alongside `TrashPurgeService` is the fallback — and would need the sam
 treatment flagged in [feature-status.md](feature-status.md).
 
 ### ⏳ Q-C5 — Rate limiting still absent
-Unchanged from [registration-gate-design.md](registration-gate-design.md) Q-R1. Cookies do not
+Unchanged from [feature-3-registration-gate.md](feature-3-registration-gate.md) Q-R1. Cookies do not
 affect it, but a session-issuing endpoint with no throttle is the same open door it was before.
 
 ### ⏳ Q-C6 — Idle vs absolute lifetime

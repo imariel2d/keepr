@@ -11,7 +11,7 @@ namespace Keepr.Api.Features.Auth;
 /// nobody has one. Rejecting them keeps every downstream assumption simple. If this ever bites a
 /// real user, relax one rule and add a test naming the address that motivated it.
 ///
-/// See docs/user-registration-validation-design.md (§4).
+/// See docs/feature-3-registration-validation.md (§4).
 /// </summary>
 public static class EmailPolicy
 {

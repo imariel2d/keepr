@@ -6,7 +6,7 @@ namespace Keepr.Api.Domain;
 /// in sync. Subtree and ancestor walks use recursive CTEs (see FolderService).
 ///
 /// Folders are metadata only — they never appear in an object's storage key, so moving or
-/// renaming one costs zero R2 calls. See docs/folder-hierarchy-design.md (FD1, Q-H).
+/// renaming one costs zero R2 calls. See docs/feature-2-folder-hierarchy.md (FD1, Q-H).
 /// </summary>
 public class Folder
 {

@@ -8,7 +8,7 @@ namespace Keepr.Api.Domain;
 /// The trade, taken knowingly: a dump of this table exposes the active share URLs — acceptable for
 /// a single-owner deployment sharing its own files, and revisited before multi-user sharing (#6).
 ///
-/// See docs/shareable-links-design.md. This is deliberately not user-to-user sharing (#6).
+/// See docs/feature-7-shareable-links.md. This is deliberately not user-to-user sharing (#6).
 /// </summary>
 public class ShareLink
 {

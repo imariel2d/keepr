@@ -7,7 +7,7 @@
 > Decided by Ariel, 2026-07-23: account creation currently accepts any string as an email and any
 > string as a password. Add real validation to both.
 >
-> This sits alongside [registration-gate-design.md](registration-gate-design.md). That doc answers
+> This sits alongside [feature-3-registration-gate.md](feature-3-registration-gate.md). That doc answers
 > *who may enrol*. This one answers *what a valid account looks like*. They are deliberately
 > separate mechanisms — see §2.
 
@@ -53,7 +53,7 @@ and owe the caller different answers:
 
 Collapsing them would mean the gate returns `400` sometimes and `403` others, and that
 `GateDecision.Reason` carries both "you weren't invited" and "your password is too short". The gate
-interface stays narrow, exactly as [registration-gate-design.md §2](registration-gate-design.md)
+interface stays narrow, exactly as [feature-3-registration-gate.md §2](feature-3-registration-gate.md)
 argues it should.
 
 ---
@@ -210,7 +210,7 @@ returned at once rather than first-only, so the form can mark every bad field in
 ```
 
 `detail` is populated as well as `errors` because the existing client renders `error.detail`
-verbatim ([registration-gate-design.md §6](registration-gate-design.md)); it keeps working
+verbatim ([feature-3-registration-gate.md §6](feature-3-registration-gate.md)); it keeps working
 unchanged, and the per-field `errors` map is additive.
 
 | Case | Status | Message |

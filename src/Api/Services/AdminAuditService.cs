@@ -8,7 +8,7 @@ namespace Keepr.Api.Services;
 /// Records admin actions to <see cref="AdminActionLog"/>. Each method only <em>adds</em> the row to
 /// the context — it does not save. The caller commits it in the <b>same</b> <c>SaveChangesAsync</c>
 /// as the state change it records, so an action and its audit entry are all-or-nothing (a failed
-/// quota update leaves no audit row claiming it happened). See docs/admin-console-design.md §5.
+/// quota update leaves no audit row claiming it happened). See docs/feature-34-admin-console.md §5.
 /// </summary>
 public class AdminAuditService(AppDbContext db)
 {
