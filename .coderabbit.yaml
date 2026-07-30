@@ -6,11 +6,11 @@
 
 language: en-US
 
-# Nudges the reviewer toward this repo's house style. Hard cap: 250 characters.
+# Sets the reviewer's voice — plain-English explanations anyone can follow. Hard cap: 250 chars.
 tone_instructions: >-
-  Keepr is a small single-owner media store. Favor correctness and security over style nits. When
-  flagging, name what breaks and the input that triggers it, not just the rule. Skip org-process
-  asks (CODEOWNERS, approvals) a solo project lacks.
+  Explain each issue in plain English anyone can follow: what breaks, the exact input that triggers
+  it, and why it matters; define any jargon in a few words. Favor correctness and security over
+  style nits. Skip process asks a solo repo lacks.
 
 reviews:
   # assertive = more thorough, more nitpicks. Suits a quality-focused solo project; switch to
