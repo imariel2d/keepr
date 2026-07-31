@@ -181,6 +181,17 @@ this endpoint):
   called "load-bearing once a demote endpoint exists". That endpoint is here now.
 - Promotion `User → Admin` is unrestricted (other than the caller being an admin).
 
+**The last-admin check must be atomic.** Counting admins and then updating the role is a
+check-then-act on the admin *set*, so it has to be serialized or two concurrent demotes each observe
+"one other admin remains" and both commit, leaving zero admins. The single-row `SELECT … FOR UPDATE`
+the kick path uses (#34 §4.2) is **not** sufficient here: two admins demoting *each other* target
+different rows and never contend on that lock. So the demote runs in a transaction that first takes a
+**transaction-scoped advisory lock on a fixed "admin-set" key** (`pg_advisory_xact_lock`) — one
+serialization point that any future admin-removing path shares — then counts non-pending admins other
+than the target and, only if `> 0`, applies the update. The `409` and the no-self-demote guard are
+unchanged; this just closes the concurrent-demote gap. (Advisory locks are already in the project's
+vocabulary — see the sweeper-leasing follow-up in [feature-status.md](feature-status.md).)
+
 Because the role rides in the session ticket (#34 §2.2), a demotion takes effect on the target's
 **next** session validation. For an immediate effect, pair a demote with a session revoke — noted as
 Q-P5, not built now (matches #34 Q-A3's "force sign-out is a trivial future add").
