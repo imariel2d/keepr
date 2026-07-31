@@ -85,6 +85,15 @@ namespace Keepr.Api.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            // Remove invited-but-unclaimed accounts before restoring the NOT NULL constraint. Their
+            // PasswordHash is NULL — the "no password yet, must claim" marker. Without this, the
+            // AlterColumn below backfills that NULL with '' (defaultValue), turning each into an
+            // ordinary account with an invalid hash: BCrypt.Verify(pw, "") throws, so its logins
+            // become 500s instead of 401s, and it can never be claimed (AccountInvites is dropped
+            // just below). These rows only exist because of this feature, so rolling it back should
+            // delete them. See docs/feature-36-account-provisioning.md §8.1.
+            migrationBuilder.Sql("DELETE FROM keepr.\"Users\" WHERE \"PasswordHash\" IS NULL;");
+
             migrationBuilder.DropTable(
                 name: "AccountInvites",
                 schema: "keepr");
