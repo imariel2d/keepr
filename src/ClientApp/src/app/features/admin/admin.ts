@@ -45,6 +45,7 @@ export class Admin {
   protected readonly newRole = signal<Role>('User');
   protected readonly newSendInvite = signal(false);
   protected readonly newPassword = signal('');
+  protected readonly showNewPassword = signal(false);
   protected readonly creating = signal(false);
   protected readonly createFieldErrors = signal<Record<string, string[]>>({});
   /** True when invite mode is unavailable because no mailer is configured (server said 409). */
@@ -137,6 +138,7 @@ export class Admin {
     this.newRole.set('User');
     this.newSendInvite.set(false);
     this.newPassword.set('');
+    this.showNewPassword.set(false);
     this.createFieldErrors.set({});
     this.emailUnavailable.set(false);
     this.dialogError.set(null);

@@ -130,6 +130,27 @@ table.users {
 
   .field-error { margin: 0; font-size: var(--text-xs); color: var(--danger); }
 
+  // Reveal toggle inside the password field. Mirrors the login screen's .reveal.
+  .reveal {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-1);
+    margin: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    border-radius: var(--radius-sm);
+    transition: color var(--duration-fast);
+
+    &:hover { color: var(--text-secondary); }
+    &:focus-visible {
+      outline: none;
+      box-shadow: var(--shadow-focus);
+    }
+  }
+
   // Live password rules. Unmet items read as plain guidance, not errors — nothing is wrong yet
   // while the admin is still typing. Mirrors the login screen.
   .requirements {

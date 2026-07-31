@@ -113,8 +113,19 @@
     @if (!newSendInvite()) {
       <label class="field">
         <span>Password</span>
-        <cove-input type="password" autocomplete="new-password" placeholder="At least {{ minPasswordLength }} characters"
-                    [value]="newPassword()" (valueChange)="newPassword.set($event)" />
+        <cove-input [type]="showNewPassword() ? 'text' : 'password'" autocomplete="new-password"
+                    placeholder="At least {{ minPasswordLength }} characters"
+                    [value]="newPassword()" (valueChange)="newPassword.set($event)">
+          <button
+            trailing
+            type="button"
+            class="reveal"
+            [attr.aria-label]="showNewPassword() ? 'Hide password' : 'Show password'"
+            [attr.aria-pressed]="showNewPassword()"
+            (click)="showNewPassword.set(!showNewPassword())">
+            <cove-icon [name]="showNewPassword() ? 'eye-off' : 'eye'" [size]="16" />
+          </button>
+        </cove-input>
         <ul class="requirements">
           @for (requirement of passwordRequirements(); track requirement.label) {
             <li [class.met]="requirement.met">
