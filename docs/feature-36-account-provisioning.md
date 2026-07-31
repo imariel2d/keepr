@@ -362,6 +362,13 @@ New table `AccountInvites`:
 The token in the URL is a long URL-safe random string (like a share-link token). We look up by hash,
 constant-time compare — consistent with how the rest of the app treats bearer secrets.
 
+**One live invite per account is a database invariant, not a convention.** `AccountInvites` carries a
+**partial unique index** on `UserId` filtered to `ClaimedAt IS NULL`, so at most one *unclaimed*
+invite can exist per account (claimed rows are excluded and never conflict). Without it, "one live
+invite" would rest solely on resend deleting before inserting, and two concurrent resends could each
+delete-then-insert and leave two valid claim links. With it, the second insert is rejected by the
+database; `ResendInvite` maps that to a `409` "try again" (§8.5) rather than a 500.
+
 ### 8.3 Sending is non-fatal to account creation
 
 Create the account + invite row and **commit first**, then send the email. If `SendAsync` throws

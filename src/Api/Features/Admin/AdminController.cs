@@ -390,7 +390,18 @@ public class AdminController(
         await invites.RemoveExistingAsync(user.Id, ct);
         var (invite, token) = invites.Build(user.Id);
         db.AccountInvites.Add(invite);
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        {
+            // Lost a race with a concurrent resend: the one-live-invite-per-account unique index
+            // rejected this second insert (the other request's link stands). Report it rather than
+            // 500; the admin can retry. See docs/feature-36-account-provisioning.md §8.2/§8.5.
+            return Problem("Another invite for this account was just issued. Try again.",
+                statusCode: StatusCodes.Status409Conflict);
+        }
 
         try
         {

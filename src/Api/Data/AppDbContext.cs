@@ -198,9 +198,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Resending replaces the row for a user, and the admin view may look up "the invite for
-            // this account"; both scan by user.
-            e.HasIndex(x => x.UserId);
+            // At most one *live* (unclaimed) invite per account, enforced by the database — not just
+            // by ResendInvite deleting before inserting. Without this, two concurrent resends can
+            // each delete then insert, leaving two valid claim links for one account. The filter
+            // excludes claimed rows (which we keep) so a claim never conflicts. Also serves the
+            // by-user lookups (resend/admin view). See docs/feature-36-account-provisioning.md §8.2.
+            e.HasIndex(x => x.UserId)
+                .IsUnique()
+                .HasFilter($"\"{nameof(AccountInvite.ClaimedAt)}\" IS NULL");
         });
     }
 }
