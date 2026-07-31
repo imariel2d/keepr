@@ -51,7 +51,10 @@ export class Profile {
   protected readonly currentPassword = signal('');
   protected readonly newPassword = signal('');
   protected readonly confirmPassword = signal('');
-  protected readonly showPasswords = signal(false);
+  // A reveal toggle per field, so showing one doesn't expose the others.
+  protected readonly showCurrent = signal(false);
+  protected readonly showNew = signal(false);
+  protected readonly showConfirm = signal(false);
   protected readonly savingPassword = signal(false);
   protected readonly passwordNotice = signal<string | null>(null);
   protected readonly passwordError = signal<string | null>(null);

@@ -51,26 +51,26 @@
     <div class="stack">
       <label class="field">
         <span>Current password</span>
-        <cove-input [type]="showPasswords() ? 'text' : 'password'" autocomplete="current-password"
+        <cove-input [type]="showCurrent() ? 'text' : 'password'" autocomplete="current-password"
                     [value]="currentPassword()" (valueChange)="currentPassword.set($event)">
           <button trailing type="button" class="reveal"
-                  [attr.aria-label]="showPasswords() ? 'Hide passwords' : 'Show passwords'"
-                  [attr.aria-pressed]="showPasswords()"
-                  (click)="showPasswords.set(!showPasswords())">
-            <cove-icon [name]="showPasswords() ? 'eye-off' : 'eye'" [size]="16" />
+                  [attr.aria-label]="showCurrent() ? 'Hide password' : 'Show password'"
+                  [attr.aria-pressed]="showCurrent()"
+                  (click)="showCurrent.set(!showCurrent())">
+            <cove-icon [name]="showCurrent() ? 'eye-off' : 'eye'" [size]="16" />
           </button>
         </cove-input>
       </label>
       <label class="field">
         <span>New password</span>
-        <cove-input [type]="showPasswords() ? 'text' : 'password'" autocomplete="new-password"
+        <cove-input [type]="showNew() ? 'text' : 'password'" autocomplete="new-password"
                     placeholder="At least {{ minPasswordLength }} characters"
                     [value]="newPassword()" (valueChange)="newPassword.set($event)">
           <button trailing type="button" class="reveal"
-                  [attr.aria-label]="showPasswords() ? 'Hide passwords' : 'Show passwords'"
-                  [attr.aria-pressed]="showPasswords()"
-                  (click)="showPasswords.set(!showPasswords())">
-            <cove-icon [name]="showPasswords() ? 'eye-off' : 'eye'" [size]="16" />
+                  [attr.aria-label]="showNew() ? 'Hide password' : 'Show password'"
+                  [attr.aria-pressed]="showNew()"
+                  (click)="showNew.set(!showNew())">
+            <cove-icon [name]="showNew() ? 'eye-off' : 'eye'" [size]="16" />
           </button>
         </cove-input>
         @for (message of errorsFor('password'); track message) {
@@ -79,14 +79,14 @@
       </label>
       <label class="field">
         <span>Confirm new password</span>
-        <cove-input [type]="showPasswords() ? 'text' : 'password'" autocomplete="new-password"
+        <cove-input [type]="showConfirm() ? 'text' : 'password'" autocomplete="new-password"
                     [value]="confirmPassword()" (valueChange)="confirmPassword.set($event)"
                     (enter)="changePassword()">
           <button trailing type="button" class="reveal"
-                  [attr.aria-label]="showPasswords() ? 'Hide passwords' : 'Show passwords'"
-                  [attr.aria-pressed]="showPasswords()"
-                  (click)="showPasswords.set(!showPasswords())">
-            <cove-icon [name]="showPasswords() ? 'eye-off' : 'eye'" [size]="16" />
+                  [attr.aria-label]="showConfirm() ? 'Hide password' : 'Show password'"
+                  [attr.aria-pressed]="showConfirm()"
+                  (click)="showConfirm.set(!showConfirm())">
+            <cove-icon [name]="showConfirm() ? 'eye-off' : 'eye'" [size]="16" />
           </button>
         </cove-input>
         @if (confirmPassword().length > 0 && !confirmMatches()) {
