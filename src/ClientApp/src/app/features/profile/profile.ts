@@ -51,6 +51,7 @@ export class Profile {
   protected readonly currentPassword = signal('');
   protected readonly newPassword = signal('');
   protected readonly confirmPassword = signal('');
+  protected readonly showPasswords = signal(false);
   protected readonly savingPassword = signal(false);
   protected readonly passwordNotice = signal<string | null>(null);
   protected readonly passwordError = signal<string | null>(null);
