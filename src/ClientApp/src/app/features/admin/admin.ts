@@ -55,6 +55,19 @@ export class Admin {
     return this.newSendInvite() || [...this.newPassword()].length >= MIN_PASSWORD_LENGTH;
   });
 
+  /**
+   * Live password rules shown in direct mode, so the admin can see what unlocks "Create account"
+   * rather than guessing why the button is disabled. Only the length rule is mirrored (the one
+   * that's easy to miss); the 72-byte max, email-reuse, and breach checks stay server-side and
+   * surface as field errors on submit — matching the login screen's approach.
+   */
+  protected readonly passwordRequirements = computed(() => [
+    {
+      label: `At least ${MIN_PASSWORD_LENGTH} characters`,
+      met: [...this.newPassword()].length >= MIN_PASSWORD_LENGTH,
+    },
+  ]);
+
   // Quota-edit modal.
   protected readonly quotaTarget = signal<AdminUserListItem | null>(null);
   protected readonly quotaGb = signal('');

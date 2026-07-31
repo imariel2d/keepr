@@ -115,6 +115,14 @@
         <span>Password</span>
         <cove-input type="password" autocomplete="new-password" placeholder="At least {{ minPasswordLength }} characters"
                     [value]="newPassword()" (valueChange)="newPassword.set($event)" />
+        <ul class="requirements">
+          @for (requirement of passwordRequirements(); track requirement.label) {
+            <li [class.met]="requirement.met">
+              <cove-icon [name]="requirement.met ? 'check' : 'circle'" [size]="13" />
+              {{ requirement.label }}
+            </li>
+          }
+        </ul>
         @for (message of errorsFor('password'); track message) {
           <p class="field-error">{{ message }}</p>
         }
