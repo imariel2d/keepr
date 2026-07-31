@@ -17,6 +17,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<MediaFile> MediaFiles => Set<MediaFile>();
     public DbSet<Folder> Folders => Set<Folder>();
     public DbSet<AdminActionLog> AdminActionLogs => Set<AdminActionLog>();
+    public DbSet<AccountInvite> AccountInvites => Set<AccountInvite>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -31,7 +32,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.Email).IsUnique();
             e.Property(x => x.Email).HasMaxLength(320).IsRequired();
-            e.Property(x => x.PasswordHash).IsRequired();
+
+            // Nullable: an invited-but-unclaimed account has no password yet (§8.1). Deliberately
+            // not IsRequired — the null is the "cannot sign in until claimed" state.
+            e.Property(x => x.FirstName).HasMaxLength(100);
+            e.Property(x => x.LastName).HasMaxLength(100);
 
             // Stored as a string like MediaFile.Status, so the column reads 'User'/'Admin' rather
             // than an opaque int. The default backfills every pre-existing row to User — no
@@ -175,6 +180,27 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
             // The audit view lists a target's history newest-first.
             e.HasIndex(x => new { x.TargetUserId, x.CreatedAt });
+        });
+
+        b.Entity<AccountInvite>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            // Every claim resolves by this lookup, so it must be a unique index probe; unique also
+            // turns a token collision into a database error rather than an ambiguous match. 32 bytes
+            // = one SHA-256 digest, like Session.TokenHash.
+            e.HasIndex(x => x.TokenHash).IsUnique();
+            e.Property(x => x.TokenHash).HasMaxLength(32).IsRequired();
+
+            // Cascade: a deleted (or kicked) account's pending invite must not outlive it.
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Resending replaces the row for a user, and the admin view may look up "the invite for
+            // this account"; both scan by user.
+            e.HasIndex(x => x.UserId);
         });
     }
 }

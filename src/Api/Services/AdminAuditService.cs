@@ -38,4 +38,33 @@ public class AdminAuditService(AppDbContext db)
             TargetEmail = targetEmail
         });
     }
+
+    public void RecordUserCreated(
+        Guid actorId, string actorEmail, User target, bool invited)
+    {
+        db.AdminActionLogs.Add(new AdminActionLog
+        {
+            ActorUserId = actorId,
+            ActorEmail = actorEmail,
+            Action = AdminActionType.UserCreated,
+            TargetUserId = target.Id,
+            TargetEmail = target.Email,
+            // "invited" (email claim) vs "direct" (admin set the password) — the audit records how.
+            Details = JsonSerializer.Serialize(new { role = target.Role.ToString(), invited })
+        });
+    }
+
+    public void RecordRoleChange(
+        Guid actorId, string actorEmail, User target, Role from, Role to)
+    {
+        db.AdminActionLogs.Add(new AdminActionLog
+        {
+            ActorUserId = actorId,
+            ActorEmail = actorEmail,
+            Action = AdminActionType.RoleChanged,
+            TargetUserId = target.Id,
+            TargetEmail = target.Email,
+            Details = JsonSerializer.Serialize(new { from = from.ToString(), to = to.ToString() })
+        });
+    }
 }

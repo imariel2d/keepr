@@ -7,7 +7,13 @@ public enum AdminActionType
     QuotaChanged = 0,
 
     /// <summary>An admin removed a user — access revoked and all their files wiped.</summary>
-    UserKicked = 1
+    UserKicked = 1,
+
+    /// <summary>An admin provisioned a new account (with a password or an email invite).</summary>
+    UserCreated = 2,
+
+    /// <summary>An admin changed a user's role (promote/demote).</summary>
+    RoleChanged = 3
 }
 
 /// <summary>

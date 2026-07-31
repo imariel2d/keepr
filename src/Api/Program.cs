@@ -1,6 +1,8 @@
 using Keepr.Api.Data;
 using Keepr.Api.Domain;
 using Keepr.Api.Features.Auth;
+using Keepr.Api.Features.Email;
+using Keepr.Api.Features.Invites;
 using Keepr.Api.Features.Sharing;
 using Keepr.Api.OpenApi;
 using Keepr.Api.Services;
@@ -18,6 +20,7 @@ builder.Services.Configure<CleanupOptions>(builder.Configuration.GetSection(Clea
 builder.Services.Configure<RegistrationOptions>(builder.Configuration.GetSection(RegistrationOptions.SectionName));
 builder.Services.Configure<ShareOptions>(builder.Configuration.GetSection(ShareOptions.SectionName));
 builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection(AdminOptions.SectionName));
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 
 // ---- Persistence -----------------------------------------------------------
 // Resolve from ConnectionStrings:Postgres (key-value or postgres:// URI) or discrete Db:* fields.
@@ -71,14 +74,43 @@ if (shareCfg.MaxExpiryDays < 1)
 if (shareCfg.AccessStampThrottleMinutes < 0)
     throw new InvalidOperationException("Sharing:AccessStampThrottleMinutes must be 0 or greater.");
 
+// Outbound email is optional (#36): pick a real sender only when a provider is configured,
+// otherwise a no-op keeps every email feature degrading gracefully. Fail fast if smtp is selected
+// but its required settings are blank — the same fail-loud instinct as the storage/share checks
+// above, so a half-configured mailer surfaces at boot, not on the first invite. See
+// docs/feature-36-account-provisioning.md §6.
+var emailCfg = builder.Configuration.GetSection(EmailOptions.SectionName).Get<EmailOptions>()
+               ?? new EmailOptions();
+if (emailCfg.Enabled)
+{
+    if (!emailCfg.Provider.Equals("smtp", StringComparison.OrdinalIgnoreCase))
+        throw new InvalidOperationException(
+            $"Email:Provider '{emailCfg.Provider}' is not supported. Use 'none' or 'smtp'.");
+    if (string.IsNullOrWhiteSpace(emailCfg.Smtp.Host) || string.IsNullOrWhiteSpace(emailCfg.FromAddress))
+        throw new InvalidOperationException(
+            "Email__Provider=smtp requires Email__Smtp__Host and Email__FromAddress. "
+            + "Leave Email__Provider unset (or 'none') to disable outbound mail.");
+    builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+}
+else
+{
+    builder.Services.AddScoped<IEmailSender, NoOpEmailSender>();
+}
+
 builder.Services.AddSingleton<IObjectStorage, R2ObjectStorage>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<QuotaService>();
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddSingleton<SessionCookie>();
-// Who may create an account. Swap this line for another IRegistrationGate (emailed invites, an
-// allow-list, an approval queue) without touching AuthController.
-builder.Services.AddScoped<IRegistrationGate, InviteCodeRegistrationGate>();
+// Who may create an account. Public self-registration is CLOSED since #36 — accounts are
+// admin-provisioned (see AdminController.CreateUser + the invite/claim flow). InviteCodeRegistrationGate
+// is kept, dormant: swap this one line back to re-open public invite-code signup. See
+// docs/feature-36-account-provisioning.md §3.1.
+builder.Services.AddScoped<IRegistrationGate, ClosedRegistrationGate>();
+// Shared email/password validation (registration, admin create, invite claim, change-password).
+builder.Services.AddScoped<CredentialValidator>();
+// Account invites: token minting, the claim email, and resolve. See feature-36 §8.
+builder.Services.AddScoped<InviteService>();
 
 // Seeds the first admin at startup (env Admin__Email/Password) so the console is reachable on a
 // fresh deployment where signups are invite-gated. See docs/feature-34-admin-console.md §3.

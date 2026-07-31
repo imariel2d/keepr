@@ -1,6 +1,12 @@
 # Admin-Provisioned Accounts & Email Invites — Design
 
-> Feature #36 in [feature-status.md](feature-status.md). Status: **designed, not built** (2026-07-29).
+> Feature #36 in [feature-status.md](feature-status.md). Status: **backend implemented**
+> (2026-07-30); Angular UI (login trim, admin create/role dialogs, `/profile`, public `/claim`) and
+> live verification against the dockerised stack still pending. Backend code:
+> `Features/Auth/ClosedRegistrationGate` + `CredentialValidator`, `Features/Email/*` (`IEmailSender`,
+> `NoOpEmailSender`, `SmtpEmailSender`, `EmailTemplates`), `Features/Invites/*`,
+> `Features/Admin/AdminController` (create/role/resend), `Features/Me/MeController`
+> (profile + change-password), migration `AddAccountProvisioning`. Designed 2026-07-29.
 >
 > Replaces public invite-code self-registration (#3) with **admin-provisioned accounts**. The admin
 > creates every account and assigns its role; a new account is made usable either by the admin
@@ -348,7 +354,7 @@ New table `AccountInvites`:
 |---|---|---|
 | `Id` | uuid PK | |
 | `UserId` | uuid FK → Users | The pending account this claims. |
-| `TokenHash` | text | SHA-256 of the token. **Only the hash is stored** — same rule as sessions and share links; the raw token exists only in the emailed URL. |
+| `TokenHash` | bytea | SHA-256 of the token. **Only the hash is stored** — same rule (and column type) as `Session.TokenHash`; the raw token exists only in the emailed URL. |
 | `ExpiresAt` | timestamptz | Default 7 days (`Email:InviteExpiryDays`). An expired invite can be re-sent (§8.5). |
 | `ClaimedAt` | timestamptz null | Set when claimed; a claimed invite is dead. |
 | `CreatedAt` | timestamptz | |

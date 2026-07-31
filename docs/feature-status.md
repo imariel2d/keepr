@@ -4,7 +4,7 @@ Tracking the planned feature set against what is actually implemented in the cod
 
 Keepr is a **personal media store** with a folder hierarchy, rename, and a 10-day trash:
 single-owner (no user-to-user sharing yet). Of the 36 planned features, **10 are complete**
-(backend + UI), 2 are partial, 2 are designed but not built, and 22 are not started.
+(backend + UI), 5 are partial (backend done or nearly, UI pending), and 21 are not started.
 
 **Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
@@ -40,10 +40,10 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 |---|---------|--------|-------|
 | 26 | Forgot / reset password | ❌ | No email provider and no reset-token table exist. **Blocked on email verification** — a reset link can't be sent to an address the user never proved they own (Q-V6 in [feature-3-registration-validation.md](feature-3-registration-validation.md)). A successful reset should revoke existing sessions ([feature-3-cookie-session.md](feature-3-cookie-session.md) Q-C3) |
 | 27 | Change email | ❌ | `Email` is already unique + normalized (`AppDbContext`). A change must re-run `EmailPolicy` and, once #26's verification exists, re-verify the new address before it takes effect |
-| 28 | Change password | ❌ | Needs current-password confirmation, re-runs `PasswordPolicy` + the breach check, re-hashes with BCrypt, and revokes the user's other sessions — "sign out everywhere" is nearly free given the `Sessions` table ([feature-3-cookie-session.md](feature-3-cookie-session.md) Q-C3) |
-| 29 | Profile: first & last name | 📐 | Designed as part of #36 — see [feature-36-account-provisioning.md](feature-36-account-provisioning.md) §7. `User` has no name fields today (`src/Api/Domain/User.cs`) — needs a migration plus a `PATCH /api/me/profile` (`MeController` is GET-only). `cove-avatar` already derives initials from a whitespace-split name, so first + last would populate it |
+| 28 | Change password | 🟡 | **Backend done** as part of #36 ([feature-36-account-provisioning.md](feature-36-account-provisioning.md) §7.2): `POST /api/me/password` verifies the current password, re-runs `PasswordPolicy` + breach check, re-hashes with BCrypt, revokes the user's other sessions, and clears `MustChangePassword`. UI pending |
+| 29 | Profile: first & last name | 🟡 | **Backend done** as part of #36 ([feature-36-account-provisioning.md](feature-36-account-provisioning.md) §7). `User` gained `FirstName`/`LastName` (migration `AddAccountProvisioning`) plus `GET`/`PATCH /api/me/profile`. `cove-avatar` already derives initials from a whitespace-split name. UI pending |
 | 34 | Admin panel — account administration | ✅ | **Backend + Angular UI done.** Design: [feature-34-admin-console.md](feature-34-admin-console.md). Introduces the **role/authorization model** (`Role` enum on `User`, a `role` claim, an `"Admin"` policy) that was the hard prerequisite, plus an env-driven first-admin bootstrap (`AdminSeeder`). `AdminController` lists accounts, adjusts quota, and kicks (`DELETE` revokes sessions + marks for deletion; `AccountWipeService` then hard-deletes all files and the account). Audited to `AdminActionLogs`. Force sign-out as a standalone action is deferred (Q-A3); reset-password/disable are covered by the self-service items above. This is the account-focused slice of the broader **#21** admin console. **#36 extends this** with admin-created accounts + role assignment |
-| 36 | Admin-provisioned accounts & email invites | 📐 | [feature-36-account-provisioning.md](feature-36-account-provisioning.md). Replaces public invite-code self-signup (#3) with **admin-provisioned accounts**: the admin creates accounts and assigns a role, either setting a password directly (usable immediately, no email needed) or sending an **email invite** the user claims to set their own password. Introduces a **provider-agnostic `IEmailSender`** (SMTP baseline, no-op default → email is optional) — reusable infra that also unblocks #26/#27 and Q-A4. Ships a **Cove-styled HTML email template**. Folds in the **profile section** (#29) and the **change-password** core (#28, needed for forced first-login change). Invite-code self-registration is **disabled, not deleted** (dormant gate kept). Designed 2026-07-29, not built |
+| 36 | Admin-provisioned accounts & email invites | 🟡 | [feature-36-account-provisioning.md](feature-36-account-provisioning.md). **Backend implemented** (2026-07-30); Angular UI + live verification pending. Replaces public invite-code self-signup (#3) with **admin-provisioned accounts**: the admin creates accounts and assigns a role, either setting a password directly (usable immediately, no email needed) or sending an **email invite** the user claims to set their own password. Introduces a **provider-agnostic `IEmailSender`** (SMTP baseline via MailKit, no-op default → email is optional) — reusable infra that also unblocks #26/#27 and Q-A4. Ships a **Cove-styled HTML email template**. Folds in the **profile section** (#29) and the **change-password** core (#28, needed for forced first-login change). Invite-code self-registration is **disabled, not deleted** (`ClosedRegistrationGate` wired; invite gate kept dormant) |
 
 ## Localization
 
@@ -106,12 +106,12 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 
 - **Done (10):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
   rename/delete, trash, in-browser preview, shareable links, admin console.
-- **Partial (2):** search by file name (#9) — built end-to-end (files + folders), pending a live
-  run against the backend; accessibility & mobile responsiveness (#35) — component-level foundation
-  and the mobile drawer are in, a per-screen sweep and a few keyboard-nav decisions remain.
-- **Designed, not built (2):** admin-provisioned accounts & email invites (#36) and the profile
-  section (#29, folded into #36's design).
-- **Not started (22):** everything else. **Tier 1 is complete.**
+- **Partial (5):** search by file name (#9) — built end-to-end, pending a live run;
+  accessibility & mobile (#35) — foundation + drawer in, per-screen sweep remains;
+  admin-provisioned accounts & email invites (#36) — **backend implemented**, Angular UI +
+  live verification pending; change-password (#28) and profile names (#29) — backends landed
+  with #36, UI pending.
+- **Not started (21):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2
 
