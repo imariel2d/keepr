@@ -42,6 +42,7 @@
       (click)="theme.toggle()" />
 
     @if (auth.isAuthenticated()) {
+      <cove-icon-button icon="circle-user" label="Your profile" (click)="goToProfile()" />
       <cove-button variant="ghost" size="sm" icon="log-out" (click)="logout()">Log out</cove-button>
     }
   </div>

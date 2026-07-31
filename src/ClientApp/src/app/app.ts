@@ -5,6 +5,7 @@ import { AuthService } from './core/auth.service';
 import { ThemeService } from './core/theme.service';
 import { UsageStore } from './core/usage.store';
 import { SearchStore } from './core/search.store';
+import { ProfileStore } from './core/profile.store';
 import { ButtonComponent } from './cove/lib/button/button.component';
 import { IconComponent } from './cove/lib/icon/icon.component';
 import { IconButtonComponent } from './cove/lib/icon-button/icon-button.component';
@@ -30,6 +31,7 @@ export class App {
   protected readonly theme = inject(ThemeService);
   protected readonly usage = inject(UsageStore);
   private readonly searchStore = inject(SearchStore);
+  private readonly profile = inject(ProfileStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly bytes = new BytesPipe();
@@ -134,6 +136,10 @@ export class App {
     this.closeDrawer(); // a nav choice on mobile should dismiss the drawer
   }
 
+  protected goToProfile(): void {
+    this.router.navigate(['/profile']);
+  }
+
   protected openDrawer(): void {
     this.drawerReturnFocus = document.activeElement as HTMLElement | null;
     this.drawerOpen.set(true);
@@ -202,6 +208,7 @@ export class App {
     } catch {
       // Already reflected locally; nothing useful to add beyond getting them to /login.
     }
+    this.profile.clear(); // drop cached profile so the next account starts clean
     await this.router.navigate(['/login']);
   }
 }

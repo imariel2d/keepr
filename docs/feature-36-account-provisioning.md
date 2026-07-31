@@ -1,12 +1,16 @@
 # Admin-Provisioned Accounts & Email Invites — Design
 
-> Feature #36 in [feature-status.md](feature-status.md). Status: **backend implemented**
-> (2026-07-30); Angular UI (login trim, admin create/role dialogs, `/profile`, public `/claim`) and
-> live verification against the dockerised stack still pending. Backend code:
-> `Features/Auth/ClosedRegistrationGate` + `CredentialValidator`, `Features/Email/*` (`IEmailSender`,
-> `NoOpEmailSender`, `SmtpEmailSender`, `EmailTemplates`), `Features/Invites/*`,
-> `Features/Admin/AdminController` (create/role/resend), `Features/Me/MeController`
-> (profile + change-password), migration `AddAccountProvisioning`. Designed 2026-07-29.
+> Feature #36 in [feature-status.md](feature-status.md). Status: **backend + Angular UI
+> implemented** (2026-07-30); end-to-end verification against the dockerised stack still pending.
+> Backend: `Features/Auth/ClosedRegistrationGate` + `CredentialValidator`, `Features/Email/*`
+> (`IEmailSender`, `NoOpEmailSender`, `SmtpEmailSender`, `EmailTemplates`), `Features/Invites/*`,
+> `Features/Admin/AdminController` (create/role/resend, `Pending` flag on the admin DTOs),
+> `Features/Me/MeController` (profile + change-password), migration `AddAccountProvisioning`.
+> Frontend: sign-in-only `login`, `features/admin` (create dialog with the §9 warning, role change,
+> resend, Pending marker), `features/profile` (names + change-password + forced-change mode),
+> public `features/invites/claim`, `passwordChangeGuard`, `ProfileStore`. Login trim and the claim
+> page's states verified in the browser; the authed screens are compile-verified only (need the
+> full backend). Designed 2026-07-29.
 >
 > Replaces public invite-code self-registration (#3) with **admin-provisioned accounts**. The admin
 > creates every account and assigns its role; a new account is made usable either by the admin

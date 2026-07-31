@@ -1,0 +1,85 @@
+<section class="profile">
+  <header class="head">
+    <cove-avatar [name]="displayName()" [size]="52" />
+    <div class="who">
+      <h1>{{ displayName() }}</h1>
+      @if (profile(); as p) {
+        <p class="meta">
+          {{ p.email }}
+          <span class="badge" [attr.data-role]="p.role">{{ p.role }}</span>
+        </p>
+      }
+    </div>
+  </header>
+
+  @if (forced()) {
+    <p class="force-note" role="alert">
+      <cove-icon name="alert-triangle" [size]="16" />
+      Set a new password to continue. You're using a password an admin chose for you.
+    </p>
+  }
+
+  @if (!forced()) {
+    <!-- Name -->
+    <div class="card">
+      <h2>Your name</h2>
+      <p class="card-sub">Shown on your avatar and around the app.</p>
+      <div class="grid">
+        <label class="field">
+          <span>First name</span>
+          <cove-input autocomplete="given-name" [value]="firstName()"
+                      (valueChange)="firstName.set($event)" (enter)="saveName()" />
+        </label>
+        <label class="field">
+          <span>Last name</span>
+          <cove-input autocomplete="family-name" [value]="lastName()"
+                      (valueChange)="lastName.set($event)" (enter)="saveName()" />
+        </label>
+      </div>
+      @if (nameNotice()) { <p class="ok" role="status"><cove-icon name="check" [size]="14" /> {{ nameNotice() }}</p> }
+      @if (nameError()) { <p class="error" role="alert">{{ nameError() }}</p> }
+      <div class="actions">
+        <cove-button variant="primary" [disabled]="savingName()" (click)="saveName()">Save</cove-button>
+      </div>
+    </div>
+  }
+
+  <!-- Password -->
+  <div class="card">
+    <h2>{{ forced() ? 'Set a new password' : 'Change password' }}</h2>
+    <p class="card-sub">Changing it signs out your other sessions.</p>
+    <div class="stack">
+      <label class="field">
+        <span>Current password</span>
+        <cove-input type="password" autocomplete="current-password"
+                    [value]="currentPassword()" (valueChange)="currentPassword.set($event)" />
+      </label>
+      <label class="field">
+        <span>New password</span>
+        <cove-input type="password" autocomplete="new-password"
+                    placeholder="At least {{ minPasswordLength }} characters"
+                    [value]="newPassword()" (valueChange)="newPassword.set($event)" />
+        @for (message of errorsFor('password'); track message) {
+          <p class="field-error">{{ message }}</p>
+        }
+      </label>
+      <label class="field">
+        <span>Confirm new password</span>
+        <cove-input type="password" autocomplete="new-password"
+                    [value]="confirmPassword()" (valueChange)="confirmPassword.set($event)"
+                    (enter)="changePassword()" />
+        @if (confirmPassword().length > 0 && !confirmMatches()) {
+          <p class="field-error">Passwords don't match.</p>
+        }
+      </label>
+    </div>
+    @if (passwordNotice()) { <p class="ok" role="status"><cove-icon name="check" [size]="14" /> {{ passwordNotice() }}</p> }
+    @if (passwordError()) { <p class="error" role="alert">{{ passwordError() }}</p> }
+    <div class="actions">
+      <cove-button variant="primary" [disabled]="savingPassword() || !canChangePassword()"
+                   (click)="changePassword()">
+        {{ forced() ? 'Set password' : 'Change password' }}
+      </cove-button>
+    </div>
+  </div>
+</section>

@@ -10,7 +10,8 @@ export interface SessionResponse {
   role: Role;
 }
 
-/** One account in the admin users table. `activeSessions` = live (not revoked, not expired). */
+/** One account in the admin users table. `activeSessions` = live (not revoked, not expired).
+ *  `pending` = invited but not yet claimed (no password) — can't sign in; its invite can be resent. */
 export interface AdminUserListItem {
   id: string;
   email: string;
@@ -20,6 +21,29 @@ export interface AdminUserListItem {
   remainingBytes: number;
   createdAt: string;
   activeSessions: number;
+  pending: boolean;
+}
+
+/** One account in full (admin drawer / after a create or role change). Adds `trashedBytes`. */
+export interface AdminUserDetail extends AdminUserListItem {
+  trashedBytes: number;
+}
+
+/** Create an account (#36). `sendInvite` true → email a claim link (needs a configured mailer);
+ *  false → the account is usable now with `password`. */
+export interface CreateUserRequest {
+  email: string;
+  role: Role;
+  sendInvite: boolean;
+  password?: string;
+}
+
+/** Result of creating an account. `inviteEmailSent` is false for direct-password accounts and for
+ *  invites whose email failed to send (the account still exists — it can be resent). */
+export interface CreateUserResponse {
+  account: AdminUserDetail;
+  invited: boolean;
+  inviteEmailSent: boolean;
 }
 
 /** A page of results plus the total, so the table can show "1–50 of 213". */
@@ -28,6 +52,20 @@ export interface PagedResponse<T> {
   total: number;
   page: number;
   pageSize: number;
+}
+
+/** The signed-in account's profile (#29). `mustChangePassword` forces the set-password step. */
+export interface ProfileResponse {
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  role: Role;
+  mustChangePassword: boolean;
+}
+
+/** The invited email behind a claim token, to prime the claim form. */
+export interface InvitePreview {
+  email: string;
 }
 
 export interface Usage {

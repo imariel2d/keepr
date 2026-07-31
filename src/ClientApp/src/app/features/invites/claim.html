@@ -1,0 +1,79 @@
+<section class="auth">
+  <div class="auth-card">
+    @if (loading()) {
+      <p class="loading">Checking your invitation…</p>
+    } @else if (invalid()) {
+      <div class="head">
+        <img class="mark" src="cove-mark.svg" alt="" width="56" height="56" aria-hidden="true" />
+        <h1>Invitation not valid</h1>
+        <p class="sub">This invitation has expired or was already used. Ask an admin to send a new one.</p>
+      </div>
+      <cove-button variant="secondary" size="lg" class="submit" (click)="goToLogin()">
+        Go to sign in
+      </cove-button>
+    } @else {
+      <div class="head">
+        <img class="mark" src="cove-mark.svg" alt="" width="56" height="56" aria-hidden="true" />
+        <h1>Set your password</h1>
+        <p class="sub">Finish setting up <strong>{{ email() }}</strong>.</p>
+      </div>
+
+      <form (submit)="submit($event)">
+        <div class="field">
+          <label for="password">Password</label>
+          <cove-input
+            icon="lock"
+            [type]="showPassword() ? 'text' : 'password'"
+            name="password"
+            autocomplete="new-password"
+            placeholder="At least {{ minPasswordLength }} characters"
+            [value]="password()"
+            (valueChange)="password.set($event)">
+            <button
+              trailing
+              type="button"
+              class="reveal"
+              [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+              [attr.aria-pressed]="showPassword()"
+              (click)="showPassword.set(!showPassword())">
+              @if (showPassword()) {
+                <cove-icon name="eye-off" [size]="16"></cove-icon>
+              } @else {
+                <cove-icon name="eye" [size]="16"></cove-icon>
+              }
+            </button>
+          </cove-input>
+          @for (message of errorsFor('password'); track message) {
+            <p class="field-error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="confirm">Confirm password</label>
+          <cove-input
+            icon="lock"
+            [type]="showPassword() ? 'text' : 'password'"
+            name="confirm"
+            autocomplete="new-password"
+            placeholder="••••••••"
+            [value]="confirm()"
+            (valueChange)="confirm.set($event)" />
+          @if (confirm().length > 0 && !matches()) {
+            <p class="field-error">Passwords don't match.</p>
+          }
+        </div>
+
+        @if (error()) {
+          <p class="error" role="alert">
+            <cove-icon name="alert-circle" [size]="15"></cove-icon>
+            {{ error() }}
+          </p>
+        }
+
+        <cove-button variant="primary" size="lg" [disabled]="busy() || !canSubmit()" class="submit">
+          {{ busy() ? 'Please wait…' : 'Set password & sign in' }}
+        </cove-button>
+      </form>
+    }
+  </div>
+</section>

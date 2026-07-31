@@ -1,0 +1,112 @@
+// Public claim card — mirrors the login screen's centered card (feature-36 §8.4).
+.auth {
+  display: grid;
+  place-items: center;
+  min-height: calc(100vh - 140px);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-8) var(--space-8) var(--space-6);
+}
+
+.loading {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  margin: var(--space-6) 0;
+}
+
+.head {
+  text-align: center;
+  margin-bottom: var(--space-6);
+
+  .mark {
+    display: inline-block;
+    width: 56px;
+    height: 56px;
+    margin-bottom: var(--space-4);
+  }
+
+  h1 {
+    font-size: var(--text-xl);
+    color: var(--text-primary);
+  }
+
+  .sub {
+    margin: var(--space-2) 0 0;
+    color: var(--text-secondary);
+    font-size: var(--text-base);
+  }
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  label {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-secondary);
+  }
+
+  .field-error {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--danger);
+  }
+}
+
+.reveal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  margin: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast);
+
+  &:hover { color: var(--text-secondary); }
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--danger-subtle);
+  color: var(--danger);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.submit {
+  display: block;
+  margin-top: var(--space-2);
+
+  ::ng-deep button {
+    width: 100%;
+  }
+}

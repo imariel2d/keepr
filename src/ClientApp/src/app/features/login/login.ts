@@ -1,18 +1,16 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { ProfileStore } from '../../core/profile.store';
 import { ButtonComponent } from '../../cove/lib/button/button.component';
 import { InputComponent } from '../../cove/lib/input/input.component';
 import { IconComponent } from '../../cove/lib/icon/icon.component';
 
-/** Mirrors PasswordPolicy.MinLength. The server stays the authority; this is only guidance. */
-const MIN_PASSWORD_LENGTH = 12;
-
-interface Requirement {
-  readonly label: string;
-  readonly met: boolean;
-}
-
+/**
+ * Sign-in only. Since #36 public self-registration is closed — accounts are provisioned by an admin
+ * (with a password or an email invite), so there is no register mode or invite-code field here.
+ * See docs/feature-36-account-provisioning.md §3.2.
+ */
 @Component({
   selector: 'app-login',
   imports: [ButtonComponent, InputComponent, IconComponent],
@@ -21,82 +19,26 @@ interface Requirement {
 })
 export class Login {
   private readonly auth = inject(AuthService);
+  private readonly profile = inject(ProfileStore);
   private readonly router = inject(Router);
 
   protected readonly email = signal('');
   protected readonly password = signal('');
-  /** Required to register: the server gates signups behind a shared code. */
-  protected readonly inviteCode = signal('');
   protected readonly showPassword = signal(false);
-  protected readonly mode = signal<'login' | 'register'>('login');
   protected readonly error = signal<string | null>(null);
   protected readonly busy = signal(false);
-
-  /** Per-field messages from the server's 400, keyed by field name. */
-  protected readonly fieldErrors = signal<Record<string, string[]>>({});
-
-  /**
-   * Shown live while registering so the length rule — the one people actually hit — isn't learned
-   * from a failed submit.
-   *
-   * Only this rule is mirrored, deliberately. The 72-byte maximum, the email-reuse rule, and the
-   * breach check are all still enforced server-side; they are simply not worth a permanent line of
-   * UI each, because a normal password satisfies all three without trying. They surface as a
-   * message under the field on submit, which is the right amount of ceremony for a rule you have
-   * to go out of your way to break.
-   */
-  protected readonly requirements = computed<Requirement[]>(() => [
-    {
-      label: `At least ${MIN_PASSWORD_LENGTH} characters`,
-      met: [...this.password()].length >= MIN_PASSWORD_LENGTH,
-    },
-  ]);
-
-  protected readonly canSubmit = computed(
-    () => this.mode() === 'login' || this.requirements().every((r) => r.met)
-  );
-
-  protected toggleMode(): void {
-    this.mode.update((m) => (m === 'login' ? 'register' : 'login'));
-    this.error.set(null);
-    this.fieldErrors.set({});
-  }
-
-  protected errorsFor(field: string): string[] {
-    return this.fieldErrors()[field] ?? [];
-  }
 
   protected async submit(event?: Event): Promise<void> {
     event?.preventDefault();
     this.error.set(null);
-    this.fieldErrors.set({});
     this.busy.set(true);
     try {
-      if (this.mode() === 'register') {
-        await this.auth.register(this.email(), this.password(), this.inviteCode());
-      } else {
-        await this.auth.login(this.email(), this.password());
-      }
+      await this.auth.login(this.email(), this.password());
+      // Load the profile so the forced-change guard can act immediately after sign-in.
+      await this.profile.refresh();
       await this.router.navigate(['']);
     } catch (e) {
-      // A 400 carries a per-field `errors` map, which is more useful than one summary line.
-      // Gate and credential failures only carry `detail`, so both shapes are handled.
-      const fieldErrors = this.validationErrorsOf(e);
-      this.fieldErrors.set(fieldErrors);
-
-      // The server sends `detail` as well as `errors` (it is what the older single-line rendering
-      // reads), so showing both would print every message twice. When the errors are already
-      // attached to their fields, the banner has nothing left to add.
-      this.error.set(
-        Object.keys(fieldErrors).length > 0
-          ? null
-          : this.messageOf(
-              e,
-              this.mode() === 'register'
-                ? 'Registration failed. The email may already be in use.'
-                : 'Login failed. Check your email and password.'
-            )
-      );
+      this.error.set(this.messageOf(e, 'Login failed. Check your email and password.'));
     } finally {
       this.busy.set(false);
     }
@@ -106,10 +48,5 @@ export class Login {
   private messageOf(e: unknown, fallback: string): string {
     const detail = (e as { error?: { detail?: string } })?.error?.detail;
     return typeof detail === 'string' && detail ? detail : fallback;
-  }
-
-  private validationErrorsOf(e: unknown): Record<string, string[]> {
-    const errors = (e as { error?: { errors?: Record<string, string[]> } })?.error?.errors;
-    return errors && typeof errors === 'object' ? errors : {};
   }
 }

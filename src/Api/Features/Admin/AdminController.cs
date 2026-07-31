@@ -12,16 +12,18 @@ using Microsoft.Extensions.Options;
 namespace Keepr.Api.Features.Admin;
 
 /// <summary>One account as an admin sees it. <paramref name="Role"/> is the enum name
-/// ("User"/"Admin"). <paramref name="ActiveSessions"/> is live sessions (not revoked, not expired).</summary>
+/// ("User"/"Admin"). <paramref name="ActiveSessions"/> is live sessions (not revoked, not expired).
+/// <paramref name="Pending"/> is an invited-but-unclaimed account (no password yet) — it can't sign
+/// in, and its invite can be resent. See docs/feature-36-account-provisioning.md §8.1.</summary>
 public record AdminUserListItem(
     Guid Id, string Email, string Role, long QuotaBytes, long UsedBytes, long RemainingBytes,
-    DateTimeOffset CreatedAt, int ActiveSessions);
+    DateTimeOffset CreatedAt, int ActiveSessions, bool Pending);
 
 /// <summary>One account in full. Adds <paramref name="TrashedBytes"/> — the part of
 /// <paramref name="UsedBytes"/> held by trashed files, still counted until purged.</summary>
 public record AdminUserDetail(
     Guid Id, string Email, string Role, long QuotaBytes, long UsedBytes, long RemainingBytes,
-    long TrashedBytes, DateTimeOffset CreatedAt, int ActiveSessions);
+    long TrashedBytes, DateTimeOffset CreatedAt, int ActiveSessions, bool Pending);
 
 /// <summary>A page of results plus the total, so an admin table can show "showing 1–50 of 213".</summary>
 public record PagedResponse<T>(IReadOnlyList<T> Items, int Total, int Page, int PageSize);
@@ -104,7 +106,8 @@ public class AdminController(
                 u.Id, u.Email, u.Role.ToString(), u.QuotaBytes, u.UsedBytes,
                 u.QuotaBytes - u.UsedBytes < 0 ? 0 : u.QuotaBytes - u.UsedBytes,
                 u.CreatedAt,
-                db.Sessions.Count(s => s.UserId == u.Id && s.RevokedAt == null && s.ExpiresAt > now)))
+                db.Sessions.Count(s => s.UserId == u.Id && s.RevokedAt == null && s.ExpiresAt > now),
+                u.PasswordHash == null))
             .ToListAsync(ct);
 
         return Ok(new PagedResponse<AdminUserListItem>(items, total, page, pageSize));
@@ -126,7 +129,7 @@ public class AdminController(
 
         return new AdminUserDetail(
             user.Id, user.Email, user.Role.ToString(), user.QuotaBytes, user.UsedBytes,
-            user.RemainingBytes, trashed, user.CreatedAt, active);
+            user.RemainingBytes, trashed, user.CreatedAt, active, user.PasswordHash == null);
     }
 
     /// <summary>
@@ -163,7 +166,7 @@ public class AdminController(
 
         return new AdminUserDetail(
             user.Id, user.Email, user.Role.ToString(), user.QuotaBytes, user.UsedBytes,
-            user.RemainingBytes, trashed, user.CreatedAt, active);
+            user.RemainingBytes, trashed, user.CreatedAt, active, user.PasswordHash == null);
     }
 
     /// <summary>
@@ -425,7 +428,7 @@ public class AdminController(
 
         return new AdminUserDetail(
             user.Id, user.Email, user.Role.ToString(), user.QuotaBytes, user.UsedBytes,
-            user.RemainingBytes, trashed, user.CreatedAt, active);
+            user.RemainingBytes, trashed, user.CreatedAt, active, user.PasswordHash == null);
     }
 
     private static ValidationProblemDetails FieldError(string field, string message) =>

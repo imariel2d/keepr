@@ -33,10 +33,25 @@ export class AuthService {
     return this.probe;
   }
 
-  /** Signups are gated: the server rejects a missing or wrong invite code with 403. */
+  /**
+   * Dormant since #36: public self-registration is closed server-side (the endpoint now 403s), so
+   * nothing in the UI calls this. Kept — like the backend's InviteCodeRegistrationGate — so
+   * re-opening signup is a small change rather than a rewrite.
+   */
   async register(email: string, password: string, inviteCode: string): Promise<void> {
     const res = await firstValueFrom(
       this.http.post<SessionResponse>('/api/auth/register', { email, password, inviteCode })
+    );
+    this.accept(res);
+  }
+
+  /**
+   * Claims an admin-provisioned account: sets the chosen password and signs in. The token in the
+   * URL is the authorization. See docs/feature-36-account-provisioning.md §8.4.
+   */
+  async claim(token: string, password: string): Promise<void> {
+    const res = await firstValueFrom(
+      this.http.post<SessionResponse>(`/api/invites/${encodeURIComponent(token)}/claim`, { password })
     );
     this.accept(res);
   }
