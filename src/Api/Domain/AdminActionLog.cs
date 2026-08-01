@@ -13,7 +13,11 @@ public enum AdminActionType
     UserCreated = 2,
 
     /// <summary>An admin changed a user's role (promote/demote).</summary>
-    RoleChanged = 3
+    RoleChanged = 3,
+
+    /// <summary>An admin changed the outbound-email provider settings (#36). The audit detail is a
+    /// secret-free allowlist — never the API key. See docs/feature-36-email-providers.md §6.</summary>
+    EmailSettingsChanged = 4
 }
 
 /// <summary>

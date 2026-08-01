@@ -1,9 +1,14 @@
 using Keepr.Api.Domain;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Keepr.Api.Data;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+// IDataProtectionKeyContext lets the Data Protection key ring persist to this same Postgres, so
+// encrypted email API keys (and auth cookies) survive restarts/redeploys and work across instances.
+// See docs/feature-36-email-providers.md §4.
+public class AppDbContext(DbContextOptions<AppDbContext> options)
+    : DbContext(options), IDataProtectionKeyContext
 {
     /// <summary>
     /// Single source of truth for the DB schema name. Used by the model, the migrations-history
@@ -18,6 +23,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Folder> Folders => Set<Folder>();
     public DbSet<AdminActionLog> AdminActionLogs => Set<AdminActionLog>();
     public DbSet<AccountInvite> AccountInvites => Set<AccountInvite>();
+    public DbSet<EmailSettings> EmailSettings => Set<EmailSettings>();
+
+    /// <summary>The Data Protection key ring (§4). Managed by the framework; we only host the table.</summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -207,6 +216,38 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.UserId)
                 .IsUnique()
                 .HasFilter($"\"{nameof(AccountInvite.ClaimedAt)}\" IS NULL");
+        });
+
+        b.Entity<EmailSettings>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            // Singleton: exactly one row, Id = 1. The CHECK stops a second row from ever existing, so
+            // the app can always update-in-place rather than guess which row is "the" config. §3.
+            e.ToTable(t => t.HasCheckConstraint("CK_EmailSettings_Singleton", "\"Id\" = 1"));
+            e.Property(x => x.Id).ValueGeneratedNever();
+
+            // Stored as a string like Role, so the column reads 'none'/'resend'/… not an opaque int.
+            e.Property(x => x.Provider).HasConversion<string>().HasMaxLength(16)
+                .HasDefaultValue(EmailProvider.None);
+            e.Property(x => x.FromAddress).HasMaxLength(320);
+            e.Property(x => x.FromName).HasMaxLength(200);
+            e.Property(x => x.MailgunDomain).HasMaxLength(255);
+            e.Property(x => x.MailgunRegion).HasMaxLength(2);
+            e.Property(x => x.PublicBaseUrl).HasMaxLength(2048);
+            e.Property(x => x.LastTestError).HasMaxLength(2000);
+
+            // Seed the singleton `none` row so there is always exactly one row to update. `none` means
+            // "defer to the env SMTP fallback, else send nothing" (§5.1). PublicBaseUrl /
+            // InviteExpiryDays are re-seeded from env at startup by EmailSettingsSeeder.
+            e.HasData(new EmailSettings
+            {
+                Id = 1,
+                Provider = EmailProvider.None,
+                FromName = "Keepr",
+                InviteExpiryDays = 7,
+                UpdatedAt = DateTimeOffset.UnixEpoch
+            });
         });
     }
 }
