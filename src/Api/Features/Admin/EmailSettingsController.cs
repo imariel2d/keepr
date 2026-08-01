@@ -15,6 +15,8 @@ public record EmailSettingsResponse(
     string? MailgunDomain, string? MailgunRegion, string PublicBaseUrl, int InviteExpiryDays,
     DateTimeOffset? LastTestAt, bool? LastTestOk, string? LastTestError);
 
+/// <summary>An admin's requested email settings. The API key is write-only; every other field is a
+/// plain, non-secret value. See <see cref="EmailSettingsController.Update"/>.</summary>
 /// <param name="Provider">"none" | "resend" | "brevo" | "mailgun".</param>
 /// <param name="FromAddress">Envelope/header From address; required for a hosted provider.</param>
 /// <param name="FromName">Display name on the From address.</param>
@@ -47,7 +49,8 @@ public class EmailSettingsController(
     EmailSettingsService settings,
     EmailSenderFactory senders,
     AdminAuditService audit,
-    TimeProvider clock) : ControllerBase
+    TimeProvider clock,
+    ILogger<EmailSettingsController> log) : ControllerBase
 {
     // Best-effort, process-local guard so a double-click can't fan out two test emails. Not
     // cross-instance by design (§6) — test sends are a rare, low-harm admin action.
@@ -112,8 +115,13 @@ public class EmailSettingsController(
 
             if (provider == EmailProvider.Mailgun)
             {
-                if (string.IsNullOrWhiteSpace(req.MailgunDomain))
+                // The domain is spliced into /v3/{domain}/messages, so it must be a bare DNS name —
+                // reject paths, spaces, and malformed labels rather than let a wrong URL be saved.
+                var domain = req.MailgunDomain?.Trim();
+                if (string.IsNullOrWhiteSpace(domain))
                     AddError(errors, "mailgunDomain", "A Mailgun sending domain is required.");
+                else if (Uri.CheckHostName(domain) != UriHostNameType.Dns)
+                    AddError(errors, "mailgunDomain", "Mailgun sending domain must be a valid hostname.");
                 mailgunRegion = req.MailgunRegion?.Trim().ToLowerInvariant();
                 if (mailgunRegion is not ("us" or "eu"))
                     AddError(errors, "mailgunRegion", "Mailgun region must be 'us' or 'eu'.");
@@ -175,10 +183,12 @@ public class EmailSettingsController(
         try
         {
             var toEmail = ActorEmail();
-            var sender = await senders.CreateAsync(ct);
             var row = await settings.GetRowAsync(ct);
             try
             {
+                // Resolve inside the guard: CreateAsync decrypts the stored key, and a lost/rotated
+                // key ring throws here — the exact failure the test button exists to report.
+                var sender = await senders.CreateAsync(ct);
                 await sender.SendAsync(new EmailMessage(
                     toEmail, string.Empty, "Keepr email test",
                     "<p>This is a test email from Keepr. Your email provider is configured correctly.</p>",
@@ -188,8 +198,12 @@ public class EmailSettingsController(
             }
             catch (Exception ex)
             {
+                // Never persist or return raw provider/exception text: it can echo the submitted API
+                // key (a 401 body, an SMTP auth error). Store a fixed category; log the full detail
+                // where retention rules already apply. Same rule as the audit payload (§6).
+                log.LogWarning(ex, "Email test send failed for provider {Provider}.", row.Provider);
                 row.LastTestOk = false;
-                row.LastTestError = Truncate(ex.Message, 2000);
+                row.LastTestError = SafeError(ex);
             }
             row.LastTestAt = clock.GetUtcNow();
             await db.SaveChangesAsync(ct);
@@ -200,6 +214,17 @@ public class EmailSettingsController(
             Interlocked.Exchange(ref _testInFlight, 0);
         }
     }
+
+    /// <summary>A fixed, secret-free category for a failed test send. The full exception is logged,
+    /// never stored or returned — a provider message can echo the API key back (§6).</summary>
+    private static string SafeError(Exception ex) => ex switch
+    {
+        System.Security.Cryptography.CryptographicException =>
+            "The stored API key could not be decrypted. Re-enter it and save.",
+        TaskCanceledException or TimeoutException => "The email provider did not respond in time.",
+        HttpRequestException => "The email provider rejected the request. Check the provider and API key.",
+        _ => "The test send failed. Check the provider, From address, and API key."
+    };
 
     private static EmailSettingsResponse ToResponse(EmailSettings r) => new(
         r.Provider.ToString().ToLowerInvariant(), r.FromAddress, r.FromName,

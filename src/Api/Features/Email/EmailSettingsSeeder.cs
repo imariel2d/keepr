@@ -1,4 +1,5 @@
 using Keepr.Api.Data;
+using Keepr.Api.Features.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -13,7 +14,8 @@ namespace Keepr.Api.Features.Email;
 /// seeded from env; hosted providers are configured only through the admin screen.
 /// </summary>
 public class EmailSettingsSeeder(
-    AppDbContext db, IOptions<EmailOptions> env, TimeProvider clock, ILogger<EmailSettingsSeeder> log)
+    AppDbContext db, IOptions<EmailOptions> env, IOptions<ShareOptions> share,
+    TimeProvider clock, ILogger<EmailSettingsSeeder> log)
 {
     public async Task EnsureSeededAsync(CancellationToken ct = default)
     {
@@ -22,7 +24,13 @@ public class EmailSettingsSeeder(
         if (row is null || row.UpdatedAt != DateTimeOffset.UnixEpoch) return;
 
         var e = env.Value;
-        if (!string.IsNullOrWhiteSpace(e.PublicBaseUrl)) row.PublicBaseUrl = e.PublicBaseUrl;
+        // Match the documented precedence: Email__PublicBaseUrl, then Sharing:PublicBaseUrl. Seeding
+        // the resolved value means the admin screen shows the origin that links actually use, rather
+        // than a blank that silently relies on the downstream fallback.
+        var publicBaseUrl = !string.IsNullOrWhiteSpace(e.PublicBaseUrl)
+            ? e.PublicBaseUrl
+            : share.Value.PublicBaseUrl;
+        if (!string.IsNullOrWhiteSpace(publicBaseUrl)) row.PublicBaseUrl = publicBaseUrl;
         if (e.InviteExpiryDays > 0) row.InviteExpiryDays = e.InviteExpiryDays;
         row.UpdatedAt = clock.GetUtcNow();
 

@@ -30,10 +30,18 @@ public class EmailSettingsService(
 
     private readonly IDataProtector _protector = dataProtection.CreateProtector(ProtectorPurpose);
 
-    /// <summary>The singleton row (Id = 1). Seeded by the migration, so it always exists; a fresh
-    /// default is returned only defensively if the seed is somehow missing.</summary>
-    public async Task<EmailSettings> GetRowAsync(CancellationToken ct) =>
-        await db.EmailSettings.FirstOrDefaultAsync(ct) ?? new EmailSettings();
+    /// <summary>The singleton row (Id = 1). Seeded by the migration, so it always exists. If the seed
+    /// is somehow missing, a fresh default is <b>added and tracked</b> (not just returned), so a caller
+    /// that mutates it and saves actually persists it instead of silently writing zero rows.</summary>
+    public async Task<EmailSettings> GetRowAsync(CancellationToken ct)
+    {
+        var row = await db.EmailSettings.FirstOrDefaultAsync(ct);
+        if (row is not null) return row;
+
+        row = new EmailSettings { Id = 1 };
+        db.EmailSettings.Add(row);
+        return row;
+    }
 
     /// <summary>The current settings with the API key decrypted, ready to hand to a transport.</summary>
     public async Task<ResolvedEmailSettings> GetAsync(CancellationToken ct)

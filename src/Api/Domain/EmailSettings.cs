@@ -3,8 +3,9 @@ namespace Keepr.Api.Domain;
 /// <summary>
 /// The outbound-email provider an admin has configured. <c>Smtp</c> is deliberately absent:
 /// SMTP stays an env-only channel (a fallback), never a stored provider — see
-/// docs/feature-36-email-providers.md §2.2. Stored as a string (see AppDbContext) so the column
-/// reads 'none'/'resend'/… rather than an opaque int.
+/// docs/feature-36-email-providers.md §2.2. Stored as a string (see AppDbContext) using the enum
+/// member name — 'None'/'Resend'/'Brevo'/'Mailgun' (PascalCase) — rather than an opaque int; the API
+/// lowercases it on the wire.
 /// </summary>
 public enum EmailProvider
 {

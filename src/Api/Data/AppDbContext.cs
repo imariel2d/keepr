@@ -227,7 +227,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.ToTable(t => t.HasCheckConstraint("CK_EmailSettings_Singleton", "\"Id\" = 1"));
             e.Property(x => x.Id).ValueGeneratedNever();
 
-            // Stored as a string like Role, so the column reads 'none'/'resend'/… not an opaque int.
+            // Stored as a string like Role, so the column reads the enum member name —
+            // 'None'/'Resend'/'Brevo'/'Mailgun' (PascalCase) — rather than an opaque int. The API
+            // surface lowercases it on the way out and parses case-insensitively in; hand-written SQL
+            // must match the stored PascalCase form.
             e.Property(x => x.Provider).HasConversion<string>().HasMaxLength(16)
                 .HasDefaultValue(EmailProvider.None);
             e.Property(x => x.FromAddress).HasMaxLength(320);

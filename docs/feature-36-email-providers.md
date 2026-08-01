@@ -211,9 +211,12 @@ The migration seeds one singleton row (`Provider='none'`), so the row always exi
 
 So the **DB is authoritative for the hosted providers**, env owns SMTP, and the two don't collide.
 The boot-time fail-fast validation in `Program.cs` (reject `smtp` with a blank host, etc.) stays for
-the **env-SMTP** path only. `PublicBaseUrl` and `InviteExpiryDays` are seeded into the row from their
-`Email__*` env values on the initial migration (so current config carries over), then managed through
-the admin API (§6) — they are **not** re-read from env after seeding.
+the **env-SMTP** path only. `PublicBaseUrl` and `InviteExpiryDays` are seeded into the row at first
+boot by a post-migration `EmailSettingsSeeder` (alongside `AdminSeeder`), so current config carries
+over; after that they're managed through the admin API (§6) and **not** re-read from env. The seed
+honours the existing precedence for the origin — `Email__PublicBaseUrl`, then `Sharing:PublicBaseUrl`
+— so it stores the URL that links actually resolve to rather than a blank that only works via the
+downstream `InviteService` fallback.
 
 **Provider changes and the stored key.** A blank key on `PUT` keeps the stored `ApiKeyCipher` **only
 when the provider is unchanged** — an edit that just fixes the From name mustn't force re-entry of the
@@ -253,6 +256,12 @@ Security posture:
   domain/region, `publicBaseUrl`, `inviteExpiryDays`, and a `keyChanged: bool`. It must **never**
   contain the request DTO, the plaintext key, `ApiKeyCipher`, or raw provider error text (which can
   echo a key back). A unit test asserts these exclusions.
+- **`LastTestError` is a fixed category, not raw provider text** — same rule as the audit payload. A
+  failed test send stores one of a small set of safe messages (couldn't decrypt the key; provider
+  timed out; provider rejected the request; generic failure) via a `SafeError` map; the full
+  exception is *logged*, never persisted or returned, since a provider 401 body or an SMTP auth error
+  can echo the submitted key. The key-decrypt path (a lost/rotated Data Protection ring) is resolved
+  **inside** the try so it's reported as a failed test, not an unhandled 500.
 - Provider endpoints are **fixed known hosts**; the only admin-supplied host-ish values are Mailgun's
   **domain** (path segment, validated) and **region** (a `us`/`eu` enum, not a free URL) — so no SSRF
   surface. (Admins are already the app's most-trusted role.)
@@ -297,8 +306,11 @@ Nothing here is visible to non-admins: the route is `adminGuard`-protected and t
 
 One migration, `AddEmailSettings`:
 - creates `keepr.EmailSettings` (§3) with the single-row CHECK and seeds the singleton `none` row
-  (with `PublicBaseUrl` / `InviteExpiryDays` from env, §5.1);
-- adds the `DataProtectionKeys` table (§4) via the EF Core key-storage package.
+  (`PublicBaseUrl` / `InviteExpiryDays` are then filled at first boot by `EmailSettingsSeeder`, §5.1);
+- creates the `DataProtectionKeys` table (§4). Because `Down()` intentionally keeps this table (see
+  below), a plain EF `CreateTable` would fail on a rollback-then-reapply — Postgres rejects creating a
+  table that already exists. So the migration creates it with **`CREATE TABLE IF NOT EXISTS`** (raw
+  SQL matching the Npgsql-generated shape), which is what makes the re-apply a genuine no-op.
 
 **`Down()` drops `EmailSettings` only — it deliberately leaves `DataProtectionKeys` in place.**
 Dropping the key ring would be **destructive, not safe**: that table is shared with the framework's
@@ -306,8 +318,8 @@ auth-cookie and antiforgery protection, so removing it after any traffic would s
 (cookies fail to validate) *and* make any stored `ApiKeyCipher` permanently undecryptable. Rolling
 back this feature should discard its own table, not the shared key infrastructure it introduced;
 retiring the key ring is a separate, explicitly-destructive operation (re-seed keys + force
-re-authentication), never a side effect of this migration's rollback. Creating the key table is
-idempotent, so a re-apply after such a rollback is a no-op.
+re-authentication), never a side effect of this migration's rollback. Thanks to the `IF NOT EXISTS`
+create above, a re-apply after such a rollback is a no-op on the key table.
 
 ---
 
@@ -342,15 +354,19 @@ with* plus *the link to set the secret*, never the secret itself.
 Required:
 
 1. **Cove branding** — the mark + "Keepr", so the message reads as legitimate and not phishing.
-2. **Who created the account** — "An administrator (`{invitedByEmail}`) created a Keepr account for
-   you," giving the recipient context for a message they didn't ask for.
+2. **Who invited the account** — context for a message the recipient didn't ask for. When the inviter
+   is known, "`{invitedByEmail}` invited you to Keepr"; `invitedByEmail` is **nullable**
+   (`EmailTemplates.Invite`), so the template **must** fall back to a generic line with no dangling
+   placeholder — "You've been invited to Keepr." — and both cases are asserted in `EmailTemplateTests`.
 3. **The sign-in identity** — the email address the account signs in with (`{toEmail}`).
 4. **A one-time set-password link + primary call-to-action** — a "Set your password" button to
    `{PublicBaseUrl}/claim/{token}`. This is the only credential-bearing element, and it's a
    single-use, expiring token (provisioning doc §8.1), not a password.
-5. **A prompt to set/update the password for security** — framed as "choose your own password to
-   finish," reinforcing that the admin-side setup is temporary. The forced first-login change
-   (`MustChangePassword`) backs this on the server.
+5. **A prompt to set the password for security** — framed as "choose your own password to finish."
+   The recipient sets their password *during* the one-time claim, which clears the account's pending
+   state; there is no forced post-login change in invite mode (the claim controller sets
+   `MustChangePassword = false`). `MustChangePassword` applies only to the separate direct-password
+   flow, where the admin set a temporary password.
 6. **Link expiry** — "This link expires in `{InviteExpiryDays}` days," and note that an admin can
    re-send it once expired (provisioning doc §8.5).
 7. **A "did you not expect this?" line** — "If you weren't expecting this, you can ignore this email
@@ -382,9 +398,11 @@ worth including.
   a failed SMTP send).
 - **Authorization** — `GET`/`PUT`/`test` are 401 anonymous, 403 for a non-admin, 200 for an admin
   (the pattern already covering `AdminController`).
-- **Email contents** — the rendered provisioning email meets the §10 contract: it contains the
-  set-password link and the sign-in identity, states the expiry, and contains **no** password or
-  reusable secret (assert against the rendered HTML + text bodies).
+- **Email contents** — the rendered provisioning email meets the full §10 contract, asserted against
+  **both** the HTML and plain-text bodies: Cove branding, the who-created-it line **with its
+  null-inviter fallback** (both cases), the sign-in identity, the set-password link + CTA text, the
+  expiry, the "did you not expect this?" line, the post-login app URL, and — the security invariant —
+  **no** password or reusable secret anywhere.
 - **Live** — against the dockerised stack: save a real free-tier key, send a test, confirm receipt;
   then run the #36 invite/claim path end-to-end (the piece still pending live verification).
 
