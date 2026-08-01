@@ -8,6 +8,7 @@ using Keepr.Api.OpenApi;
 using Keepr.Api.Services;
 using Keepr.Api.Storage;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -79,23 +80,38 @@ if (shareCfg.AccessStampThrottleMinutes < 0)
 // but its required settings are blank — the same fail-loud instinct as the storage/share checks
 // above, so a half-configured mailer surfaces at boot, not on the first invite. See
 // docs/feature-36-account-provisioning.md §6.
+// The env Email__* channel now configures only the SMTP fallback (§5.1): the hosted providers
+// (Resend/Brevo/Mailgun) are chosen at runtime in /admin/email. Still fail loud if smtp is selected
+// but half-configured — the same instinct as the storage/share checks above.
 var emailCfg = builder.Configuration.GetSection(EmailOptions.SectionName).Get<EmailOptions>()
                ?? new EmailOptions();
 if (emailCfg.Enabled)
 {
     if (!emailCfg.Provider.Equals("smtp", StringComparison.OrdinalIgnoreCase))
         throw new InvalidOperationException(
-            $"Email:Provider '{emailCfg.Provider}' is not supported. Use 'none' or 'smtp'.");
+            $"Email:Provider '{emailCfg.Provider}' is not supported via env. Use 'none' or 'smtp' "
+            + "(hosted providers are configured at runtime in /admin/email).");
     if (string.IsNullOrWhiteSpace(emailCfg.Smtp.Host) || string.IsNullOrWhiteSpace(emailCfg.FromAddress))
         throw new InvalidOperationException(
             "Email__Provider=smtp requires Email__Smtp__Host and Email__FromAddress. "
             + "Leave Email__Provider unset (or 'none') to disable outbound mail.");
-    builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 }
-else
-{
-    builder.Services.AddScoped<IEmailSender, NoOpEmailSender>();
-}
+
+// Outbound email is chosen PER SEND by EmailSenderFactory, not bound at boot (#36), so a provider
+// switch in /admin/email takes effect immediately. API keys are encrypted at rest with Data
+// Protection, its key ring persisted to Postgres so it survives restarts/redeploys and works across
+// instances. See docs/feature-36-email-providers.md §4/§5.
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<AppDbContext>()
+    .SetApplicationName("Keepr");
+builder.Services.AddHttpClient(EmailSenderFactory.HttpClientName,
+    c => c.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddScoped<EmailSettingsService>();
+builder.Services.AddScoped<EmailSenderFactory>();
+builder.Services.AddScoped<EmailSettingsSeeder>();
+// The two fallback transports the factory resolves when no hosted provider is set (env SMTP, else no-op).
+builder.Services.AddScoped<SmtpEmailSender>();
+builder.Services.AddScoped<NoOpEmailSender>();
 
 builder.Services.AddSingleton<IObjectStorage, R2ObjectStorage>();
 builder.Services.AddSingleton(TimeProvider.System);
@@ -169,6 +185,10 @@ using (var scope = app.Services.CreateScope())
 
     // After migrations so the Role column exists: make sure the instance has an admin.
     await scope.ServiceProvider.GetRequiredService<AdminSeeder>().EnsureSeededAsync();
+
+    // Carry legacy Email__* env config (link origin, invite expiry) into the singleton settings row
+    // on first boot; admin-managed thereafter. See docs/feature-36-email-providers.md §5.1.
+    await scope.ServiceProvider.GetRequiredService<EmailSettingsSeeder>().EnsureSeededAsync();
 }
 
 // OpenAPI spec at /openapi/v1.json and Swagger UI at /swagger (Development only).

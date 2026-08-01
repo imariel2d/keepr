@@ -1,0 +1,151 @@
+<section class="admin">
+  <header class="head">
+    <div class="head-titles">
+      <a class="back" routerLink="/admin/accounts">
+        <cove-icon name="chevron-left" [size]="16" /> Accounts
+      </a>
+      <h1>Email</h1>
+    </div>
+  </header>
+
+  @if (notice()) {
+    <p class="notice" role="status">
+      <cove-icon name="check" [size]="15" /> {{ notice() }}
+    </p>
+  }
+
+  @if (loading()) {
+    <p class="muted">Loading settings…</p>
+  } @else if (loadError()) {
+    <p class="error" role="alert">{{ loadError() }}</p>
+  } @else {
+    <div class="card">
+      <p class="lede">
+        Choose a provider and paste its API key to turn on outbound email — account invites, and
+        later password resets. Changes take effect immediately, no redeploy.
+      </p>
+
+      <label class="field">
+        <span>Provider</span>
+        <select class="select" [value]="provider()"
+                (change)="onProviderChange($any($event.target).value)">
+          @for (p of providers; track p.value) {
+            <option [value]="p.value">{{ p.label }}</option>
+          }
+        </select>
+      </label>
+
+      @if (isHosted()) {
+        <label class="field">
+          <span>From address</span>
+          <cove-input type="email" autocomplete="off" placeholder="no-reply@yourdomain.com"
+                      [value]="fromAddress()" (valueChange)="fromAddress.set($event)" />
+          @for (message of errorsFor('fromAddress'); track message) {
+            <p class="field-error">{{ message }}</p>
+          }
+        </label>
+
+        <label class="field">
+          <span>From name</span>
+          <cove-input type="text" autocomplete="off" placeholder="Keepr"
+                      [value]="fromName()" (valueChange)="fromName.set($event)" />
+        </label>
+
+        <div class="field">
+          <span class="label">API key</span>
+          @if (showKeyInput()) {
+            <cove-input icon="key" [type]="showApiKey() ? 'text' : 'password'" autocomplete="off"
+                        placeholder="Paste the provider API key"
+                        [value]="apiKey()" (valueChange)="apiKey.set($event)">
+              <button trailing type="button" class="reveal"
+                      [attr.aria-label]="showApiKey() ? 'Hide key' : 'Show key'"
+                      [attr.aria-pressed]="showApiKey()"
+                      (click)="showApiKey.set(!showApiKey())">
+                <cove-icon [name]="showApiKey() ? 'eye-off' : 'eye'" [size]="16" />
+              </button>
+            </cove-input>
+            <p class="hint">The key is stored encrypted and never shown again.</p>
+          } @else {
+            <div class="stored">
+              <span class="chip"><cove-icon name="check" [size]="13" /> Configured</span>
+              <cove-button variant="ghost" size="sm" (click)="startReplacingKey()">Replace</cove-button>
+            </div>
+          }
+          @for (message of errorsFor('apiKey'); track message) {
+            <p class="field-error">{{ message }}</p>
+          }
+        </div>
+
+        @if (isMailgun()) {
+          <label class="field">
+            <span>Mailgun sending domain</span>
+            <cove-input type="text" autocomplete="off" placeholder="mg.yourdomain.com"
+                        [value]="mailgunDomain()" (valueChange)="mailgunDomain.set($event)" />
+            @for (message of errorsFor('mailgunDomain'); track message) {
+              <p class="field-error">{{ message }}</p>
+            }
+          </label>
+          <label class="field">
+            <span>Mailgun region</span>
+            <select class="select" [value]="mailgunRegion()"
+                    (change)="mailgunRegion.set($any($event.target).value)">
+              <option value="us">US</option>
+              <option value="eu">EU</option>
+            </select>
+            @for (message of errorsFor('mailgunRegion'); track message) {
+              <p class="field-error">{{ message }}</p>
+            }
+          </label>
+        }
+      } @else {
+        <p class="hint">
+          Outbound email is off. Account invites and other email features are unavailable until a
+          provider is set.
+        </p>
+      }
+
+      <div class="split">
+        <label class="field">
+          <span>Public base URL</span>
+          <cove-input type="url" autocomplete="off" placeholder="https://yourapp.example"
+                      [value]="publicBaseUrl()" (valueChange)="publicBaseUrl.set($event)" />
+          <p class="hint">Origin used for links in emails (the claim link).</p>
+          @for (message of errorsFor('publicBaseUrl'); track message) {
+            <p class="field-error">{{ message }}</p>
+          }
+        </label>
+        <label class="field narrow">
+          <span>Invite expiry (days)</span>
+          <cove-input type="number" [value]="inviteExpiryDays()"
+                      (valueChange)="inviteExpiryDays.set($event)" />
+          @for (message of errorsFor('inviteExpiryDays'); track message) {
+            <p class="field-error">{{ message }}</p>
+          }
+        </label>
+      </div>
+
+      @if (formError()) { <p class="error" role="alert">{{ formError() }}</p> }
+
+      <div class="foot">
+        <div class="test">
+          <cove-button variant="secondary" icon="send" [disabled]="testing() || dirty()"
+                       (click)="sendTest()">
+            {{ testing() ? 'Sending…' : 'Send test email' }}
+          </cove-button>
+          @if (dirty()) { <span class="hint">Save first to test.</span> }
+        </div>
+        <cove-button variant="primary" [disabled]="!canSave()" (click)="save()">
+          {{ saving() ? 'Saving…' : 'Save' }}
+        </cove-button>
+      </div>
+
+      @if (snapshot()?.lastTestAt; as lastTestAt) {
+        <p class="last-test" [class.ok]="snapshot()?.lastTestOk" [class.bad]="snapshot()?.lastTestOk === false">
+          <cove-icon [name]="snapshot()?.lastTestOk ? 'check' : 'alert-circle'" [size]="14" />
+          Last test {{ formatDate(lastTestAt) }} —
+          {{ snapshot()?.lastTestOk ? 'succeeded' : (snapshot()?.lastTestError || 'failed') }}
+        </p>
+      }
+    </div>
+  }
+</section>

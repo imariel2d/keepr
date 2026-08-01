@@ -36,8 +36,9 @@ export class App {
   private readonly route = inject(ActivatedRoute);
   private readonly bytes = new BytesPipe();
 
-  /** Which sidebar entry is highlighted, derived from the URL. */
-  protected readonly section = signal<'files' | 'trash' | 'admin'>('files');
+  /** Which sidebar entry is highlighted, derived from the URL. Sub-routes get their own key (e.g.
+   *  'admin/email') so the matching child highlights and its parent group auto-expands. */
+  protected readonly section = signal<string>('files');
 
   /**
    * The topbar search box. Its value mirrors the `?q=` on the URL, and typing pushes a debounced
@@ -58,13 +59,25 @@ export class App {
     'input:not([disabled])', 'select:not([disabled])', '[tabindex]:not([tabindex="-1"])',
   ].join(',');
 
-  /** Admin gets an extra entry; the console is server-gated regardless of this link. */
+  /**
+   * Admins get an expandable Admin group (Accounts + Email); non-admins never see it. The routes are
+   * server-gated by the "Admin" policy and adminGuard regardless of this menu, so hiding the group is
+   * just UX — a non-admin can't reach the sub-items even by URL.
+   */
   protected readonly navItems = computed<NavItem[]>(() => {
     const items: NavItem[] = [
       { key: 'files', label: 'My Files', icon: 'folder' },
       { key: 'trash', label: 'Trash', icon: 'trash-2' },
     ];
-    if (this.auth.isAdmin()) items.push({ key: 'admin', label: 'Admin', icon: 'shield' });
+    if (this.auth.isAdmin()) {
+      items.push({
+        key: 'admin', label: 'Admin', icon: 'shield',
+        children: [
+          { key: 'admin/accounts', label: 'Accounts', icon: 'users' },
+          { key: 'admin/email', label: 'Email', icon: 'mail' },
+        ],
+      });
+    }
     return items;
   });
 
@@ -73,7 +86,11 @@ export class App {
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
       .subscribe((e) => {
         const url = e.urlAfterRedirects;
-        this.section.set(url.startsWith('/trash') ? 'trash' : url.startsWith('/admin') ? 'admin' : 'files');
+        this.section.set(
+          url.startsWith('/trash') ? 'trash'
+            : url.startsWith('/admin/email') ? 'admin/email'
+              : url.startsWith('/admin') ? 'admin/accounts'
+                : 'files');
       });
 
     // Keep the box in step with the URL: a reload, a shared /files?q= link, or clearing the

@@ -36,10 +36,19 @@ export const routes: Routes = [
     loadComponent: () => import('./features/trash/trash').then((m) => m.Trash),
   },
   {
-    path: 'admin',
+    // Account administration. Its own path so the URL reflects the Admin sub-section.
+    path: 'admin/accounts',
     canActivate: [authGuard, passwordChangeGuard, adminGuard],
     loadComponent: () => import('./features/admin/admin').then((m) => m.Admin),
   },
+  {
+    // Admin-only email-provider settings (#36). Same guards as the admin console.
+    path: 'admin/email',
+    canActivate: [authGuard, passwordChangeGuard, adminGuard],
+    loadComponent: () => import('./features/admin/email-settings').then((m) => m.EmailSettings),
+  },
+  // Bare /admin lands on Accounts (and keeps old /admin links working).
+  { path: 'admin', pathMatch: 'full', redirectTo: 'admin/accounts' },
   {
     // No passwordChangeGuard here — this is where a forced change is made, so it must stay reachable.
     path: 'profile',
