@@ -35,6 +35,12 @@ public class EmailSettingsService(
     /// that mutates it and saves actually persists it instead of silently writing zero rows.</summary>
     public async Task<EmailSettings> GetRowAsync(CancellationToken ct)
     {
+        // A DB query can't see a row this scope Added-but-hasn't-saved (the missing-seed fallback
+        // below), and GetRowAsync is called several times per request. Check the local tracker first,
+        // or the second call would try to Add a second Id=1 instance and EF would throw.
+        var tracked = db.EmailSettings.Local.FirstOrDefault();
+        if (tracked is not null) return tracked;
+
         var row = await db.EmailSettings.FirstOrDefaultAsync(ct);
         if (row is not null) return row;
 
