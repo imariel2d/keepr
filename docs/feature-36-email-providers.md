@@ -67,21 +67,32 @@ encoding:
 
 | | Resend | Brevo | Mailgun |
 |---|---|---|---|
-| **Endpoint** | `POST https://api.resend.com/emails` | `POST https://api.brevo.com/v3/smtp/email` | `POST https://api.{region}.mailgun.net/v3/{domain}/messages` |
+| **Endpoint** | `POST https://api.resend.com/emails` | `POST https://api.brevo.com/v3/smtp/email` | `POST https://api.mailgun.net/v3/{domain}/messages` (US) / `https://api.eu.mailgun.net/...` (EU) |
 | **Auth** | `Authorization: Bearer <key>` | `api-key: <key>` | Basic `api:<key>` |
-| **Body** | JSON `{from,to,subject,html,text}` | JSON `{sender,to[],subject,htmlContent,textContent}` | form-encoded `from,to,subject,html,text` |
+| **Body** | JSON `{from,to,subject,html,text}` | JSON `{sender,to[],subject,htmlContent,textContent}` | `multipart/form-data` `from,to,subject,html,text` |
 | **Extra config** | — | — | sending **domain** + **region** (US/EU) |
+
+> Mailgun uses **fixed regional base URLs**, not a region subdomain on one host: US domains send via
+> `api.mailgun.net`, EU domains via `api.eu.mailgun.net`. The `MailgunRegion` value (`us`/`eu`)
+> selects the base URL from that fixed pair — it is never interpolated into the hostname. Sends must
+> be `multipart/form-data`; generic URL-encoding is rejected.
 
 > Exact field names are confirmed against each provider's API reference (see Sources) at
 > implementation time before the transport is wired.
 
 ### 2.2 The existing SMTP sender
 
-`SmtpEmailSender` stays in the tree and stays wired to the env-seed path, but is **not** offered in
-the admin picker. Rationale: it's the odd one out (host/port/STARTTLS/username/password rather than
-one key), it's already covered by the provisioning doc, and keeping the UI to "paste a key" is the
-whole point. Anyone who needs Gmail/SES/etc. can still configure `Email__Provider=smtp` via env; the
-DB picker is for the three hosted APIs.
+`SmtpEmailSender` stays in the tree as a **pure env-backed channel** — it is *not* stored in
+`EmailSettings` and *not* offered in the admin picker. Rationale: it's the odd one out
+(host/port/STARTTLS/username/password rather than one key), it's already covered by the provisioning
+doc, and keeping the UI to "paste a key" is the whole point. Anyone who needs Gmail/SES/etc. still
+configures `Email__Provider=smtp` via env; the DB picker is for the three hosted APIs.
+
+Because it's env-only, SMTP is resolved as a **fallback**, not a stored provider: when the DB
+provider is `none` **and** `Email__Provider=smtp` is set in env, the factory builds `SmtpEmailSender`
+from env (see the precedence in §5.1). That's what keeps an existing SMTP deployment working after
+this upgrade — the seeded `none` row doesn't shadow it, because `none` is exactly the state that
+defers to the env fallback.
 
 ---
 
@@ -167,10 +178,11 @@ runtime, so the choice moves to request time:
   (only on an invite or a test), so it reads the row on demand — **no cache to invalidate**; one
   indexed single-row read per send is negligible.
 - **`EmailSenderFactory`** (scoped) — `CreateAsync(ct)` reads settings and returns the transport for
-  the current provider (`ResendEmailSender` / `BrevoEmailSender` / `MailgunEmailSender`), or
-  `NoOpEmailSender` when `Provider='none'`. Each hosted transport is constructed with its decrypted
-  key + config and an `IHttpClientFactory` client carrying the **same short timeout** the inline SMTP
-  send uses (a dead provider must not hang the admin's request).
+  the current provider (`ResendEmailSender` / `BrevoEmailSender` / `MailgunEmailSender`). When
+  `Provider='none'` it applies the §5.1 fallback: `SmtpEmailSender` from env if `Email__Provider=smtp`
+  is set, otherwise `NoOpEmailSender`. Each hosted transport is constructed with its decrypted key +
+  config and an `IHttpClientFactory` client carrying the **same short timeout** the inline SMTP send
+  uses (a dead provider must not hang the admin's request).
 - **`InviteService` / `AdminController`** change by one indirection: instead of an injected
   `IEmailSender`, they take the factory (or a thin `IEmailService` wrapper over it) and resolve per
   send. `EmailOptions.Enabled` checks become `await settings.IsEnabledAsync(ct)`.
@@ -178,13 +190,30 @@ runtime, so the choice moves to request time:
 `IEmailSender` and `EmailMessage` are unchanged, so the transports and the Cove template are reused
 verbatim.
 
-### 5.1 Env becomes a seed, not the source of truth
+### 5.1 Resolution precedence — DB providers, env SMTP, then none
 
-On first boot, if `EmailSettings` is empty, seed the row from the existing `Email__*` env values
-(mirrors `AdminSeeder`). After that the **DB is authoritative** and env is ignored for the managed
-fields. This keeps current deployments working with zero change, lets ops set an initial provider via
-env if they want, and hands ongoing control to the admin screen. The boot-time fail-fast validation
-in `Program.cs` (reject `smtp` with a blank host, etc.) stays for the **env-seed** path only.
+The migration seeds one singleton row (`Provider='none'`), so the row always exists; there is no
+"empty table" special case. The factory resolves each send in a fixed order:
+
+1. **DB hosted provider** — if `EmailSettings.Provider` is `resend` / `brevo` / `mailgun`, use it
+   (admin-managed, the primary path).
+2. **Env SMTP fallback** — else if `Email__Provider=smtp` is set, build `SmtpEmailSender` from env.
+   This is what keeps existing SMTP deployments working; SMTP is never written to the DB (§2.2).
+3. **None** — else `NoOpEmailSender`.
+
+So the **DB is authoritative for the hosted providers**, env owns SMTP, and the two don't collide.
+The boot-time fail-fast validation in `Program.cs` (reject `smtp` with a blank host, etc.) stays for
+the **env-SMTP** path only. `PublicBaseUrl` and `InviteExpiryDays` are seeded into the row from their
+`Email__*` env values on the initial migration (so current config carries over), then managed through
+the admin API (§6) — they are **not** re-read from env after seeding.
+
+**Provider changes and the stored key.** A blank key on `PUT` keeps the stored `ApiKeyCipher` **only
+when the provider is unchanged** — an edit that just fixes the From name mustn't force re-entry of the
+key. But changing the provider (e.g. Resend → Brevo) **requires a new key**: a key is
+provider-specific, and carrying the old one over would send a Resend secret to Brevo. Selecting
+`none` **clears `ApiKeyCipher`** (there's no provider to hold a key for), preserving the "NULL when
+`Provider='none'`" invariant in §3. The old provider's key is simply overwritten — nothing orphaned;
+revoking it on the provider's side is done in that provider's own dashboard.
 
 ---
 
@@ -195,17 +224,34 @@ A new `EmailSettingsController`, `[Authorize(Policy="Admin")]` (401 anonymous, 4
 
 | Method | Route | Purpose | Notes |
 |---|---|---|---|
-| `GET` | `/api/admin/email-settings` | current config for the screen | **never returns the key** — sends `hasApiKey: bool`, provider, From, Mailgun domain/region, last-test result |
-| `PUT` | `/api/admin/email-settings` | upsert config | key field is **write-only**: omitted/blank → keep the stored key; present → validate + re-encrypt + replace. Validates provider-specific required fields (Mailgun needs domain + region) |
-| `POST` | `/api/admin/email-settings/test` | send a test email | sends via the **saved or just-submitted** settings to the admin's own address; records `LastTest*`. Returns 200 + `{ok,error?}` so the UI shows a clear pass/fail before anyone relies on it |
+| `GET` | `/api/admin/email-settings` | current config for the screen | **never returns the key** — sends `hasApiKey: bool`, provider, From, Mailgun domain/region, `publicBaseUrl`, `inviteExpiryDays`, last-test result |
+| `PUT` | `/api/admin/email-settings` | upsert config | key field is **write-only**: blank → keep the stored key **only if the provider is unchanged** (§5.1); a provider change requires a new key; `none` clears the key. Also writes `publicBaseUrl` (absolute http(s) URL) and `inviteExpiryDays` (≥ 1). Validates provider-specific required fields (Mailgun needs domain + region) |
+| `POST` | `/api/admin/email-settings/test` | send a test email | uses the **saved** settings (no request body) — the admin must `PUT` first; the UI (§7) saves before it enables Test. Sends to the admin's own address, records `LastTest*`, returns 200 + `{ok,error?}` |
+
+`publicBaseUrl` and `inviteExpiryDays` are stored in `EmailSettings` (§3), so they must be in the
+request/response DTOs and the UI — otherwise, after the initial env seed, no one could ever change the
+link origin or invite lifetime. They're seeded from env once (§5.1) and admin-managed thereafter.
+
+Test-send **uses saved settings on purpose**: it avoids a second path where an unsaved plaintext key
+travels the wire and duplicates provider validation. "Verify before you rely on it" is preserved —
+the admin saves, then tests; the §7 UI disables Test while there are unsaved edits so a green result
+can never describe a config that isn't the one stored.
 
 Security posture:
 - Secrets are **write-only in, masked out** — the plaintext key leaves the browser once (on save)
   and is never returned.
+- **Audit payload is a secret-free allowlist.** Each change writes an `EmailSettingsChanged` action to
+  `AdminActionLogs` whose `Details` carries **only** allowlisted metadata — provider, From, Mailgun
+  domain/region, `publicBaseUrl`, `inviteExpiryDays`, and a `keyChanged: bool`. It must **never**
+  contain the request DTO, the plaintext key, `ApiKeyCipher`, or raw provider error text (which can
+  echo a key back). A unit test asserts these exclusions.
 - Provider endpoints are **fixed known hosts**; the only admin-supplied host-ish values are Mailgun's
   **domain** (path segment, validated) and **region** (a `us`/`eu` enum, not a free URL) — so no SSRF
   surface. (Admins are already the app's most-trusted role.)
-- Test-send has a simple **in-flight guard** so a double-click can't fan out real emails.
+- Test-send has a **best-effort, process-local** in-flight guard against a double-click. It is *not*
+  cross-instance: two requests hitting different API instances could each send one test email. That's
+  acceptable for a low-volume admin action; if it ever needs to be strict, a short DB-backed
+  idempotency record would make it cross-instance.
 
 ### 6.1 OpenAPI
 
@@ -221,14 +267,18 @@ A new **`/admin/email`** screen (Cove-styled, `adminGuard` — the same guard th
 uses; 403s never reach it). It mirrors the existing admin dialogs:
 
 - **Provider** dropdown — None / Resend / Brevo / Mailgun. Selecting one reveals only that provider's
-  fields (Mailgun adds domain + region).
-- **API key** — a write-only field. When a key is already stored it shows `•••• configured` with a
-  **Replace** affordance rather than a value; leaving it untouched keeps the stored key. Reuses the
-  reveal-toggle pattern from the login/claim/profile inputs.
+  fields (Mailgun adds domain + region). **Changing the provider clears the key field and requires a
+  new one** (§5.1), so a stale key can't ride along.
+- **API key** — a write-only field. When a key is already stored (and the provider is unchanged) it
+  shows `•••• configured` with a **Replace** affordance rather than a value; leaving it untouched
+  keeps the stored key. Reuses the reveal-toggle pattern from the login/claim/profile inputs.
 - **From address / From name.**
-- **Send test email** — button + inline result (green "sent" / red error), driven by `POST …/test`,
-  so the admin verifies delivery before saving becomes meaningful.
+- **Public base URL / Invite expiry (days)** — the link origin and invite lifetime (§6), editable
+  here rather than trapped in env.
 - **Save** — `PUT`; surfaces field validation via the shared `problem-details` helpers.
+- **Send test email** — button + inline result (green "sent" / red error), driven by `POST …/test`.
+  It tests the **saved** config, so it is **disabled while there are unsaved edits** (save first);
+  this guarantees a green result describes exactly what's stored, never an unsaved draft.
 
 Nothing here is visible to non-admins: the route is `adminGuard`-protected and the API is
 `Admin`-policy-gated, so this is the same two-layer gate (route + server) the console already uses.
@@ -238,11 +288,18 @@ Nothing here is visible to non-admins: the route is `adminGuard`-protected and t
 ## 8. Migration
 
 One migration, `AddEmailSettings`:
-- creates `keepr.EmailSettings` (§3) with the single-row CHECK and seeds the singleton `none` row;
+- creates `keepr.EmailSettings` (§3) with the single-row CHECK and seeds the singleton `none` row
+  (with `PublicBaseUrl` / `InviteExpiryDays` from env, §5.1);
 - adds the `DataProtectionKeys` table (§4) via the EF Core key-storage package.
 
-`Down()` drops both. No existing table changes, so the migration is additive and safe to roll back
-(the down simply removes the two new tables; no data in older tables is touched).
+**`Down()` drops `EmailSettings` only — it deliberately leaves `DataProtectionKeys` in place.**
+Dropping the key ring would be **destructive, not safe**: that table is shared with the framework's
+auth-cookie and antiforgery protection, so removing it after any traffic would sign every user out
+(cookies fail to validate) *and* make any stored `ApiKeyCipher` permanently undecryptable. Rolling
+back this feature should discard its own table, not the shared key infrastructure it introduced;
+retiring the key ring is a separate, explicitly-destructive operation (re-seed keys + force
+re-authentication), never a side effect of this migration's rollback. Creating the key table is
+idempotent, so a re-apply after such a rollback is a no-op.
 
 ---
 
@@ -332,7 +389,7 @@ worth including.
 - Brevo — [email API / free plan](https://www.brevo.com/features/email-api/),
   [send transactional email](https://developers.brevo.com/reference/sendtransacemail)
 - Mailgun — [free plan overview](https://www.mailgun.com/blog/email/best-free-email-plans/),
-  [messages API](https://documentation.mailgun.com/docs/mailgun/api-reference/openapi-final/tag/Messages/)
+  [messages API](https://documentation.mailgun.com/docs/mailgun/api-reference/send/mailgun/messages/post-v3--domain-name--messages)
 - SendGrid free-plan retirement — [Twilio changelog](https://www.twilio.com/en-us/changelog/sendgrid-free-plan)
 - ASP.NET Data Protection — [overview](https://learn.microsoft.com/en-us/aspnet/core/security/data-protection/introduction),
   [key storage providers](https://learn.microsoft.com/en-us/aspnet/core/security/data-protection/implementation/key-storage-providers),

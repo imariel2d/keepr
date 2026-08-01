@@ -105,8 +105,8 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 ## Summary
 
 - **Done (12):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
-  rename/delete, trash, in-browser preview, shareable links, admin console, change-password (#28),
-  profile names (#29).
+  rename/delete, trash, in-browser preview, shareable links, admin account administration (#34),
+  change-password (#28), profile names (#29).
 - **Partial (3):** search by file name (#9) — built end-to-end, pending a live run;
   accessibility & mobile (#35) — foundation + drawer in, per-screen sweep remains;
   admin-provisioned accounts & email invites (#36) — direct-provision + forced-change path
