@@ -1,0 +1,199 @@
+.admin {
+  padding: var(--space-6);
+  max-width: 680px;
+}
+
+.head {
+  margin-bottom: var(--space-4);
+
+  .head-titles {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  h1 {
+    font-size: var(--text-xl);
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  .back {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    align-self: flex-start;
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+
+    &:hover { color: var(--text-secondary); }
+    &:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+}
+
+.lede {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+
+  > span,
+  .label {
+    font-weight: var(--weight-medium);
+  }
+}
+
+.split {
+  display: flex;
+  gap: var(--space-4);
+
+  .field { flex: 1; }
+  .field.narrow { flex: 0 0 160px; }
+}
+
+.hint { margin: 0; font-size: var(--text-xs); color: var(--text-tertiary); }
+.field-error { margin: 0; font-size: var(--text-xs); color: var(--danger); }
+
+.select {
+  height: var(--control-height-md);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--focus-ring);
+    box-shadow: var(--shadow-focus);
+  }
+}
+
+// Reveal toggle inside the key field — mirrors the login/admin .reveal.
+.reveal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  margin: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast);
+
+  &:hover { color: var(--text-secondary); }
+  &:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+}
+
+// The "key already stored" state: a chip plus a Replace affordance instead of showing the value.
+.stored {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    color: var(--success, var(--accent));
+    background: var(--success-subtle, var(--accent-subtle));
+    border-radius: var(--radius-pill, 999px);
+    padding: 2px 10px;
+  }
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+
+  .test {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+
+    .hint { white-space: nowrap; }
+  }
+}
+
+.last-test {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+
+  &.ok { color: var(--success, var(--accent)); }
+  &.bad { color: var(--danger); }
+
+  cove-icon { flex-shrink: 0; }
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--success-subtle, var(--accent-subtle));
+  color: var(--success, var(--accent));
+  font-size: var(--text-sm);
+}
+
+.error {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--danger-subtle);
+  color: var(--danger);
+  font-size: var(--text-sm);
+}
+
+.muted { color: var(--text-tertiary); font-size: var(--text-sm); }
+
+@media (max-width: 560px) {
+  .admin { padding: var(--space-4); }
+  .card { padding: var(--space-4); }
+
+  .split { flex-direction: column; gap: var(--space-4); }
+  .split .field.narrow { flex: 1; }
+
+  // Stack the test group above Save so two button clusters don't collide / overflow the row.
+  .foot {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+
+    .test { justify-content: space-between; }
+  }
+}

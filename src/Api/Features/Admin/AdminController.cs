@@ -63,7 +63,7 @@ public class AdminController(
     AdminAuditService audit,
     CredentialValidator credentials,
     InviteService invites,
-    IOptions<EmailOptions> emailOptions,
+    EmailSettingsService emailSettings,
     IOptions<QuotaOptions> quota,
     TimeProvider clock,
     ILogger<AdminController> log) : ControllerBase
@@ -248,7 +248,7 @@ public class AdminController(
             // Never silently no-op an invite: refuse if no real sender is configured (§4.2). Tagged
             // with a machine-readable code so the client can tell this apart from the *other* 409
             // this endpoint returns (duplicate email) and show the right message.
-            if (!emailOptions.Value.Enabled)
+            if (!await emailSettings.IsEnabledAsync(ct))
             {
                 var pd = new ProblemDetails
                 {
@@ -288,7 +288,7 @@ public class AdminController(
         string? rawToken = null;
         if (req.SendInvite)
         {
-            var (invite, token) = invites.Build(user.Id);
+            var (invite, token) = await invites.BuildAsync(user.Id, ct);
             db.AccountInvites.Add(invite);
             rawToken = token;
         }
@@ -391,7 +391,7 @@ public class AdminController(
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status502BadGateway)]
     public async Task<IActionResult> ResendInvite(Guid id, CancellationToken ct)
     {
-        if (!emailOptions.Value.Enabled)
+        if (!await emailSettings.IsEnabledAsync(ct))
             return Problem("Email delivery is not configured.", statusCode: StatusCodes.Status409Conflict);
 
         var user = await db.Users.FindAsync([id], ct);
@@ -402,7 +402,7 @@ public class AdminController(
             return Problem("This account has already been claimed.", statusCode: StatusCodes.Status409Conflict);
 
         await invites.RemoveExistingAsync(user.Id, ct);
-        var (invite, token) = invites.Build(user.Id);
+        var (invite, token) = await invites.BuildAsync(user.Id, ct);
         db.AccountInvites.Add(invite);
         try
         {

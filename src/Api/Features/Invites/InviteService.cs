@@ -16,29 +16,27 @@ namespace Keepr.Api.Features.Invites;
 /// </summary>
 public class InviteService(
     AppDbContext db,
-    IEmailSender email,
-    IOptions<EmailOptions> emailOptions,
+    EmailSenderFactory senders,
+    EmailSettingsService settings,
     IOptions<ShareOptions> shareOptions,
     TimeProvider clock)
 {
-    private readonly EmailOptions _email = emailOptions.Value;
-
-    private int ExpiryDays => Math.Max(1, _email.InviteExpiryDays);
-
     /// <summary>
     /// Builds a fresh invite for a user and the raw token to email. The invite is returned, not
     /// persisted — the caller adds it in the same transaction as the account change it belongs to.
-    /// The raw token exists only here and in the email; only its hash is stored.
+    /// The raw token exists only here and in the email; only its hash is stored. The expiry now comes
+    /// from the admin-managed <c>EmailSettings</c> (§5.1), so this is async.
     /// </summary>
-    public (AccountInvite Invite, string RawToken) Build(Guid userId)
+    public async Task<(AccountInvite Invite, string RawToken)> BuildAsync(Guid userId, CancellationToken ct)
     {
+        var expiryDays = Math.Max(1, (await settings.GetAsync(ct)).InviteExpiryDays);
         var token = SecureToken.Generate();
         var invite = new AccountInvite
         {
             UserId = userId,
             TokenHash = SecureToken.Hash(token),
             CreatedAt = clock.GetUtcNow(),
-            ExpiresAt = clock.GetUtcNow().AddDays(ExpiryDays)
+            ExpiresAt = clock.GetUtcNow().AddDays(expiryDays)
         };
         return (invite, token);
     }
@@ -47,12 +45,15 @@ public class InviteService(
     public Task<int> RemoveExistingAsync(Guid userId, CancellationToken ct) =>
         db.AccountInvites.Where(i => i.UserId == userId).ExecuteDeleteAsync(ct);
 
-    /// <summary>Renders and sends the claim email. Throws on transport failure — callers treat that
-    /// as non-fatal (the account is already committed, §8.3).</summary>
+    /// <summary>Renders and sends the claim email via the currently-configured provider (§5). Throws
+    /// on transport failure — callers treat that as non-fatal (the account is already committed, §8.3).</summary>
     public async Task SendAsync(string toEmail, string rawToken, string? invitedByEmail, CancellationToken ct)
     {
-        var claimUrl = $"{ResolveBaseUrl()}/claim/{rawToken}";
-        var content = EmailTemplates.Invite(claimUrl, invitedByEmail, ExpiryDays);
+        var s = await settings.GetAsync(ct);
+        var expiryDays = Math.Max(1, s.InviteExpiryDays);
+        var claimUrl = $"{ResolveBaseUrl(s.PublicBaseUrl)}/claim/{rawToken}";
+        var content = EmailTemplates.Invite(claimUrl, invitedByEmail, expiryDays);
+        var email = await senders.CreateAsync(ct);
         await email.SendAsync(
             new EmailMessage(toEmail, string.Empty, content.Subject, content.HtmlBody, content.TextBody),
             ct);
@@ -70,13 +71,14 @@ public class InviteService(
         return invite is not null && invite.IsClaimable(clock.GetUtcNow()) ? invite : null;
     }
 
-    /// <summary>The public origin for links in emails: <c>Email:PublicBaseUrl</c>, falling back to
-    /// the share viewer's origin (<c>Sharing:PublicBaseUrl</c>), which is validated at startup.</summary>
-    private string ResolveBaseUrl()
+    /// <summary>The public origin for links in emails: the admin-managed
+    /// <c>EmailSettings.PublicBaseUrl</c>, falling back to the share viewer's origin
+    /// (<c>Sharing:PublicBaseUrl</c>), which is validated at startup.</summary>
+    private string ResolveBaseUrl(string publicBaseUrl)
     {
-        var url = string.IsNullOrWhiteSpace(_email.PublicBaseUrl)
+        var url = string.IsNullOrWhiteSpace(publicBaseUrl)
             ? shareOptions.Value.PublicBaseUrl
-            : _email.PublicBaseUrl;
+            : publicBaseUrl;
         return url.TrimEnd('/');
     }
 }

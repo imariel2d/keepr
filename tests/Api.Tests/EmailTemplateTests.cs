@@ -40,6 +40,17 @@ public class EmailTemplateTests
     }
 
     [Fact]
+    public void Invite_falls_back_to_a_generic_line_when_no_inviter_is_given()
+    {
+        // A null/blank inviter must not leave a dangling "(...)" placeholder — the template uses a
+        // generic invite sentence instead. See docs/feature-36-email-providers.md §10.
+        var content = EmailTemplates.Invite(ClaimUrl, invitedBy: null, expiryDays: 7);
+        // Apostrophe-free substring so it matches the HTML body too (HtmlEncode escapes the ').
+        Assert.Contains("been invited to Keepr", content.HtmlBody);
+        Assert.Contains("been invited to Keepr", content.TextBody);
+    }
+
+    [Fact]
     public void Invite_html_encodes_untrusted_inviter_text()
     {
         // A crafted inviter value must not land as live markup in the HTML body.

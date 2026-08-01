@@ -67,4 +67,35 @@ public class AdminAuditService(AppDbContext db)
             Details = JsonSerializer.Serialize(new { from = from.ToString(), to = to.ToString() })
         });
     }
+
+    /// <summary>
+    /// Records a change to the app-wide email provider settings. There is no target user, so the
+    /// acting admin is recorded as the target (self). The audit detail is a <b>secret-free
+    /// allowlist</b> — provider, From, Mailgun domain/region, the link/expiry fields, and whether the
+    /// key changed — never the API key, ciphertext, request DTO, or raw provider error text. See
+    /// docs/feature-36-email-providers.md §6.
+    /// </summary>
+    public void RecordEmailSettingsChanged(
+        Guid actorId, string actorEmail, EmailSettings settings, bool keyChanged)
+    {
+        db.AdminActionLogs.Add(new AdminActionLog
+        {
+            ActorUserId = actorId,
+            ActorEmail = actorEmail,
+            Action = AdminActionType.EmailSettingsChanged,
+            TargetUserId = actorId,
+            TargetEmail = actorEmail,
+            Details = JsonSerializer.Serialize(new
+            {
+                provider = settings.Provider.ToString(),
+                fromAddress = settings.FromAddress,
+                fromName = settings.FromName,
+                mailgunDomain = settings.MailgunDomain,
+                mailgunRegion = settings.MailgunRegion,
+                publicBaseUrl = settings.PublicBaseUrl,
+                inviteExpiryDays = settings.InviteExpiryDays,
+                keyChanged
+            })
+        });
+    }
 }
