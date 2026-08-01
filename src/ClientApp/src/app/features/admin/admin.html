@@ -47,6 +47,7 @@
               <td class="row-actions">
                 @if (u.pending) {
                   <cove-button variant="ghost" size="sm" icon="mail"
+                               [disabled]="resendingId() === u.id"
                                (click)="resend(u)">Resend</cove-button>
                 }
                 <cove-button variant="ghost" size="sm" icon="shield" [disabled]="isSelf(u)"

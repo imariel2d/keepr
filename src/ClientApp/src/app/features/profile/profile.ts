@@ -2,12 +2,12 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ProfileService } from '../../core/profile.service';
 import { ProfileStore } from '../../core/profile.store';
+import { MIN_PASSWORD_LENGTH } from '../../core/password-policy';
+import { problemDetail, validationErrors } from '../../core/problem-details';
 import { ButtonComponent } from '../../cove/lib/button/button.component';
 import { InputComponent } from '../../cove/lib/input/input.component';
 import { IconComponent } from '../../cove/lib/icon/icon.component';
 import { AvatarComponent } from '../../cove/lib/avatar/avatar.component';
-
-const MIN_PASSWORD_LENGTH = 12;
 
 /**
  * The signed-in account's profile (#29): edit display name, see the read-only email and role, and
@@ -90,7 +90,7 @@ export class Profile {
       this.store.set(updated);
       this.nameNotice.set('Profile saved.');
     } catch (e) {
-      this.nameError.set(this.detailOf(e, 'Could not save your profile.'));
+      this.nameError.set(problemDetail(e, 'Could not save your profile.'));
     } finally {
       this.savingName.set(false);
     }
@@ -116,24 +116,14 @@ export class Profile {
         this.passwordNotice.set('Password changed. Your other sessions were signed out.');
       }
     } catch (e) {
-      const fieldErrors = this.validationErrorsOf(e);
+      const fieldErrors = validationErrors(e);
       if (Object.keys(fieldErrors).length > 0) {
         this.passwordFieldErrors.set(fieldErrors);
       } else {
-        this.passwordError.set(this.detailOf(e, 'Could not change your password.'));
+        this.passwordError.set(problemDetail(e, 'Could not change your password.'));
       }
     } finally {
       this.savingPassword.set(false);
     }
-  }
-
-  private detailOf(e: unknown, fallback: string): string {
-    const d = (e as { error?: { detail?: string } })?.error?.detail;
-    return typeof d === 'string' && d ? d : fallback;
-  }
-
-  private validationErrorsOf(e: unknown): Record<string, string[]> {
-    const errors = (e as { error?: { errors?: Record<string, string[]> } })?.error?.errors;
-    return errors && typeof errors === 'object' ? errors : {};
   }
 }

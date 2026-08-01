@@ -33,8 +33,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Email).IsUnique();
             e.Property(x => x.Email).HasMaxLength(320).IsRequired();
 
-            // Nullable: an invited-but-unclaimed account has no password yet (§8.1). Deliberately
-            // not IsRequired — the null is the "cannot sign in until claimed" state.
+            // PasswordHash is nullable by virtue of the CLR type (an invited-but-unclaimed account
+            // has no password yet — §8.1); nothing to configure here. FirstName/LastName are the
+            // optional profile fields (#29), length-capped.
             e.Property(x => x.FirstName).HasMaxLength(100);
             e.Property(x => x.LastName).HasMaxLength(100);
 

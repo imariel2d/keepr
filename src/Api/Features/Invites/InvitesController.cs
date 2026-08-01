@@ -2,6 +2,7 @@ using Keepr.Api.Data;
 using Keepr.Api.Domain;
 using Keepr.Api.Features.Auth;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Keepr.Api.Features.Invites;
 
@@ -63,19 +64,32 @@ public class InvitesController(
                 Detail = string.Join(" ", errors.Values.SelectMany(v => v))
             });
 
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        // Single-winner: two concurrent claims (a retried submit) both resolved the invite as
+        // claimable above, so decide the winner by an atomic conditional update — only the request
+        // whose UPDATE actually flips ClaimedAt proceeds. Otherwise both would set a password and
+        // get a session, with the last write silently winning. See §8.4.
+        var won = await db.AccountInvites
+            .Where(i => i.Id == invite.Id && i.ClaimedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.ClaimedAt, clock.GetUtcNow()), ct);
+        if (won == 0)
+            return Problem("This invitation is no longer valid.", statusCode: StatusCodes.Status410Gone);
+
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
         // The invitee chose this password themselves, so there is nothing to force-rotate.
         user.MustChangePassword = false;
-        invite.ClaimedAt = clock.GetUtcNow();
         await db.SaveChangesAsync(ct);
 
+        // Issue the session inside the transaction so it exists only if the whole claim commits.
         var sessionToken = await sessions.IssueAsync(
             user,
             Request.Headers.UserAgent.ToString(),
             HttpContext.Connection.RemoteIpAddress?.ToString(),
             ct);
-        cookie.Set(Response, sessionToken);
+        await tx.CommitAsync(ct);
 
+        cookie.Set(Response, sessionToken);
         return Ok(new SessionResponse(user.Email, user.Role.ToString()));
     }
 }

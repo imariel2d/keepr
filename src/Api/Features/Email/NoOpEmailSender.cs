@@ -10,9 +10,12 @@ public sealed class NoOpEmailSender(ILogger<NoOpEmailSender> log) : IEmailSender
 {
     public Task SendAsync(EmailMessage message, CancellationToken ct)
     {
+        // Deliberately no recipient address: it's PII (a personal identifier), and this fires on
+        // every send in the documented default config, so logging it would scatter emails through
+        // logs that are often shipped or retained. The subject alone is enough of a signal.
         log.LogInformation(
-            "Email delivery is not configured; dropping message to {To} (subject: {Subject}). "
-            + "Set Email__Provider to enable outbound mail.", message.ToEmail, message.Subject);
+            "Email delivery is not configured; dropped a message (subject: {Subject}). "
+            + "Set Email__Provider to enable outbound mail.", message.Subject);
         return Task.CompletedTask;
     }
 }

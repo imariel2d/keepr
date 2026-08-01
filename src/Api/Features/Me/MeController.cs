@@ -74,6 +74,10 @@ public class MeController(
         var user = await db.Users.FindAsync([User.UserId()], ct);
         if (user is null) return NotFound();
 
+        // Full replace of BOTH name fields, not a partial PATCH: a missing field and an explicitly
+        // cleared field both arrive as null, so every call must send the whole pair. A blank value
+        // clears the stored name by design. Don't "fix" a caller into sending only one field — that
+        // would silently wipe the other.
         user.FirstName = Normalize(req.FirstName);
         user.LastName = Normalize(req.LastName);
         await db.SaveChangesAsync(ct);

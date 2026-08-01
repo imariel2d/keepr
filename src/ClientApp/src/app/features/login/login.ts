@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { ProfileStore } from '../../core/profile.store';
+import { problemDetail } from '../../core/problem-details';
 import { ButtonComponent } from '../../cove/lib/button/button.component';
 import { InputComponent } from '../../cove/lib/input/input.component';
 import { IconComponent } from '../../cove/lib/icon/icon.component';
@@ -34,19 +35,15 @@ export class Login {
     this.busy.set(true);
     try {
       await this.auth.login(this.email(), this.password());
-      // Load the profile so the forced-change guard can act immediately after sign-in.
-      await this.profile.refresh();
+      // Prime the profile so the forced-change guard can act immediately after sign-in. Non-fatal:
+      // a failed prefetch must not report the (successful) login as failed — the guard re-loads,
+      // since ProfileStore doesn't cache a failed load.
+      await this.profile.refresh().catch(() => {});
       await this.router.navigate(['']);
     } catch (e) {
-      this.error.set(this.messageOf(e, 'Login failed. Check your email and password.'));
+      this.error.set(problemDetail(e, 'Login failed. Check your email and password.'));
     } finally {
       this.busy.set(false);
     }
-  }
-
-  /** Errors are problem+json; `detail` carries a message meant for the user. */
-  private messageOf(e: unknown, fallback: string): string {
-    const detail = (e as { error?: { detail?: string } })?.error?.detail;
-    return typeof detail === 'string' && detail ? detail : fallback;
   }
 }

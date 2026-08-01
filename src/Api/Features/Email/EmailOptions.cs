@@ -50,6 +50,12 @@ public class SmtpOptions
     public string Password { get; set; } = "";
 
     /// <summary>Upgrade the connection with STARTTLS (the common submission-port 587 flow). When
-    /// false, MailKit auto-negotiates (e.g. implicit TLS on 465).</summary>
+    /// false, port 465 uses implicit TLS; any other port is treated as an unencrypted dev relay and
+    /// may only be used <em>without</em> credentials (see <see cref="SmtpEmailSender"/>).</summary>
     public bool UseStartTls { get; set; } = true;
+
+    /// <summary>How long to wait on the SMTP host before giving up. Kept short because the send runs
+    /// inline on the admin's request — a dead host must not hold the request for MailKit's 2-minute
+    /// default. See docs/feature-36-account-provisioning.md §8.3.</summary>
+    public int TimeoutSeconds { get; set; } = 15;
 }

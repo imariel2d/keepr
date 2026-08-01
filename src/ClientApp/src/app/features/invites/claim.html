@@ -19,8 +19,8 @@
       </div>
 
       <form (submit)="submit($event)">
-        <div class="field">
-          <label for="password">Password</label>
+        <label class="field">
+          <span>Password</span>
           <cove-input
             icon="lock"
             [type]="showPassword() ? 'text' : 'password'"
@@ -46,10 +46,10 @@
           @for (message of errorsFor('password'); track message) {
             <p class="field-error">{{ message }}</p>
           }
-        </div>
+        </label>
 
-        <div class="field">
-          <label for="confirm">Confirm password</label>
+        <label class="field">
+          <span>Confirm password</span>
           <cove-input
             icon="lock"
             [type]="showPassword() ? 'text' : 'password'"
@@ -61,7 +61,7 @@
           @if (confirm().length > 0 && !matches()) {
             <p class="field-error">Passwords don't match.</p>
           }
-        </div>
+        </label>
 
         @if (error()) {
           <p class="error" role="alert">

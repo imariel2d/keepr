@@ -3,11 +3,11 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { InviteService } from '../../core/invite.service';
 import { ProfileStore } from '../../core/profile.store';
+import { MIN_PASSWORD_LENGTH } from '../../core/password-policy';
+import { problemDetail, problemStatus, validationErrors } from '../../core/problem-details';
 import { ButtonComponent } from '../../cove/lib/button/button.component';
 import { InputComponent } from '../../cove/lib/input/input.component';
 import { IconComponent } from '../../cove/lib/icon/icon.component';
-
-const MIN_PASSWORD_LENGTH = 12;
 
 /**
  * Public claim page for an admin-provisioned account. The token in the URL is the authorization
@@ -83,33 +83,28 @@ export class Claim {
     this.fieldErrors.set({});
     try {
       await this.auth.claim(this.token, this.password());
-      await this.profile.refresh();
-      await this.router.navigate(['/files']);
     } catch (e) {
-      const status = (e as { status?: number })?.status;
+      const status = problemStatus(e);
       if (status === 410) {
         // The invite lapsed between loading and submitting.
         this.invalid.set(true);
         return;
       }
-      const fieldErrors = this.validationErrorsOf(e);
+      const fieldErrors = validationErrors(e);
       if (Object.keys(fieldErrors).length > 0) {
         this.fieldErrors.set(fieldErrors);
       } else {
-        this.error.set(this.detailOf(e, 'Could not set your password. Try again.'));
+        this.error.set(problemDetail(e, 'Could not set your password. Try again.'));
       }
+      return;
     } finally {
       this.busy.set(false);
     }
-  }
 
-  private detailOf(e: unknown, fallback: string): string {
-    const d = (e as { error?: { detail?: string } })?.error?.detail;
-    return typeof d === 'string' && d ? d : fallback;
-  }
-
-  private validationErrorsOf(e: unknown): Record<string, string[]> {
-    const errors = (e as { error?: { errors?: Record<string, string[]> } })?.error?.errors;
-    return errors && typeof errors === 'object' ? errors : {};
+    // The claim succeeded (password stored, session issued). The profile prefetch is a
+    // convenience — if it fails on a flaky connection, don't tell the invitee their password
+    // wasn't set (retrying would 410 the now-claimed token and dead-end them). Just proceed.
+    await this.profile.refresh().catch(() => {});
+    await this.router.navigate(['/files']);
   }
 }

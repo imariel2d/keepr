@@ -183,7 +183,12 @@ table.users {
     font-family: var(--font-body);
     font-size: var(--text-base);
 
-    &:focus-visible { border-color: var(--focus-ring); }
+    // A visible ring, not just a border tint — matches the focus indicator used everywhere else.
+    &:focus-visible {
+      outline: none;
+      border-color: var(--focus-ring);
+      box-shadow: var(--shadow-focus);
+    }
   }
 
   .toggle {
@@ -193,8 +198,10 @@ table.users {
 
     legend { padding: 0; margin-bottom: var(--space-1); }
 
+    // display:flex so the gap between the radio dot and its label actually applies — `.radio` is a
+    // plain <label>, not a `.field`, so it isn't a flex container otherwise.
     .radio {
-      flex-direction: row;
+      display: flex;
       align-items: center;
       gap: var(--space-2);
       color: var(--text-primary);

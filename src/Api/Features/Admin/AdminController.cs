@@ -123,13 +123,7 @@ public class AdminController(
         // A kicked account (deletion pending) is gone from the admin's view — see ListUsers.
         if (user is null || user.DeletionRequestedAt is not null) return NotFound();
 
-        var trashed = await trash.TrashedBytesAsync(id, ct);
-        var active = await db.Sessions.CountAsync(
-            s => s.UserId == id && s.RevokedAt == null && s.ExpiresAt > clock.GetUtcNow(), ct);
-
-        return new AdminUserDetail(
-            user.Id, user.Email, user.Role.ToString(), user.QuotaBytes, user.UsedBytes,
-            user.RemainingBytes, trashed, user.CreatedAt, active, user.PasswordHash == null);
+        return await BuildDetailAsync(user, ct);
     }
 
     /// <summary>
@@ -160,13 +154,7 @@ public class AdminController(
             await db.SaveChangesAsync(ct);
         }
 
-        var trashed = await trash.TrashedBytesAsync(id, ct);
-        var active = await db.Sessions.CountAsync(
-            s => s.UserId == id && s.RevokedAt == null && s.ExpiresAt > clock.GetUtcNow(), ct);
-
-        return new AdminUserDetail(
-            user.Id, user.Email, user.Role.ToString(), user.QuotaBytes, user.UsedBytes,
-            user.RemainingBytes, trashed, user.CreatedAt, active, user.PasswordHash == null);
+        return await BuildDetailAsync(user, ct);
     }
 
     /// <summary>
@@ -192,8 +180,30 @@ public class AdminController(
         // Idempotent: a second kick while the wipe is still pending is a no-op, not an error.
         if (user.DeletionRequestedAt is not null) return Accepted();
 
-        // Never strand the instance with no admin. Count admins other than this one that aren't
-        // themselves being deleted; if there are none, this kick would remove the last admin.
+        var now = clock.GetUtcNow();
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        // Serialize the admin-set invariant against demotion (and concurrent kicks) on the same
+        // shared lock the demote path uses. Without it, A kicking B while B demotes A would let both
+        // pass their last-admin check and leave zero admins. Taken before the last-admin count
+        // below. See docs/feature-36-account-provisioning.md §5 and feature-34-admin-console.md §4.3.
+        await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", [AdminSetLockKey], ct);
+
+        // Also take the FOR UPDATE the login path holds while issuing a session, so a concurrent
+        // login cannot slip a new session in between this revocation and the commit. See
+        // docs/feature-34-admin-console.md §4.2 and AuthController.Login.
+        await db.Database.ExecuteSqlRawAsync(
+            $"SELECT 1 FROM {AppDbContext.Schema}.\"Users\" WHERE \"Id\" = {{0}} FOR UPDATE", [id], ct);
+
+        // Re-check under the locks. A concurrent kick may have set DeletionRequestedAt (or finished
+        // the wipe) after we loaded the user; reload and bail idempotently rather than revoke again
+        // and write a duplicate UserKicked audit row.
+        await db.Entry(user).ReloadAsync(ct);
+        if (db.Entry(user).State == EntityState.Detached || user.DeletionRequestedAt is not null)
+            return Accepted();
+
+        // Never strand the instance with no admin — checked under the advisory lock so a concurrent
+        // demote can't also pass. Count admins other than this one that aren't themselves pending.
         if (user.Role == Role.Admin)
         {
             var otherAdmins = await db.Users.CountAsync(
@@ -201,23 +211,6 @@ public class AdminController(
             if (otherAdmins == 0)
                 return Problem("Cannot remove the last admin.", statusCode: StatusCodes.Status409Conflict);
         }
-
-        var now = clock.GetUtcNow();
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
-
-        // Take the same FOR UPDATE lock the login path holds while issuing a session, so a
-        // concurrent login cannot slip a new session in between this revocation and the commit.
-        // See docs/feature-34-admin-console.md §4.2 and AuthController.Login.
-        await db.Database.ExecuteSqlRawAsync(
-            $"SELECT 1 FROM {AppDbContext.Schema}.\"Users\" WHERE \"Id\" = {{0}} FOR UPDATE", [id], ct);
-
-        // Re-check under the lock. The pre-lock idempotency check above can race a concurrent kick
-        // that set DeletionRequestedAt (or finished the wipe) after we loaded the user; the FOR
-        // UPDATE serialises us behind it, so reload and bail idempotently rather than revoke again
-        // and write a duplicate UserKicked audit row.
-        await db.Entry(user).ReloadAsync(ct);
-        if (db.Entry(user).State == EntityState.Detached || user.DeletionRequestedAt is not null)
-            return Accepted();
 
         // Access is gone the instant this commits, before a single byte is touched.
         await db.Sessions
@@ -252,10 +245,19 @@ public class AdminController(
 
         if (req.SendInvite)
         {
-            // Never silently no-op an invite: refuse if no real sender is configured (§4.2).
+            // Never silently no-op an invite: refuse if no real sender is configured (§4.2). Tagged
+            // with a machine-readable code so the client can tell this apart from the *other* 409
+            // this endpoint returns (duplicate email) and show the right message.
             if (!emailOptions.Value.Enabled)
-                return Problem("Email delivery is not configured — set a password instead.",
-                    statusCode: StatusCodes.Status409Conflict);
+            {
+                var pd = new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Detail = "Email delivery is not configured — set a password instead."
+                };
+                pd.Extensions["code"] = "email_not_configured";
+                return Conflict(pd);
+            }
             if (EmailPolicy.Validate(email) is { } emailError)
                 return BadRequest(FieldError("email", emailError));
         }
@@ -294,7 +296,16 @@ public class AdminController(
         audit.RecordUserCreated(User.UserId(), ActorEmail(), user, invited: req.SendInvite);
 
         // Account + invite + audit commit together; the email is sent only after (§8.3).
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        {
+            // Lost the check-then-act race on the unique Email index (two concurrent creates, or an
+            // impatient double-click). Report the same 409 the AnyAsync pre-check would, not a 500.
+            return Problem("Email already registered.", statusCode: StatusCodes.Status409Conflict);
+        }
 
         var emailSent = false;
         if (req.SendInvite && rawToken is not null)

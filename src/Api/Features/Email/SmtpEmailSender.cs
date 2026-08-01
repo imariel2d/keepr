@@ -29,17 +29,34 @@ public sealed class SmtpEmailSender(IOptions<EmailOptions> options) : IEmailSend
 
         using var client = new SmtpClient();
 
-        // StartTls for the common submission port (587); Auto lets MailKit pick for implicit-TLS
-        // setups (465). Either way the connection is encrypted before credentials are sent.
-        var socketOptions = _opt.Smtp.UseStartTls ? SecureSocketOptions.StartTls : SecureSocketOptions.Auto;
-        await client.ConnectAsync(_opt.Smtp.Host, _opt.Smtp.Port, socketOptions, ct);
+        // Cap how long a dead host can hold the admin's request. MailKit's default is 120s; this
+        // send runs inline on the request, so a firewalled host must fail fast. A linked token with
+        // the same deadline makes the awaits actually cancel, not just the socket timeout.
+        client.Timeout = _opt.Smtp.TimeoutSeconds * 1000;
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(_opt.Smtp.TimeoutSeconds));
+        var token = cts.Token;
+
+        // StartTls for submission ports (587); implicit TLS only on 465; anything else is an
+        // unencrypted dev relay. Credentials must never cross an unencrypted link — the IsSecure
+        // guard below enforces that regardless of how the socket ended up.
+        var socketOptions = _opt.Smtp.UseStartTls ? SecureSocketOptions.StartTls
+            : _opt.Smtp.Port == 465 ? SecureSocketOptions.SslOnConnect
+            : SecureSocketOptions.Auto;
+        await client.ConnectAsync(_opt.Smtp.Host, _opt.Smtp.Port, socketOptions, token);
 
         // Some relays (or dev catchers like MailHog) accept unauthenticated mail; only authenticate
-        // when a username is configured.
+        // when a username is configured — and refuse to send those credentials in the clear.
         if (!string.IsNullOrEmpty(_opt.Smtp.Username))
-            await client.AuthenticateAsync(_opt.Smtp.Username, _opt.Smtp.Password, ct);
+        {
+            if (!client.IsSecure)
+                throw new InvalidOperationException(
+                    "Refusing to send SMTP credentials over an unencrypted connection. Set "
+                    + "Email__Smtp__UseStartTls=true (port 587) or use an implicit-TLS port (465).");
+            await client.AuthenticateAsync(_opt.Smtp.Username, _opt.Smtp.Password, token);
+        }
 
-        await client.SendAsync(mime, ct);
-        await client.DisconnectAsync(true, ct);
+        await client.SendAsync(mime, token);
+        await client.DisconnectAsync(true, token);
     }
 }

@@ -44,8 +44,12 @@ export class ProfileStore {
     try {
       this.profile.set(await this.api.get());
     } catch {
-      // Not signed in (401) or transient — treat as "no profile"; the auth guard owns redirects.
+      // Do NOT cache a failed load. Leave profile null AND clear the probe so the next
+      // ensureLoaded retries. Otherwise a transient failure right after login would be cached as a
+      // resolved probe, and passwordChangeGuard would read mustChangePassword=false and wave a
+      // newly provisioned account through without the forced change. See feature-36 §7.3.
       this.profile.set(null);
+      this.probe = null;
     }
   }
 }
