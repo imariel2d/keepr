@@ -255,12 +255,59 @@ This is the **configuration half** of the email seam #36 introduced. With it:
 - #26 **reset password** and #27 **change email** inherit a working, admin-toggleable mailer — they
   add flows, not infrastructure.
 
-It does **not** change account provisioning, the invite token model, or the email template — only how
-the sender is chosen and how its secret is stored.
+It does **not** change account provisioning or the invite token model — only how the sender is chosen
+and how its secret is stored. It does add a **content contract** the existing email template must
+meet (§10), but not the template's transport or token mechanics.
 
 ---
 
-## 10. Testing
+## 10. Required email contents
+
+Every account-provisioning email — the invite/claim email today, and any future "your account was
+created" notice — must carry the elements below. This is the content contract for the Cove template
+in [feature-36-account-provisioning.md](feature-36-account-provisioning.md) §10; it's specified here
+because it's the same template that every provider in §2 sends, regardless of which one is active.
+
+**The email carries a one-time set-password link, never a password.** Email is not a safe channel
+for a credential — it lingers in the mailbox, mail-server logs, and backups — so instead of shipping
+the secret we ship a single-use, expiring link and let the recipient choose their own password (the
+existing `claim` flow). "Login credentials" in the email therefore means *the address to sign in
+with* plus *the link to set the secret*, never the secret itself.
+
+Required:
+
+1. **Cove branding** — the mark + "Keepr", so the message reads as legitimate and not phishing.
+2. **Who created the account** — "An administrator (`{invitedByEmail}`) created a Keepr account for
+   you," giving the recipient context for a message they didn't ask for.
+3. **The sign-in identity** — the email address the account signs in with (`{toEmail}`).
+4. **A one-time set-password link + primary call-to-action** — a "Set your password" button to
+   `{PublicBaseUrl}/claim/{token}`. This is the only credential-bearing element, and it's a
+   single-use, expiring token (provisioning doc §8.1), not a password.
+5. **A prompt to set/update the password for security** — framed as "choose your own password to
+   finish," reinforcing that the admin-side setup is temporary. The forced first-login change
+   (`MustChangePassword`) backs this on the server.
+6. **Link expiry** — "This link expires in `{InviteExpiryDays}` days," and note that an admin can
+   re-send it once expired (provisioning doc §8.5).
+7. **A "did you not expect this?" line** — "If you weren't expecting this, you can ignore this email
+   or contact your administrator."
+8. **Where to sign in afterwards** — the app URL (`{PublicBaseUrl}`), so a returning user can find
+   the login page.
+9. **A plain-text alternative** — the message always ships `text` + `html` (the `EmailMessage`
+   contract already requires both).
+
+Must **not** contain: a password or any reusable secret, another account's data, or tracking pixels.
+Stating "we will never ask for your password by email" explicitly is a cheap anti-phishing cue and
+worth including.
+
+> Design consequence: because the email carries a set-password link and never a password, "notify
+> the new user by email" *is* the existing **invite mode** — there is no separate "email the
+> admin-chosen password" path (which would be the anti-pattern this decision rejects). Direct-password
+> mode stays the out-of-band option: the admin sets a password and conveys it themselves. Choosing to
+> email the user means choosing the claim flow.
+
+---
+
+## 11. Testing
 
 - **Unit** — `EmailSettingsService` decrypt round-trip; `EmailSenderFactory` returns the right
   transport per provider and `NoOp` for `none`; `PUT` blank-key-keeps / present-key-replaces logic;
@@ -270,6 +317,9 @@ the sender is chosen and how its secret is stored.
   a failed SMTP send).
 - **Authorization** — `GET`/`PUT`/`test` are 401 anonymous, 403 for a non-admin, 200 for an admin
   (the pattern already covering `AdminController`).
+- **Email contents** — the rendered provisioning email meets the §10 contract: it contains the
+  set-password link and the sign-in identity, states the expiry, and contains **no** password or
+  reusable secret (assert against the rendered HTML + text bodies).
 - **Live** — against the dockerised stack: save a real free-tier key, send a test, confirm receipt;
   then run the #36 invite/claim path end-to-end (the piece still pending live verification).
 
