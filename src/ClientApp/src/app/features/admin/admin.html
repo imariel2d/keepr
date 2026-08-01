@@ -4,14 +4,9 @@
       <h1>Accounts</h1>
       @if (!loading()) { <span class="count">{{ total() }} total</span> }
     </div>
-    <div class="head-actions">
-      <a class="link" routerLink="/admin/email">
-        <cove-icon name="mail" [size]="15" /> Email settings
-      </a>
-      <cove-button variant="primary" size="sm" icon="user-plus" (click)="openCreate()">
-        New account
-      </cove-button>
-    </div>
+    <cove-button variant="primary" size="sm" icon="user-plus" (click)="openCreate()">
+      New account
+    </cove-button>
   </header>
 
   @if (notice()) {

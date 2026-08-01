@@ -283,7 +283,11 @@ generated-OpenAPI convention. The response DTO models the masked shape (`hasApiK
 ## 7. Admin UI
 
 A new **`/admin/email`** screen (Cove-styled, `adminGuard` — the same guard the rest of `/admin`
-uses; 403s never reach it). It mirrors the existing admin dialogs:
+uses; 403s never reach it). It's reached from an **expandable "Admin" group in the sidebar**
+(Accounts + Email) rather than a header link, so the Accounts header stays uncluttered on mobile; the
+group only renders for admins (`auth.isAdmin()`) and the routes are server-gated regardless. The
+shared `cove-sidebar` gained nested `NavItem.children` for this — a parent that toggles, children
+that navigate, auto-expanding when a child is active. It mirrors the existing admin dialogs:
 
 - **Provider** dropdown — None / Resend / Brevo / Mailgun. Selecting one reveals only that provider's
   fields (Mailgun adds domain + region). **Changing the provider clears the key field and requires a

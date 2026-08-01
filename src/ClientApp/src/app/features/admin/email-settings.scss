@@ -182,6 +182,18 @@
 .muted { color: var(--text-tertiary); font-size: var(--text-sm); }
 
 @media (max-width: 560px) {
+  .admin { padding: var(--space-4); }
+  .card { padding: var(--space-4); }
+
   .split { flex-direction: column; gap: var(--space-4); }
   .split .field.narrow { flex: 1; }
+
+  // Stack the test group above Save so two button clusters don't collide / overflow the row.
+  .foot {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+
+    .test { justify-content: space-between; }
+  }
 }

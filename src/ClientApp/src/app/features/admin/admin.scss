@@ -26,25 +26,6 @@
     color: var(--text-tertiary);
     font-size: var(--text-sm);
   }
-
-  .head-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  .link {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-    text-decoration: none;
-    border-radius: var(--radius-sm);
-
-    &:hover { color: var(--text-primary); }
-    &:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
-  }
 }
 
 .table-wrap {

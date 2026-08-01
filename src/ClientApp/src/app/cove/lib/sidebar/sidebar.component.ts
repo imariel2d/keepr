@@ -1,10 +1,12 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../icon/icon.component';
 import { ButtonComponent } from '../button/button.component';
 import { ProgressBarComponent } from '../progress-bar/progress-bar.component';
 
-export interface NavItem { key: string; label: string; icon: string; }
+/** A nav entry. With `children`, it renders as an expandable group whose parent toggles rather than
+ *  navigates; the children navigate. */
+export interface NavItem { key: string; label: string; icon: string; children?: NavItem[]; }
 
 @Component({
   selector: 'cove-sidebar',
@@ -19,12 +21,36 @@ export interface NavItem { key: string; label: string; icon: string; }
       </div>
       <cove-button *ngIf="showUpload" icon="upload-cloud" [ngStyle]="{ margin: '0 8px', display: 'block' }" (click)="upload.emit()">Upload</cove-button>
       <nav aria-label="Primary" [ngStyle]="{ display: 'flex', flexDirection: 'column', gap: '2px' }">
-        <button *ngFor="let item of items" type="button"
-                (click)="navigate.emit(item.key)"
-                [attr.aria-current]="active === item.key ? 'page' : null"
-                [ngStyle]="navStyle(item)">
-          <cove-icon [name]="item.icon" [size]="18"></cove-icon>{{ item.label }}
-        </button>
+        <ng-container *ngFor="let item of items">
+          <!-- Leaf -->
+          <button *ngIf="!item.children" type="button"
+                  (click)="navigate.emit(item.key)"
+                  [attr.aria-current]="active === item.key ? 'page' : null"
+                  [ngStyle]="navStyle(item)">
+            <cove-icon [name]="item.icon" [size]="18"></cove-icon>{{ item.label }}
+          </button>
+
+          <!-- Expandable group: parent toggles, children navigate -->
+          <ng-container *ngIf="item.children">
+            <button type="button"
+                    (click)="toggle(item.key)"
+                    [attr.aria-expanded]="isExpanded(item)"
+                    [ngStyle]="groupStyle(item)">
+              <cove-icon [name]="item.icon" [size]="18"></cove-icon>
+              <span [ngStyle]="{ flex: 1 }">{{ item.label }}</span>
+              <cove-icon name="chevron-right" [size]="16"
+                         [ngStyle]="{ transform: isExpanded(item) ? 'rotate(90deg)' : 'none', transition: 'transform var(--duration-fast)' }"></cove-icon>
+            </button>
+            <div *ngIf="isExpanded(item)" [ngStyle]="{ display: 'flex', flexDirection: 'column', gap: '2px' }">
+              <button *ngFor="let child of item.children" type="button"
+                      (click)="navigate.emit(child.key)"
+                      [attr.aria-current]="active === child.key ? 'page' : null"
+                      [ngStyle]="childStyle(child)">
+                <cove-icon [name]="child.icon" [size]="16"></cove-icon>{{ child.label }}
+              </button>
+            </div>
+          </ng-container>
+        </ng-container>
       </nav>
       <div [ngStyle]="{ marginTop: 'auto', padding: '0 8px', display: 'flex', flexDirection: 'column', gap: '8px' }">
         <cove-progress-bar [value]="pct" [tone]="pct > 85 ? 'warning' : 'accent'"></cove-progress-bar>
@@ -33,7 +59,7 @@ export interface NavItem { key: string; label: string; icon: string; }
       </div>
     </div>`,
 })
-export class SidebarComponent {
+export class SidebarComponent implements OnChanges {
   @Input() active = 'mine';
   @Input() brand = 'Cove';
   /** Optional brand mark image; falls back to the generic cloud glyph when unset. */
@@ -60,14 +86,62 @@ export class SidebarComponent {
   get pct() { return this.quotaTotal ? Math.round((this.quotaUsed / this.quotaTotal) * 100) : 0; }
   get defaultQuotaLabel() { return `${this.quotaUsed} GB of ${this.quotaTotal} GB used`; }
 
+  /** Groups the user has expanded. A group is auto-expanded when it holds the active child, so
+   *  landing on a sub-route (e.g. /admin/email) opens its parent. */
+  private readonly expanded = new Set<string>();
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['active'] || changes['items']) {
+      for (const item of this.items) {
+        if (this.containsActive(item)) this.expanded.add(item.key);
+      }
+    }
+  }
+
+  isExpanded(item: NavItem): boolean { return this.expanded.has(item.key); }
+
+  toggle(key: string): void {
+    this.expanded.has(key) ? this.expanded.delete(key) : this.expanded.add(key);
+  }
+
+  private containsActive(item: NavItem): boolean {
+    return !!item.children?.some((c) => c.key === this.active);
+  }
+
+  private baseRow() {
+    // Button reset — these render as <button> for keyboard/AT support, so strip the
+    // native chrome and make them fill the row like the old <div> did.
+    return {
+      width: '100%', border: 'none', textAlign: 'left', fontFamily: 'inherit', appearance: 'none',
+      display: 'flex', alignItems: 'center', gap: '12px', borderRadius: 'var(--radius-md)',
+      cursor: 'pointer', fontWeight: 600,
+    };
+  }
+
   navStyle(item: NavItem) {
     const on = this.active === item.key;
     return {
-      // Button reset — these render as <button> for keyboard/AT support, so strip the
-      // native chrome and make them fill the row like the old <div> did.
-      width: '100%', border: 'none', textAlign: 'left', fontFamily: 'inherit', appearance: 'none',
-      display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: 'var(--radius-md)',
-      cursor: 'pointer', fontSize: '14px', fontWeight: 600,
+      ...this.baseRow(), padding: '10px 12px', fontSize: '14px',
+      background: on ? 'var(--accent-subtle)' : 'transparent',
+      color: on ? 'var(--accent-subtle-text)' : 'var(--text-secondary)',
+    };
+  }
+
+  /** A group parent: never the accent fill (that's reserved for the active child), just emphasized
+   *  text when one of its children is active. */
+  groupStyle(item: NavItem) {
+    const on = this.containsActive(item);
+    return {
+      ...this.baseRow(), padding: '10px 12px', fontSize: '14px', background: 'transparent',
+      color: on ? 'var(--text-primary)' : 'var(--text-secondary)',
+    };
+  }
+
+  /** A child row: indented under the parent, slightly smaller, accent fill when active. */
+  childStyle(child: NavItem) {
+    const on = this.active === child.key;
+    return {
+      ...this.baseRow(), gap: '10px', padding: '8px 12px 8px 30px', fontSize: '13px',
       background: on ? 'var(--accent-subtle)' : 'transparent',
       color: on ? 'var(--accent-subtle-text)' : 'var(--text-secondary)',
     };
