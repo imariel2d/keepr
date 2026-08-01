@@ -41,6 +41,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/admin').then((m) => m.Admin),
   },
   {
+    // Admin-only email-provider settings (#36). Same guards as the admin console.
+    path: 'admin/email',
+    canActivate: [authGuard, passwordChangeGuard, adminGuard],
+    loadComponent: () => import('./features/admin/email-settings').then((m) => m.EmailSettings),
+  },
+  {
     // No passwordChangeGuard here — this is where a forced change is made, so it must stay reachable.
     path: 'profile',
     canActivate: [authGuard],

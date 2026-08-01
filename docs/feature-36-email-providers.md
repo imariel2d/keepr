@@ -1,15 +1,17 @@
 # Admin-Managed Email Providers — Design
 
 > Feature #36 in [feature-status.md](feature-status.md), extending
-> [feature-36-account-provisioning.md](feature-36-account-provisioning.md). Status: **backend
-> implemented (2026-08-01); Angular admin screen (§7) + live verification pending.**
+> [feature-36-account-provisioning.md](feature-36-account-provisioning.md). Status: **backend +
+> Angular admin screen implemented (2026-08-01); live verification pending.**
 > Backend: `Domain/EmailSettings` (+ `EmailProvider`), `Features/Email/*`
 > (`EmailSettingsService`, `EmailSenderFactory`, `ResendEmailSender`/`BrevoEmailSender`/
 > `MailgunEmailSender` over `HostedEmailSender`, `EmailSettingsSeeder`),
 > `Features/Admin/EmailSettingsController` (GET/PUT/test), the `EmailSettingsChanged` audit action,
 > Data Protection persisted to Postgres, migration `AddEmailSettings`. `InviteService` /
-> `AdminController` resolve the sender per send off the DB settings. Unit-tested (transports, key
-> encryption); the admin UI and an end-to-end run against a real provider are still to come.
+> `AdminController` resolve the sender per send off the DB settings. Frontend: the `/admin/email`
+> screen (`features/admin/email-settings`, `adminGuard`) with a write-only key field, per-provider
+> fields, and a test-send, plus `core/email-settings.service`. Unit-tested (transports, key
+> encryption) and build-verified; an end-to-end run against a real provider is still to come.
 > Designed 2026-07-31.
 >
 > Turns outbound email from a **boot-time env setting** into **runtime, admin-managed

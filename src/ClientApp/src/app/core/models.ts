@@ -46,6 +46,45 @@ export interface CreateUserResponse {
   inviteEmailSent: boolean;
 }
 
+/** The outbound-email provider (#36). 'none' = no hosted provider configured (an env SMTP fallback
+ *  may still apply). See docs/feature-36-email-providers.md §2. */
+export type EmailProvider = 'none' | 'resend' | 'brevo' | 'mailgun';
+
+/** App-wide email settings as the admin screen sees them. The API key is write-only, so the read
+ *  side carries only `hasApiKey`, never the key. `lastTest*` is the most recent test-send result. */
+export interface EmailSettingsResponse {
+  provider: EmailProvider;
+  fromAddress: string;
+  fromName: string;
+  hasApiKey: boolean;
+  mailgunDomain: string | null;
+  mailgunRegion: string | null;
+  publicBaseUrl: string;
+  inviteExpiryDays: number;
+  lastTestAt: string | null;
+  lastTestOk: boolean | null;
+  lastTestError: string | null;
+}
+
+/** Save the email settings. `apiKey` is write-only: blank/omitted keeps the stored key only when the
+ *  provider is unchanged; changing provider requires a new key; 'none' clears it. */
+export interface UpdateEmailSettingsRequest {
+  provider: EmailProvider;
+  fromAddress?: string;
+  fromName?: string;
+  apiKey?: string;
+  mailgunDomain?: string;
+  mailgunRegion?: string;
+  publicBaseUrl?: string;
+  inviteExpiryDays?: number;
+}
+
+/** Result of a test send: whether it went out, and a fixed safe category if not (never raw text). */
+export interface EmailTestResult {
+  ok: boolean;
+  error: string | null;
+}
+
 /** A page of results plus the total, so the table can show "1–50 of 213". */
 export interface PagedResponse<T> {
   items: T[];

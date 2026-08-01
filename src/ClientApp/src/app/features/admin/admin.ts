@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AdminService } from '../../core/admin.service';
 import { AuthService } from '../../core/auth.service';
 import { AdminUserListItem, Role } from '../../core/models';
@@ -22,7 +23,7 @@ const GB = 1024 ** 3;
  */
 @Component({
   selector: 'app-admin',
-  imports: [BytesPipe, ButtonComponent, IconComponent, ModalComponent, InputComponent],
+  imports: [RouterLink, BytesPipe, ButtonComponent, IconComponent, ModalComponent, InputComponent],
   templateUrl: './admin.html',
   styleUrl: './admin.scss',
 })
