@@ -44,6 +44,21 @@ public class RegistrationOptions
 }
 
 /// <summary>
+/// Refuses every public self-registration. Since #36, accounts are provisioned by an admin (with a
+/// password or an email invite) rather than created by whoever holds a shared code — so the public
+/// <c>POST /api/auth/register</c> door is bolted shut while the endpoint (and its validation
+/// pipeline) stays in place. This is the gate wired in Program.cs;
+/// <see cref="InviteCodeRegistrationGate"/> is kept, dormant, so re-opening public signup is a
+/// one-line swap. See docs/feature-36-account-provisioning.md §3.1.
+/// </summary>
+public class ClosedRegistrationGate : IRegistrationGate
+{
+    public Task<GateDecision> EvaluateAsync(RegistrationAttempt attempt, CancellationToken ct)
+        => Task.FromResult(GateDecision.Deny(
+            "Public sign-up is closed. Ask an admin to create an account for you."));
+}
+
+/// <summary>
 /// A single shared invite code, rotated by changing configuration.
 ///
 /// Fails closed: if no code is configured the gate refuses everyone rather than letting everyone

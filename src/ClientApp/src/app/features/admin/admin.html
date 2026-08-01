@@ -1,7 +1,12 @@
 <section class="admin">
   <header class="head">
-    <h1>Accounts</h1>
-    @if (!loading()) { <span class="count">{{ total() }} total</span> }
+    <div class="head-titles">
+      <h1>Accounts</h1>
+      @if (!loading()) { <span class="count">{{ total() }} total</span> }
+    </div>
+    <cove-button variant="primary" size="sm" icon="user-plus" (click)="openCreate()">
+      New account
+    </cove-button>
   </header>
 
   @if (notice()) {
@@ -30,12 +35,23 @@
         <tbody>
           @for (u of users(); track u.id) {
             <tr>
-              <td class="email">{{ u.email }}@if (isSelf(u)) { <span class="you">you</span> }</td>
+              <td class="email">
+                {{ u.email }}
+                @if (isSelf(u)) { <span class="you">you</span> }
+                @if (u.pending) { <span class="pending" title="Invited — not yet claimed">Pending</span> }
+              </td>
               <td><span class="badge" [attr.data-role]="u.role">{{ u.role }}</span></td>
               <td class="storage">{{ u.usedBytes | bytes }} <span class="of">of</span> {{ u.quotaBytes | bytes }}</td>
               <td class="num">{{ u.activeSessions }}</td>
               <td class="muted">{{ formatDate(u.createdAt) }}</td>
               <td class="row-actions">
+                @if (u.pending) {
+                  <cove-button variant="ghost" size="sm" icon="mail"
+                               [disabled]="resendingId() === u.id"
+                               (click)="resend(u)">Resend</cove-button>
+                }
+                <cove-button variant="ghost" size="sm" icon="shield" [disabled]="isSelf(u)"
+                             (click)="openRole(u)">Role</cove-button>
                 <cove-button variant="ghost" size="sm" icon="sliders-horizontal"
                              (click)="openQuota(u)">Quota</cove-button>
                 <cove-button variant="ghost" size="sm" icon="user-x" [disabled]="isSelf(u)"
@@ -58,6 +74,120 @@
     </footer>
   }
 </section>
+
+<!-- Create account -->
+<cove-modal [open]="createOpen()" [title]="'New account'" [width]="480"
+            (close)="createOpen.set(false)">
+  <div class="dialog">
+    <label class="field">
+      <span>Email</span>
+      <cove-input type="email" autocomplete="off" placeholder="person@example.com"
+                  [value]="newEmail()" (valueChange)="newEmail.set($event)" />
+      @for (message of errorsFor('email'); track message) {
+        <p class="field-error">{{ message }}</p>
+      }
+    </label>
+
+    <label class="field">
+      <span>Role</span>
+      <select class="select" [value]="newRole()"
+              (change)="newRole.set($any($event.target).value)">
+        <option value="User">User</option>
+        <option value="Admin">Admin</option>
+      </select>
+    </label>
+
+    <fieldset class="field toggle">
+      <legend>How they get in</legend>
+      <label class="radio">
+        <input type="radio" name="activation" [checked]="!newSendInvite()"
+               (change)="setSendInvite(false)" />
+        <span>Set a password now</span>
+      </label>
+      <label class="radio">
+        <input type="radio" name="activation" [checked]="newSendInvite()"
+               (change)="setSendInvite(true)" />
+        <span>Send an email invite</span>
+      </label>
+    </fieldset>
+
+    @if (!newSendInvite()) {
+      <label class="field">
+        <span>Password</span>
+        <cove-input [type]="showNewPassword() ? 'text' : 'password'" autocomplete="new-password"
+                    placeholder="At least {{ minPasswordLength }} characters"
+                    [value]="newPassword()" (valueChange)="newPassword.set($event)">
+          <button
+            trailing
+            type="button"
+            class="reveal"
+            [attr.aria-label]="showNewPassword() ? 'Hide password' : 'Show password'"
+            [attr.aria-pressed]="showNewPassword()"
+            (click)="showNewPassword.set(!showNewPassword())">
+            <cove-icon [name]="showNewPassword() ? 'eye-off' : 'eye'" [size]="16" />
+          </button>
+        </cove-input>
+        <ul class="requirements">
+          @for (requirement of passwordRequirements(); track requirement.label) {
+            <li [class.met]="requirement.met">
+              <cove-icon [name]="requirement.met ? 'check' : 'circle'" [size]="13" />
+              {{ requirement.label }}
+            </li>
+          }
+        </ul>
+        @for (message of errorsFor('password'); track message) {
+          <p class="field-error">{{ message }}</p>
+        }
+      </label>
+      <p class="warn">
+        <cove-icon name="alert-triangle" [size]="14" />
+        This email isn't verified. If email delivery is turned on later, the real owner of this
+        address could claim this account. Prefer an email invite once a mailer is configured.
+      </p>
+    } @else {
+      <p class="hint">
+        We'll email a link to set their own password. Needs a configured mail sender.
+      </p>
+      @if (emailUnavailable()) {
+        <p class="field-error">
+          No mail sender is configured — switch to “Set a password now”, or configure email first.
+        </p>
+      }
+    }
+
+    @if (dialogError() && !emailUnavailable()) { <p class="error" role="alert">{{ dialogError() }}</p> }
+  </div>
+  <div class="foot">
+    <cove-button variant="ghost" (click)="createOpen.set(false)">Cancel</cove-button>
+    <cove-button variant="primary" [disabled]="creating() || !canCreate()" (click)="createAccount()">
+      {{ newSendInvite() ? 'Send invite' : 'Create account' }}
+    </cove-button>
+  </div>
+</cove-modal>
+
+<!-- Change role -->
+<cove-modal [open]="roleTarget() !== null" [title]="'Change role'" [width]="420"
+            (close)="roleTarget.set(null)">
+  @if (roleTarget(); as u) {
+    <div class="dialog">
+      <p class="dialog-sub">{{ u.email }}</p>
+      <label class="field">
+        <span>Role</span>
+        <select class="select" [value]="roleValue()"
+                (change)="roleValue.set($any($event.target).value)">
+          <option value="User">User</option>
+          <option value="Admin">Admin</option>
+        </select>
+      </label>
+      <p class="hint">A change takes effect on their next sign-in.</p>
+      @if (dialogError()) { <p class="error" role="alert">{{ dialogError() }}</p> }
+    </div>
+    <div class="foot">
+      <cove-button variant="ghost" (click)="roleTarget.set(null)">Cancel</cove-button>
+      <cove-button variant="primary" [disabled]="savingRole()" (click)="saveRole()">Save</cove-button>
+    </div>
+  }
+</cove-modal>
 
 <!-- Set quota -->
 <cove-modal [open]="quotaTarget() !== null" [title]="'Set storage quota'" [width]="440"

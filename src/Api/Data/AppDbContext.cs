@@ -17,6 +17,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<MediaFile> MediaFiles => Set<MediaFile>();
     public DbSet<Folder> Folders => Set<Folder>();
     public DbSet<AdminActionLog> AdminActionLogs => Set<AdminActionLog>();
+    public DbSet<AccountInvite> AccountInvites => Set<AccountInvite>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -31,7 +32,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.Email).IsUnique();
             e.Property(x => x.Email).HasMaxLength(320).IsRequired();
-            e.Property(x => x.PasswordHash).IsRequired();
+
+            // PasswordHash is nullable by virtue of the CLR type (an invited-but-unclaimed account
+            // has no password yet — §8.1); nothing to configure here. FirstName/LastName are the
+            // optional profile fields (#29), length-capped.
+            e.Property(x => x.FirstName).HasMaxLength(100);
+            e.Property(x => x.LastName).HasMaxLength(100);
 
             // Stored as a string like MediaFile.Status, so the column reads 'User'/'Admin' rather
             // than an opaque int. The default backfills every pre-existing row to User — no
@@ -175,6 +181,32 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
             // The audit view lists a target's history newest-first.
             e.HasIndex(x => new { x.TargetUserId, x.CreatedAt });
+        });
+
+        b.Entity<AccountInvite>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            // Every claim resolves by this lookup, so it must be a unique index probe; unique also
+            // turns a token collision into a database error rather than an ambiguous match. 32 bytes
+            // = one SHA-256 digest, like Session.TokenHash.
+            e.HasIndex(x => x.TokenHash).IsUnique();
+            e.Property(x => x.TokenHash).HasMaxLength(32).IsRequired();
+
+            // Cascade: a deleted (or kicked) account's pending invite must not outlive it.
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // At most one *live* (unclaimed) invite per account, enforced by the database — not just
+            // by ResendInvite deleting before inserting. Without this, two concurrent resends can
+            // each delete then insert, leaving two valid claim links for one account. The filter
+            // excludes claimed rows (which we keep) so a claim never conflicts. Also serves the
+            // by-user lookups (resend/admin view). See docs/feature-36-account-provisioning.md §8.2.
+            e.HasIndex(x => x.UserId)
+                .IsUnique()
+                .HasFilter($"\"{nameof(AccountInvite.ClaimedAt)}\" IS NULL");
         });
     }
 }

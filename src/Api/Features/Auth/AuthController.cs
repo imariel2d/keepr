@@ -29,7 +29,7 @@ public class AuthController(
     SessionService sessions,
     SessionCookie cookie,
     IRegistrationGate registrationGate,
-    IBreachedPasswordCheck breachCheck,
+    CredentialValidator credentials,
     IOptions<QuotaOptions> quota) : ControllerBase
 {
     [HttpPost("register")]
@@ -47,8 +47,12 @@ public class AuthController(
         if (!decision.Allowed)
             return Problem(decision.Reason, statusCode: decision.StatusCode);
 
-        if (await ValidateCredentials(email, req.Password, ct) is { } invalid)
-            return invalid;
+        if (await credentials.ValidateAsync(email, req.Password, ct) is { } errors)
+            return BadRequest(new ValidationProblemDetails(errors)
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Detail = string.Join(" ", errors.Values.SelectMany(v => v))
+            });
 
         if (await db.Users.AnyAsync(u => u.Email == email, ct))
             return Problem("Email already registered.", statusCode: StatusCodes.Status409Conflict);
@@ -71,7 +75,11 @@ public class AuthController(
     {
         var email = req.Email.Trim().ToLowerInvariant();
         var user = await db.Users.SingleOrDefaultAsync(u => u.Email == email, ct);
-        if (user is null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
+        // A null PasswordHash is an invited-but-unclaimed account (§8.1): it has no password to
+        // verify, so it cannot sign in until claimed. Reported as invalid credentials, not "claim
+        // your account", so login stays a poor oracle for account state.
+        if (user is null || user.PasswordHash is null
+            || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
             return Problem("Invalid credentials.", statusCode: StatusCodes.Status401Unauthorized);
 
         // Serialize issuing a session against a concurrent kick on the *same user row*. Without
@@ -128,43 +136,6 @@ public class AuthController(
         new SessionResponse(
             User.FindFirst(KeeprClaims.Email)?.Value ?? string.Empty,
             User.FindFirst(KeeprClaims.Role)?.Value ?? nameof(Role.User));
-
-    /// <summary>
-    /// Applies the email and password rules, returning a 400 when anything fails and null when
-    /// the credentials are acceptable.
-    ///
-    /// Every failure is reported at once, not just the first, so the form can mark each bad field
-    /// in one round-trip instead of teaching the rules one rejection at a time.
-    /// </summary>
-    private async Task<IActionResult?> ValidateCredentials(
-        string email, string? password, CancellationToken ct)
-    {
-        var errors = new Dictionary<string, string[]>();
-
-        if (EmailPolicy.Validate(email) is { } emailError)
-            errors["email"] = [emailError];
-
-        var passwordErrors = PasswordPolicy.Validate(password, email);
-
-        // Only worth a network round-trip once the password is otherwise acceptable — a password
-        // that is already too short is going to be rejected either way.
-        if (passwordErrors.Count == 0 && await breachCheck.IsBreachedAsync(password!, ct))
-            passwordErrors.Add(PasswordPolicy.BreachedMessage);
-
-        if (passwordErrors.Count > 0)
-            errors["password"] = [.. passwordErrors];
-
-        if (errors.Count == 0) return null;
-
-        // Both shapes are populated: `errors` is the per-field map a form wants, while `detail`
-        // keeps the existing single-line error rendering working unchanged.
-        var problem = new ValidationProblemDetails(errors)
-        {
-            Status = StatusCodes.Status400BadRequest,
-            Detail = string.Join(" ", errors.Values.SelectMany(v => v))
-        };
-        return BadRequest(problem);
-    }
 
     private async Task<IActionResult> StartSession(User user, CancellationToken ct)
     {

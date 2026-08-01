@@ -42,15 +42,37 @@ services:
       - key: Registration__InviteCode
         scope: RUN_TIME
         type: SECRET
-      # First-admin bootstrap: seeds the initial admin at startup so the console is reachable
-      # (signups are invite-gated). Admin__Password is an initial secret — change it after first
-      # sign-in. See docs/admin-console-design.md §3.
+      # First-admin bootstrap: seeds the initial admin at startup so the console is reachable.
+      # Admin__Password is an initial secret — change it after first sign-in. See
+      # docs/feature-34-admin-console.md §3.
       - key: Admin__Email
         scope: RUN_TIME
         type: SECRET
       - key: Admin__Password
         scope: RUN_TIME
         type: SECRET
+      # Outbound email (optional, #36). Leave Email__Provider unset to run with no mail (admins set
+      # passwords directly); set it to "smtp" to enable email invites. Smtp__Password is a SECRET.
+      # See docs/feature-36-account-provisioning.md §6.
+      - key: Email__Provider
+        scope: RUN_TIME
+        value: "none"
+      - key: Email__FromAddress
+        scope: RUN_TIME
+        value: no-reply@keepr.app
+      - key: Email__Smtp__Host
+        scope: RUN_TIME
+        type: SECRET
+      - key: Email__Smtp__Username
+        scope: RUN_TIME
+        type: SECRET
+      - key: Email__Smtp__Password
+        scope: RUN_TIME
+        type: SECRET
+      # Links in emails use the app's own public origin (same as Sharing__PublicBaseUrl).
+      - key: Email__PublicBaseUrl
+        scope: RUN_TIME
+        value: ${APP_URL}
       - key: Storage__AccountId
         scope: RUN_TIME
         type: SECRET

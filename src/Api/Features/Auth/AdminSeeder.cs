@@ -65,7 +65,11 @@ public class AdminSeeder(
                 Email = email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
                 Role = Role.Admin,
-                QuotaBytes = quota.Value.DefaultBytes
+                QuotaBytes = quota.Value.DefaultBytes,
+                // Admin__Password is an initial secret the operator set in the environment, so force
+                // a change on first sign-in — the same reason admin-created accounts are flagged
+                // (#36 §4.1). Cleared by the first POST /api/me/password.
+                MustChangePassword = true
             });
             await db.SaveChangesAsync(ct);
             log.LogInformation(
