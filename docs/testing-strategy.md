@@ -1,6 +1,7 @@
 # Testing strategy & CI
 
-**Status:** 🟡 in progress — Phase 1 (CI + unit expansion) landing on branch `test/ci-unit-e2e`.
+**Status:** 🟡 in progress — Phases 1 (CI + unit expansion) and 2 (Playwright scaffold + journey A)
+landing on branch `test/ci-unit-e2e`; Phase 3 (journeys B→D) still to come.
 Not a single-feature doc, so it takes a plain name (see the **docs-naming** skill).
 
 How Keepr is tested, and what runs in CI on every push to `main` and every pull request.
@@ -48,11 +49,23 @@ Already covered and kept as regression guards: `EmailTemplates` (invite name lin
 
 ## E2E tests (`tests/e2e`, Playwright)
 
-Run against `docker compose -f docker-compose.yml -f docker-compose.api.yml up` plus a **Mailpit**
-container (SMTP sink) so the invite email can be read without a real inbox. The API's env-SMTP
-fallback points at Mailpit (`Email__Provider=smtp`, `Email__Smtp__Host=mailpit`); Playwright reads
-messages via Mailpit's HTTP API. Base URL `http://localhost:4200`; the seeded dev admin
-(`admin@keepr.local` / `keepr-dev-admin`) is the authenticated entry point.
+Run against the full stack plus a **Mailpit** container (SMTP sink) so the invite email can be read
+without a real inbox. A third compose overlay, `docker-compose.e2e.yml`, adds Mailpit and points the
+API's env-SMTP fallback at it (`Email__Provider=smtp`, `Email__Smtp__Host=mailpit`, port 1025 as an
+unencrypted dev relay) and bakes `Email__PublicBaseUrl=http://localhost:4200` so the claim link is
+browser-openable. Playwright reads messages via Mailpit's HTTP API (`http://localhost:8025`). Base
+URL `http://localhost:4200`; the seeded dev admin (`admin@keepr.local` / `keepr-dev-admin`) is the
+authenticated entry point.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.api.yml -f docker-compose.e2e.yml up -d --build
+cd tests/e2e && npm install && npx playwright install --with-deps chromium && npx playwright test
+```
+
+The seeded admin carries **must-change-password** and has **no name**, so the suite bootstraps it on
+first sign-in: it completes the forced password change and sets a first/last name (`Ada Lovelace`) so
+the invite's inviter line is exercised. That bootstrap assumes a **fresh stack** (the CI contract);
+for a deterministic local rerun, reset first with `docker compose … down -v`.
 
 Each journey is specified with its **full expected output**, per the **feature-e2e-design** skill.
 
@@ -83,12 +96,14 @@ Triggers: `push` to `main` and every `pull_request`. Concurrency cancels superse
 Coverage is reported (cobertura artifact) but **never gates** — only a failing test fails the build.
 
 - **`unit`** — `setup-dotnet` (net10) → `dotnet test tests/Api.Tests` → upload coverage artifact. *(Phase 1)*
-- **`e2e`** — bring the compose stack + Mailpit up → wait for health → `setup-node@22` →
-  `playwright install --with-deps chromium` → `playwright test` → on failure upload the HTML report +
-  traces → compose down. *(Phase 2)*
+- **`e2e`** — bring the compose stack + Mailpit up → wait for the API/SPA/Mailpit to answer →
+  `setup-node@22` → `playwright install --with-deps chromium` → `playwright test` → on failure
+  upload the HTML report and dump service logs → `compose down -v`. *(Phase 2 — landed; runs
+  journey A. Phase 3 adds journeys B→D.)*
 
 ## Phasing
 
-1. **Phase 1** — CI `unit` job, the extract-refactors, and the unit tests above. *(this branch)*
-2. **Phase 2** — Playwright scaffold + Mailpit + journey **A**, wired into the CI `e2e` job.
+1. **Phase 1** — CI `unit` job, the extract-refactors, and the unit tests above. *(done)*
+2. **Phase 2** — Playwright scaffold (`tests/e2e`) + Mailpit overlay + journey **A**, wired into the
+   CI `e2e` job. *(done — this branch)*
 3. **Phase 3** — journeys **B → C → D**.

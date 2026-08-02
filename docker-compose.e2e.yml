@@ -1,0 +1,31 @@
+# E2E overlay — adds a Mailpit SMTP sink and points the API's env-SMTP fallback at it, so journey A
+# (invite → claim → sign-in) can read the invite email over HTTP without a real inbox. Layered on
+# top of the full-stack compose:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.api.yml -f docker-compose.e2e.yml up -d --build
+#
+# Playwright (tests/e2e) then drives the app at http://localhost:4200 and reads mail over Mailpit's
+# HTTP API at http://localhost:8025. See docs/testing-strategy.md (Phase 2).
+services:
+  mailpit:
+    image: axllent/mailpit:v1.20
+    ports:
+      - "8025:8025"   # web UI + HTTP API — Playwright reads messages here
+      - "1025:1025"   # SMTP — the API delivers here
+
+  api:
+    depends_on:
+      mailpit:
+        condition: service_started
+    environment:
+      # Turn the env-SMTP fallback on and aim it at Mailpit. Port 1025 with UseStartTls=false and no
+      # credentials is the "unencrypted dev relay" path SmtpEmailSender permits (see its comments):
+      # SecureSocketOptions.Auto with no AUTH, so nothing secret crosses the plaintext link.
+      Email__Provider: smtp
+      Email__Smtp__Host: mailpit
+      Email__Smtp__Port: "1025"
+      Email__Smtp__UseStartTls: "false"
+      Email__FromAddress: "no-reply@keepr.local"
+      Email__FromName: "Keepr"
+      # Bake the browser-reachable origin into the claim link so Playwright can open it directly.
+      Email__PublicBaseUrl: "http://localhost:4200"
