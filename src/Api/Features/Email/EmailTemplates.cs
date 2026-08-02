@@ -31,7 +31,9 @@ public static class EmailTemplates
         "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
     /// <summary>The invite email: "you've been invited", a Set-your-password button to the claim
-    /// link, the raw link as a fallback, and the expiry.</summary>
+    /// link, the raw link as a fallback, and the expiry. <paramref name="invitedBy"/> is the inviter's
+    /// display name (their first/last name), not their email — when it's null/blank the template uses
+    /// a generic line rather than exposing any address.</summary>
     public static EmailContent Invite(string claimUrl, string? invitedBy, int expiryDays)
     {
         var by = string.IsNullOrWhiteSpace(invitedBy) ? null : invitedBy;
@@ -39,7 +41,7 @@ public static class EmailTemplates
 
         var intro = by is null
             ? "You've been invited to Keepr, a private place to keep your files."
-            : $"{by} invited you to Keepr, a private place to keep your files.";
+            : $"{by} has invited you to Keepr, a private place to keep your files.";
 
         var bodyHtml =
             Paragraph(intro) +

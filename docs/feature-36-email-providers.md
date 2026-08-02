@@ -360,10 +360,13 @@ with* plus *the link to set the secret*, never the secret itself.
 Required:
 
 1. **Cove branding** — the mark + "Keepr", so the message reads as legitimate and not phishing.
-2. **Who invited the account** — context for a message the recipient didn't ask for. When the inviter
-   is known, "`{invitedByEmail}` invited you to Keepr"; `invitedByEmail` is **nullable**
-   (`EmailTemplates.Invite`), so the template **must** fall back to a generic line with no dangling
-   placeholder — "You've been invited to Keepr." — and both cases are asserted in `EmailTemplateTests`.
+2. **Who invited the account** — context for a message the recipient didn't ask for, given as the
+   inviter's **display name** (their first/last name), never their email address — the invite must not
+   leak an admin's address. When a name is known, "`{invitedByName}` has invited you to Keepr"; the
+   `invitedBy` argument to `EmailTemplates.Invite` is **nullable** (the admin may have no name set),
+   so the template **must** fall back to a generic line with no dangling placeholder — "You've been
+   invited to Keepr." — and both cases are asserted in `EmailTemplateTests`. `AdminController`
+   resolves the name via `ActorDisplayNameAsync`.
 3. **The sign-in identity** — the email address the account signs in with (`{toEmail}`).
 4. **A one-time set-password link + primary call-to-action** — a "Set your password" button to
    `{PublicBaseUrl}/claim/{token}`. This is the only credential-bearing element, and it's a

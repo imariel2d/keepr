@@ -4,7 +4,16 @@
       <a class="back" routerLink="/admin/accounts">
         <cove-icon name="chevron-left" [size]="16" /> Accounts
       </a>
-      <h1>Email</h1>
+      <div class="title-row">
+        <h1>Email</h1>
+        @if (activeProvider(); as active) {
+          <span class="status" [class.on]="active.on" role="status"
+                [attr.aria-label]="active.on ? ('Active provider: ' + active.label) : 'Outbound email is off'">
+            <span class="dot" aria-hidden="true"></span>
+            {{ active.on ? active.label : 'Off' }}
+          </span>
+        }
+      </div>
     </div>
   </header>
 

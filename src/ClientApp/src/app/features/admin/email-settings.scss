@@ -12,10 +12,44 @@
     gap: var(--space-1);
   }
 
+  .title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
+  }
+
   h1 {
     font-size: var(--text-xl);
     color: var(--text-primary);
     margin: 0;
+  }
+
+  // At-a-glance chip for the currently-live provider (or "Off"). Reflects the last *saved* setting,
+  // so it stays truthful while the form below has unsaved edits.
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    color: var(--text-tertiary);
+    background: var(--surface-sunken, var(--gray-100));
+    border-radius: var(--radius-pill, 999px);
+    padding: 2px 10px;
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    &.on {
+      color: var(--success, var(--accent));
+      background: var(--success-subtle, var(--accent-subtle));
+    }
   }
 
   .back {

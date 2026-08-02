@@ -46,13 +46,15 @@ public class InviteService(
         db.AccountInvites.Where(i => i.UserId == userId).ExecuteDeleteAsync(ct);
 
     /// <summary>Renders and sends the claim email via the currently-configured provider (§5). Throws
-    /// on transport failure — callers treat that as non-fatal (the account is already committed, §8.3).</summary>
-    public async Task SendAsync(string toEmail, string rawToken, string? invitedByEmail, CancellationToken ct)
+    /// on transport failure — callers treat that as non-fatal (the account is already committed, §8.3).
+    /// <paramref name="invitedByName"/> is the inviter's display name (first/last), or null to send a
+    /// generic "you've been invited" line — the invite must never leak an admin's email address.</summary>
+    public async Task SendAsync(string toEmail, string rawToken, string? invitedByName, CancellationToken ct)
     {
         var s = await settings.GetAsync(ct);
         var expiryDays = Math.Max(1, s.InviteExpiryDays);
         var claimUrl = $"{ResolveBaseUrl(s.PublicBaseUrl)}/claim/{rawToken}";
-        var content = EmailTemplates.Invite(claimUrl, invitedByEmail, expiryDays);
+        var content = EmailTemplates.Invite(claimUrl, invitedByName, expiryDays);
         var email = await senders.CreateAsync(ct);
         await email.SendAsync(
             new EmailMessage(toEmail, string.Empty, content.Subject, content.HtmlBody, content.TextBody),

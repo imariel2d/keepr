@@ -312,7 +312,7 @@ public class AdminController(
         {
             try
             {
-                await invites.SendAsync(user.Email, rawToken, ActorEmail(), ct);
+                await invites.SendAsync(user.Email, rawToken, await ActorDisplayNameAsync(ct), ct);
                 emailSent = true;
             }
             catch (Exception ex)
@@ -419,7 +419,7 @@ public class AdminController(
 
         try
         {
-            await invites.SendAsync(user.Email, token, ActorEmail(), ct);
+            await invites.SendAsync(user.Email, token, await ActorDisplayNameAsync(ct), ct);
         }
         catch (Exception ex)
         {
@@ -450,4 +450,18 @@ public class AdminController(
         };
 
     private string ActorEmail() => User.FindFirst(KeeprClaims.Email)?.Value ?? string.Empty;
+
+    /// <summary>The inviting admin's display name for the invite email — their first/last name joined
+    /// (whichever parts are set), or null when they have no name. The invite deliberately shows a name,
+    /// never an email: with no name the template falls back to a generic "you've been invited" line.</summary>
+    private async Task<string?> ActorDisplayNameAsync(CancellationToken ct)
+    {
+        var actor = await db.Users
+            .Where(u => u.Id == User.UserId())
+            .Select(u => new { u.FirstName, u.LastName })
+            .FirstOrDefaultAsync(ct);
+        if (actor is null) return null;
+        var name = $"{actor.FirstName} {actor.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(name) ? null : name;
+    }
 }

@@ -65,6 +65,16 @@ export class EmailSettings {
   protected readonly isHosted = computed(() => this.provider() !== 'none');
   protected readonly isMailgun = computed(() => this.provider() === 'mailgun');
 
+  /** The provider that's actually live right now — the last *saved* one — for the header status chip.
+   *  Distinct from `provider()`, which tracks the (possibly unsaved) form selection. Null until the
+   *  settings load. */
+  protected readonly activeProvider = computed<{ on: boolean; label: string } | null>(() => {
+    const s = this.snapshot();
+    if (!s) return null;
+    const label = PROVIDERS.find((p) => p.value === s.provider)?.label ?? s.provider;
+    return { on: s.provider !== 'none', label };
+  });
+
   /** A stored key exists for the *currently-selected* provider (only meaningful when unchanged). */
   protected readonly hasStoredKey = computed(() => {
     const s = this.snapshot();

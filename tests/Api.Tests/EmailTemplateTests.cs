@@ -34,9 +34,10 @@ public class EmailTemplateTests
     [Fact]
     public void Invite_names_the_inviter_when_given()
     {
-        var content = EmailTemplates.Invite(ClaimUrl, invitedBy: "owner@example.com", expiryDays: 7);
-        Assert.Contains("owner@example.com", content.HtmlBody);
-        Assert.Contains("owner@example.com", content.TextBody);
+        // invitedBy is now the inviter's display name (first/last), not their email.
+        var content = EmailTemplates.Invite(ClaimUrl, invitedBy: "Jane Doe", expiryDays: 7);
+        Assert.Contains("Jane Doe has invited you", content.HtmlBody);
+        Assert.Contains("Jane Doe has invited you", content.TextBody);
     }
 
     [Fact]
