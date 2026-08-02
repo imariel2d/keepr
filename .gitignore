@@ -27,3 +27,6 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Test run outputs (coverage, trx)
+TestResults/

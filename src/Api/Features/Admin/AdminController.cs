@@ -346,7 +346,7 @@ public class AdminController(
         if (!Enum.TryParse<Role>(req.Role, ignoreCase: true, out var newRole) || !Enum.IsDefined(newRole))
             return Problem("Role must be 'User' or 'Admin'.", statusCode: StatusCodes.Status400BadRequest);
 
-        if (id == User.UserId() && newRole != Role.Admin)
+        if (AdminInvariants.IsSelfDemotion(id == User.UserId(), newRole))
             return Problem("You cannot demote your own account.", statusCode: StatusCodes.Status400BadRequest);
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
@@ -365,7 +365,7 @@ public class AdminController(
             {
                 var otherAdmins = await db.Users.CountAsync(
                     u => u.Role == Role.Admin && u.Id != id && u.DeletionRequestedAt == null, ct);
-                if (otherAdmins == 0)
+                if (AdminInvariants.WouldRemoveLastAdmin(user.Role, newRole, otherAdmins))
                     return Problem("Cannot remove the last admin.", statusCode: StatusCodes.Status409Conflict);
             }
 
@@ -460,8 +460,6 @@ public class AdminController(
             .Where(u => u.Id == User.UserId())
             .Select(u => new { u.FirstName, u.LastName })
             .FirstOrDefaultAsync(ct);
-        if (actor is null) return null;
-        var name = $"{actor.FirstName} {actor.LastName}".Trim();
-        return string.IsNullOrWhiteSpace(name) ? null : name;
+        return actor is null ? null : Domain.User.DisplayName(actor.FirstName, actor.LastName);
     }
 }
