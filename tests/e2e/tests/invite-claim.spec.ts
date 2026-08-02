@@ -1,32 +1,32 @@
 import { test, expect } from '@playwright/test';
-import {
-  ADMIN_DISPLAY_NAME,
-  ADMIN_EMAIL,
-  NEW_USER_EMAIL,
-  NEW_USER_PASSWORD,
-} from '../support/config';
-import { bootstrapAdmin, login, logout } from '../support/admin';
+import { ADMIN_DISPLAY_NAME, ADMIN_EMAIL, ADMIN_STATE, NEW_USER_PASSWORD, uniqueEmail } from '../support/config';
+import { login, logout } from '../support/admin';
 import { clearMailbox, waitForSingleMessageTo } from '../support/mailpit';
 
 // Journey A from docs/testing-strategy.md: invite → claim → sign-in, end to end through
-// Angular → API → Postgres → (Mailpit). One ordered narrative; see the config in playwright.config.ts
-// (workers: 1, no parallelism) for why it runs alone.
-test('journey A — invite, claim, sign in, and the claim link dies', async ({ page, request }) => {
-  await test.step('bootstrap the admin (rotate password + set a name)', async () => {
-    await bootstrapAdmin(page);
-    await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible();
-  });
+// Angular → API → Postgres → (Mailpit). The invite is created as the authenticated admin (shared
+// storage state); the claim runs in a fresh, unauthenticated context — the invitee, not the admin.
+test.use({ storageState: ADMIN_STATE });
+
+test('journey A — invite, claim, sign in, and the claim link dies', async ({
+  page,
+  browser,
+  request,
+  baseURL,
+}) => {
+  const invitee = uniqueEmail('newuser');
+  let claimToken = '';
 
   await test.step('start from an empty mailbox', async () => {
     await clearMailbox(request);
   });
 
-  await test.step('admin invites newuser@example.com', async () => {
+  await test.step('admin invites the user', async () => {
     await page.goto('/admin/accounts');
     await page.getByRole('button', { name: 'New account' }).click();
 
     const dialog = page.getByRole('dialog');
-    await dialog.locator('input[type="email"]').fill(NEW_USER_EMAIL);
+    await dialog.locator('input[type="email"]').fill(invitee);
     await dialog.getByRole('radio', { name: 'Send an email invite' }).check();
 
     const [res] = await Promise.all([
@@ -37,15 +37,12 @@ test('journey A — invite, claim, sign in, and the claim link dies', async ({ p
     ]);
     expect(res.status(), 'POST /api/admin/users returns 201 Created').toBe(201);
 
-    await expect(page.getByRole('status')).toContainText(`Invite sent to ${NEW_USER_EMAIL}.`);
-    await expect(page.getByRole('row', { name: new RegExp(NEW_USER_EMAIL) })).toContainText(
-      'Pending',
-    );
+    await expect(page.getByRole('status')).toContainText(`Invite sent to ${invitee}.`);
+    await expect(page.getByRole('row').filter({ hasText: invitee })).toContainText('Pending');
   });
 
-  let claimToken = '';
   await test.step('the invite email names the inviter and never leaks their address', async () => {
-    const message = await waitForSingleMessageTo(request, NEW_USER_EMAIL);
+    const message = await waitForSingleMessageTo(request, invitee);
     expect(message.Subject).toBe("You're invited to Keepr");
 
     const body = `${message.HTML}\n${message.Text}`;
@@ -57,27 +54,27 @@ test('journey A — invite, claim, sign in, and the claim link dies', async ({ p
     claimToken = match![1];
   });
 
-  await test.step('new user claims the account and lands authenticated', async () => {
-    await page.goto(`/claim/${claimToken}`);
-    await expect(page.getByRole('heading', { name: 'Set your password' })).toBeVisible();
+  await test.step('the invitee claims, signs out and back in, and the link then dies', async () => {
+    // A fresh context so this is the invitee's session, not the admin's.
+    const context = await browser.newContext({ baseURL });
+    const invite = await context.newPage();
 
-    await page.locator('input[name="password"]').fill(NEW_USER_PASSWORD);
-    await page.locator('input[name="confirm"]').fill(NEW_USER_PASSWORD);
-    await page.getByRole('button', { name: 'Set password & sign in' }).click();
+    await invite.goto(`/claim/${claimToken}`);
+    await expect(invite.getByRole('heading', { name: 'Set your password' })).toBeVisible();
+    await invite.locator('input[name="password"]').fill(NEW_USER_PASSWORD);
+    await invite.locator('input[name="confirm"]').fill(NEW_USER_PASSWORD);
+    await invite.getByRole('button', { name: 'Set password & sign in' }).click();
+    await invite.waitForURL(/\/files/);
+    await expect(invite.getByRole('button', { name: 'Log out' })).toBeVisible();
 
-    await page.waitForURL(/\/files/);
-    await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible();
-  });
+    await logout(invite);
+    await login(invite, invitee, NEW_USER_PASSWORD);
+    await invite.waitForURL(/\/files/);
+    await expect(invite.getByRole('button', { name: 'Log out' })).toBeVisible();
 
-  await test.step('new user can sign out and back in with the new password', async () => {
-    await logout(page);
-    await login(page, NEW_USER_EMAIL, NEW_USER_PASSWORD);
-    await page.waitForURL(/\/files/);
-    await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible();
-  });
+    await invite.goto(`/claim/${claimToken}`);
+    await expect(invite.getByRole('heading', { name: 'Invitation not valid' })).toBeVisible();
 
-  await test.step('the used claim link is now dead', async () => {
-    await page.goto(`/claim/${claimToken}`);
-    await expect(page.getByRole('heading', { name: 'Invitation not valid' })).toBeVisible();
+    await context.close();
   });
 });

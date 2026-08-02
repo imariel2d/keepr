@@ -1,7 +1,8 @@
 # Testing strategy & CI
 
-**Status:** 🟡 in progress — Phases 1 (CI + unit expansion) and 2 (Playwright scaffold + journey A)
-landing on branch `test/ci-unit-e2e`; Phase 3 (journeys B→D) still to come.
+**Status:** 🟡 in progress on branch `test/ci-unit-e2e` — Phases 1 (CI + unit expansion) and 2
+(Playwright scaffold + journey A) landed; Phase 3 in progress: journeys **B** (auth/session) and
+**D** (admin console) landed, journey **C** (files/folders/trash/sharing) still to come.
 Not a single-feature doc, so it takes a plain name (see the **docs-naming** skill).
 
 How Keepr is tested, and what runs in CI on every push to `main` and every pull request.
@@ -62,10 +63,16 @@ docker compose -f docker-compose.yml -f docker-compose.api.yml -f docker-compose
 cd tests/e2e && npm install && npx playwright install --with-deps chromium && npx playwright test
 ```
 
-The seeded admin carries **must-change-password** and has **no name**, so the suite bootstraps it on
-first sign-in: it completes the forced password change and sets a first/last name (`Ada Lovelace`) so
-the invite's inviter line is exercised. That bootstrap assumes a **fresh stack** (the CI contract);
-for a deterministic local rerun, reset first with `docker compose … down -v`.
+A Playwright **setup project** (`tests/auth.setup.ts`) authenticates the admin once and saves its
+storage state (`playwright/.auth/admin.json`); every admin-driven journey reuses it via
+`test.use({ storageState })`, so the specs are order-independent and the one-time rotation happens in
+exactly one place. The seeded admin carries **must-change-password** and has **no name**, so the
+setup bootstraps it: it completes the forced password change (the "Your name" card is hidden until
+must-change clears, so the change goes first) and then sets a first/last name (`Ada Lovelace`) so the
+invite's inviter line is exercised. Journeys that need an ordinary account create one through the
+admin API and settle its must-change flag (`createReadyUser`). The bootstrap assumes a **fresh
+stack** (the CI contract, matching the e2e job's up/`down -v` lifecycle); for a deterministic local
+rerun, reset first with `docker compose … down -v`.
 
 Each journey is specified with its **full expected output**, per the **feature-e2e-design** skill.
 
@@ -87,8 +94,12 @@ delete → appears in Trash, restore works, purge removes; create share link →
 unauthenticated context → file viewable; revoke → link shows expired.
 
 ### D. Admin console
-Change quota → reflected in the row; change role → reflected; demote the sole admin → blocked with the
-guard message; kick a user → their sessions die; audit entries appear.
+Change quota → reflected in the row; change role → reflected; the self-row's Role/Remove are
+disabled (the UI face of the last-admin guard — the console blocks self-demotion at the button, so
+there is no "demote the sole admin" action to reach the server guard through); kick a user → their
+live session dies (next navigation bounces to `/login`). *Audit entries are written on each action
+but have no read surface in the app (no admin audit view or endpoint), so they aren't asserted
+end-to-end; the write path is exercised server-side.*
 
 ## CI (`.github/workflows/ci.yml`)
 
@@ -106,4 +117,5 @@ Coverage is reported (cobertura artifact) but **never gates** — only a failing
 1. **Phase 1** — CI `unit` job, the extract-refactors, and the unit tests above. *(done)*
 2. **Phase 2** — Playwright scaffold (`tests/e2e`) + Mailpit overlay + journey **A**, wired into the
    CI `e2e` job. *(done — this branch)*
-3. **Phase 3** — journeys **B → C → D**.
+3. **Phase 3** — journeys **B → C → D**. B and D landed (via the shared admin setup project);
+   **C** (files/folders/trash/sharing, incl. the real MinIO upload/download) still to come.

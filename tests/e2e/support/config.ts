@@ -3,6 +3,15 @@
 
 export const MAILPIT_URL = process.env.E2E_MAILPIT_URL ?? 'http://localhost:8025';
 
+// Where the setup project (auth.setup.ts) saves the authenticated-admin storage state, and every
+// admin-driven journey reads it from. Relative to the e2e working directory (tests/e2e).
+export const ADMIN_STATE = 'playwright/.auth/admin.json';
+
+/** A fresh, unique email per call so a test (or its retry) never collides on a duplicate address. */
+export function uniqueEmail(prefix: string): string {
+  return `${prefix}+${Date.now()}${Math.floor(Math.random() * 1000)}@example.com`;
+}
+
 // The bootstrap admin seeded by the dev/e2e stack (docker-compose.api.yml, Admin__Email/Password).
 // Its password is an *initial* secret and the account carries must-change, so the suite rotates it
 // on first sign-in (see support/admin.ts).

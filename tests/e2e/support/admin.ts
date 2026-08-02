@@ -1,11 +1,60 @@
-import { type Page, expect } from '@playwright/test';
+import { type APIRequestContext, type Page, request as apiRequest, expect } from '@playwright/test';
 import {
   ADMIN_EMAIL,
   ADMIN_FIRST,
   ADMIN_INITIAL_PASSWORD,
   ADMIN_LAST,
   ADMIN_PASSWORD,
+  ADMIN_STATE,
 } from './config';
+
+/** An API request context authenticated as the admin (reuses the saved storage state / cookie). */
+export function adminApi(baseURL: string): Promise<APIRequestContext> {
+  return apiRequest.newContext({ baseURL, storageState: ADMIN_STATE });
+}
+
+/**
+ * Creates a user directly through the admin API with an immediate password (no invite email). The
+ * account carries must-change (admin-chosen passwords are flagged), so it is not yet ready to sign
+ * straight in — see createReadyUser for that.
+ */
+export async function createUser(
+  api: APIRequestContext,
+  opts: { email: string; password: string; role?: 'User' | 'Admin' },
+): Promise<void> {
+  const res = await api.post('/api/admin/users', {
+    data: { email: opts.email, role: opts.role ?? 'User', sendInvite: false, password: opts.password },
+  });
+  expect(res.status(), `create ${opts.email} → ${await res.text()}`).toBe(201);
+}
+
+/**
+ * Creates a user that can sign straight in to /files: the admin makes the account (which carries
+ * must-change), then the flag is settled to `password` via the API (login → change password),
+ * mirroring what a real first sign-in would do — without driving the forced-change screen by hand.
+ */
+export async function createReadyUser(
+  baseURL: string,
+  opts: { email: string; password: string; role?: 'User' | 'Admin' },
+): Promise<void> {
+  // A temporary password that passes PasswordPolicy (>= 12 chars, no reused email local part).
+  const initial = 'Initial-Keepr-2026-pw';
+
+  const admin = await adminApi(baseURL);
+  await createUser(admin, { email: opts.email, password: initial, role: opts.role });
+  await admin.dispose();
+
+  const user = await apiRequest.newContext({ baseURL });
+  const loginRes = await user.post('/api/auth/login', {
+    data: { email: opts.email, password: initial },
+  });
+  expect(loginRes.ok(), `login ${opts.email} → ${loginRes.status()}`).toBeTruthy();
+  const changeRes = await user.post('/api/me/password', {
+    data: { currentPassword: initial, newPassword: opts.password },
+  });
+  expect(changeRes.ok(), `settle ${opts.email} → ${changeRes.status()}`).toBeTruthy();
+  await user.dispose();
+}
 
 /**
  * Fills the login form and submits. cove-input renders a real <input> carrying its `name`, and
