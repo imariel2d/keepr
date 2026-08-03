@@ -4,17 +4,25 @@ name: Release
 # and merging that PR tags the new version, updates CHANGELOG.md, and creates the GitHub Release.
 # Only then does the image job build and push the container to GHCR. A tag/release created with the
 # built-in GITHUB_TOKEN does NOT trigger a second workflow (loop guard), so the build is gated here
-# in the same run rather than on a separate `release:`/tag trigger. See docs/testing-strategy.md's
-# sibling note and the README "Releases & registry" section.
+# in the same run rather than on a separate `release:`/tag trigger. See the README "Releases &
+# registry" section.
 on:
   push:
     branches: [main]
+  # Recovery path: if the image job fails *after* release-please already tagged vX.Y.Z, re-running
+  # the workflow would just re-run release-please (it finds the release exists and reports nothing
+  # new), so the image would never publish. Dispatch this manually with the existing tag to
+  # (re)build and push the image for a release that already exists.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to (re)publish the GHCR image for, e.g. v0.1.0"
+        required: true
+        type: string
 
-# CI (ci.yml) stays read-only; the write scopes live only in this release workflow.
+# Least privilege: read-only floor; each job widens only what it needs.
 permissions:
-  contents: write        # create the tag + the GitHub Release
-  pull-requests: write   # open/maintain the release PR
-  packages: write        # push the image to GHCR
+  contents: read
 
 # Never cancel a release mid-flight; a superseded run just no-ops (no release to cut).
 concurrency:
@@ -24,7 +32,14 @@ concurrency:
 jobs:
   release-please:
     name: Cut release (when commits warrant)
+    # Only the automatic (push) path opens/merges the release PR; manual dispatch goes straight to
+    # the image job for an existing tag.
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write        # create the tag + the GitHub Release
+      issues: write          # release-please manages release labels/issues
+      pull-requests: write   # open/maintain the release PR
     outputs:
       released: ${{ steps.rp.outputs.release_created }}
       tag: ${{ steps.rp.outputs.tag_name }}
@@ -38,13 +53,27 @@ jobs:
   image:
     name: Build & push image to GHCR
     needs: release-please
-    if: ${{ needs.release-please.outputs.released == 'true' }}
+    # Run when release-please just cut a release, OR on manual dispatch for an existing tag. always()
+    # keeps this reachable even though release-please is skipped on workflow_dispatch.
+    if: >-
+      ${{ always()
+          && (needs.release-please.outputs.released == 'true'
+              || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read       # just checkout; no git writes here
+      packages: write      # push the image to GHCR
+    env:
+      # The release tag to build: the manual input on dispatch, else the one release-please cut.
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag }}
     steps:
-      # Build the exact commit the release tag points at, not the tip of main.
+      # Build the exact commit the release tag points at, not the tip of main. persist-credentials
+      # is off: this job only builds/pushes to GHCR (via docker/login), never runs git, so there's
+      # no reason to leave GITHUB_TOKEN in the local git config.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.release-please.outputs.tag }}
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
 
       - uses: docker/setup-buildx-action@v3
 
@@ -55,16 +84,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}   # no PAT needed
 
-      # This workflow runs on `push: main`, so the ref isn't the tag itself — feed the release tag
-      # to metadata-action explicitly so the semver patterns parse it.
+      # This workflow runs on `push: main` / dispatch, so the ref isn't the tag itself — feed the
+      # release tag to metadata-action explicitly so the semver patterns parse it. include-component-
+      # in-tag is off in release-please-config.json, so the tag is a plain vX.Y.Z semver.
       - name: Image tags & labels
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}   # → ghcr.io/imariel2d/keepr
           tags: |
-            type=semver,pattern={{version}},value=${{ needs.release-please.outputs.tag }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ needs.release-please.outputs.tag }}
+            type=semver,pattern={{version}},value=${{ env.RELEASE_TAG }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_TAG }}
             type=raw,value=latest
 
       - name: Build & push

@@ -123,13 +123,17 @@ docker pull ghcr.io/imariel2d/keepr:latest
 
 Notes:
 - Auth uses the built-in `GITHUB_TOKEN` — no PAT to manage. CI ([`ci.yml`](.github/workflows/ci.yml))
-  stays read-only; only the release workflow holds `packages: write` / `contents: write`.
+  stays read-only; the release workflow keeps a read-only floor and grants writes per job — the
+  release-please job gets `contents`/`issues`/`pull-requests: write`, the image job only
+  `packages: write`.
 - GHCR packages are **private by default**. To let an unauthenticated host pull, make the package
   public once (repo → Packages → package settings), or pull with a token.
 - App Platform still **builds from source** on push (`.do/app.yaml`), so GHCR is a parallel,
-  immutable artifact — handy for the VPS/Droplet deploy path. To deploy the exact released image
-  instead, point the App Platform service at an `image:` source (`ghcr.io/imariel2d/keepr:<tag>`)
-  with a registry credential.
+  versioned artifact — handy for the VPS/Droplet deploy path. The `X.Y.Z` / `X.Y` / `latest` tags
+  are convenient but **mutable** (a later release reuses `latest` and `X.Y`); when a deployment must
+  use exact image bytes, pin by digest (`ghcr.io/imariel2d/keepr@sha256:<digest>`). To deploy the
+  released image instead of building from source, point the App Platform service at an `image:`
+  source with a registry credential.
 
 ## Not built yet (tracked in the docs)
 - **Frontend for folders + trash** — the backend is done and verified; see
