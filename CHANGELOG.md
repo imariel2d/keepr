@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.0](https://github.com/imariel2d/keepr/compare/v1.0.0...v1.1.0) (2026-08-03)
+
+
+### Features
+
+* **api:** password reset backend ([#26](https://github.com/imariel2d/keepr/issues/26)) ([e5487ec](https://github.com/imariel2d/keepr/commit/e5487ec7ff160534a06e6a597e89c2f0c684a52f))
+* **api:** password reset backend ([#26](https://github.com/imariel2d/keepr/issues/26)) ([eec42ea](https://github.com/imariel2d/keepr/commit/eec42eafecbd062b382a27b8d8da94ceb2f37774))
+* **client:** password reset UI ([#26](https://github.com/imariel2d/keepr/issues/26)) ([d0c029c](https://github.com/imariel2d/keepr/commit/d0c029cc4d0b1359bd7867b6025135eeb34e75c9))
+* collapse admin row actions into a three-dot menu ([c9e1ecb](https://github.com/imariel2d/keepr/commit/c9e1ecb825bff687eb9e8e8b59b0b3648cd9acf4))
+* password reset ([#26](https://github.com/imariel2d/keepr/issues/26)) — design + backend ([45426db](https://github.com/imariel2d/keepr/commit/45426db4931b9e3f491831e6b26724f9aa17cbf2))
+
+
+### Bug Fixes
+
+* **api:** address CodeRabbit review on [#26](https://github.com/imariel2d/keepr/issues/26) password reset ([655fa98](https://github.com/imariel2d/keepr/commit/655fa987a58db6cd69e318cb07dec1c4825dcdbe))
+
 ## 1.0.0 (2026-08-03)
 
 
