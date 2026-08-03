@@ -4,7 +4,7 @@ import { AuthService } from '../../core/auth.service';
 import { AdminUserListItem, Role } from '../../core/models';
 import { BytesPipe } from '../../core/bytes.pipe';
 import { formatDate } from '../../core/file-type';
-import { MIN_PASSWORD_LENGTH } from '../../core/password-policy';
+import { MIN_PASSWORD_LENGTH, lengthRequirement, meetsMinLength } from '../../core/password-policy';
 import { problemCode, problemDetail, problemStatus, validationErrors } from '../../core/problem-details';
 import { ButtonComponent } from '../../cove/lib/button/button.component';
 import { IconComponent } from '../../cove/lib/icon/icon.component';
@@ -54,7 +54,7 @@ export class Admin {
   protected readonly canCreate = computed(() => {
     if (!this.newEmail().trim()) return false;
     // Direct mode needs a password of at least the min length; invite mode needs none.
-    return this.newSendInvite() || [...this.newPassword()].length >= MIN_PASSWORD_LENGTH;
+    return this.newSendInvite() || meetsMinLength(this.newPassword());
   });
 
   /**
@@ -63,12 +63,7 @@ export class Admin {
    * that's easy to miss); the 72-byte max, email-reuse, and breach checks stay server-side and
    * surface as field errors on submit — matching the login screen's approach.
    */
-  protected readonly passwordRequirements = computed(() => [
-    {
-      label: `At least ${MIN_PASSWORD_LENGTH} characters`,
-      met: [...this.newPassword()].length >= MIN_PASSWORD_LENGTH,
-    },
-  ]);
+  protected readonly passwordRequirements = computed(() => lengthRequirement(this.newPassword()));
 
   // Quota-edit modal.
   protected readonly quotaTarget = signal<AdminUserListItem | null>(null);
@@ -95,10 +90,8 @@ export class Admin {
   protected readonly resetEmailUnavailable = signal(false);
   protected readonly resetEmailUnverified = signal(false);
   protected readonly canReset = computed(() =>
-    this.resetSendLink() || [...this.resetPwd()].length >= MIN_PASSWORD_LENGTH);
-  protected readonly resetPasswordRequirements = computed(() => [
-    { label: `At least ${MIN_PASSWORD_LENGTH} characters`, met: [...this.resetPwd()].length >= MIN_PASSWORD_LENGTH },
-  ]);
+    this.resetSendLink() || meetsMinLength(this.resetPwd()));
+  protected readonly resetPasswordRequirements = computed(() => lengthRequirement(this.resetPwd()));
 
   // Remove (kick) modal. The admin must retype the target email — a guardrail for an action that
   // permanently deletes the account and all its files.
