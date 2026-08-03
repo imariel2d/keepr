@@ -54,6 +54,23 @@ public class AdminAuditService(AppDbContext db)
         });
     }
 
+    /// <summary>Records an admin resetting a user's password. <paramref name="method"/> is
+    /// "direct" (admin set a new password) or "link" (admin emailed a reset link) — never the
+    /// password itself. See docs/feature-26-password-reset.md §6/§8.</summary>
+    public void RecordPasswordReset(
+        Guid actorId, string actorEmail, User target, string method)
+    {
+        db.AdminActionLogs.Add(new AdminActionLog
+        {
+            ActorUserId = actorId,
+            ActorEmail = actorEmail,
+            Action = AdminActionType.PasswordReset,
+            TargetUserId = target.Id,
+            TargetEmail = target.Email,
+            Details = JsonSerializer.Serialize(new { method })
+        });
+    }
+
     public void RecordRoleChange(
         Guid actorId, string actorEmail, User target, Role from, Role to)
     {
