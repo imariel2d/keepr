@@ -7,8 +7,10 @@ using Keepr.Api.Features.Sharing;
 using Keepr.Api.OpenApi;
 using Keepr.Api.Services;
 using Keepr.Api.Storage;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -127,6 +129,8 @@ builder.Services.AddScoped<IRegistrationGate, ClosedRegistrationGate>();
 builder.Services.AddScoped<CredentialValidator>();
 // Account invites: token minting, the claim email, and resolve. See feature-36 §8.
 builder.Services.AddScoped<InviteService>();
+// Password reset: token minting, the reset email, and resolve. See feature-26.
+builder.Services.AddScoped<PasswordResetService>();
 
 // Seeds the first admin at startup (env Admin__Email/Password) so the console is reachable on a
 // fresh deployment where signups are invite-gated. See docs/feature-34-admin-console.md §3.
@@ -168,6 +172,23 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("Admin", p => p.RequireClaim(KeeprClaims.Role, nameof(Role.Admin)));
 });
 
+// Rate limiting. Currently just the public forgot-password endpoint (#26): a fixed window per client
+// IP so a single source can't enumerate accounts or drive a flood of outbound reset mail. A rejected
+// request gets 429; every other endpoint is unlimited. See docs/feature-26-password-reset.md §5.1.
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddPolicy(RateLimiterPolicies.ForgotPassword, http =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0
+            }));
+});
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddKeeprOpenApi();
@@ -201,6 +222,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapControllers();
 

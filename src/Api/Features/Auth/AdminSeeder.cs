@@ -69,23 +69,37 @@ public class AdminSeeder(
                 // Admin__Password is an initial secret the operator set in the environment, so force
                 // a change on first sign-in — the same reason admin-created accounts are flagged
                 // (#36 §4.1). Cleared by the first POST /api/me/password.
-                MustChangePassword = true
+                MustChangePassword = true,
+                // The operator controls the deployment and is expected to control this mailbox, so the
+                // bootstrap admin is verified — it can self-recover by email once mail is configured,
+                // closing the sole-admin lockout (Q-26-7). See docs/feature-26-password-reset.md §3.2.
+                EmailVerified = true
             });
             await db.SaveChangesAsync(ct);
             log.LogInformation(
                 "Bootstrap admin {Email} created. Change this password after first sign-in — "
                 + "Admin__Password is an initial secret only.", email);
         }
-        else if (existing.Role != Role.Admin)
-        {
-            existing.Role = Role.Admin;
-            await db.SaveChangesAsync(ct);
-            log.LogInformation(
-                "Existing account {Email} promoted to admin (password unchanged).", email);
-        }
         else
         {
-            log.LogDebug("Bootstrap admin {Email} already present; nothing to do.", email);
+            // Idempotent: promote if needed, and ensure the bootstrap admin is verified so this
+            // self-heals on the first startup after the #26 upgrade (the migration can't know the env
+            // value). Only save when something actually changed.
+            var changed = false;
+            if (existing.Role != Role.Admin)
+            {
+                existing.Role = Role.Admin;
+                changed = true;
+                log.LogInformation("Existing account {Email} promoted to admin (password unchanged).", email);
+            }
+            if (!existing.EmailVerified)
+            {
+                existing.EmailVerified = true;
+                changed = true;
+            }
+
+            if (changed) await db.SaveChangesAsync(ct);
+            else log.LogDebug("Bootstrap admin {Email} already present; nothing to do.", email);
         }
     }
 }

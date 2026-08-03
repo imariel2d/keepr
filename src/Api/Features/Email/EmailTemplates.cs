@@ -70,6 +70,41 @@ public static class EmailTemplates
         return new EmailContent("You're invited to Keepr", html, text);
     }
 
+    /// <summary>The password-reset email: a Choose-a-new-password button to the reset link, the raw
+    /// link as a fallback, the expiry, and a "you can ignore this" reassurance. Carries no account
+    /// detail beyond the link itself. <paramref name="expiryMinutes"/> is the link lifetime (§4).</summary>
+    public static EmailContent PasswordReset(string resetUrl, int expiryMinutes)
+    {
+        var minutes = expiryMinutes == 1 ? "1 minute" : $"{expiryMinutes} minutes";
+
+        var bodyHtml =
+            Paragraph("We received a request to reset the password on your Keepr account.") +
+            Paragraph("Choose a new password to finish. If you didn't ask for this, you can ignore "
+                      + "this email — your password won't change.");
+
+        var html = Layout(
+            preheader: "Choose a new password for your Keepr account.",
+            headline: "Reset your password",
+            bodyHtml: bodyHtml,
+            ctaText: "Choose a new password",
+            ctaUrl: resetUrl,
+            footerNote: $"This link expires in {minutes}. If the button doesn't work, paste this "
+                        + "address into your browser:");
+
+        var text = new StringBuilder()
+            .AppendLine("Reset your Keepr password")
+            .AppendLine()
+            .AppendLine("We received a request to reset the password on your Keepr account.")
+            .AppendLine("Choose a new password to finish:")
+            .AppendLine(resetUrl)
+            .AppendLine()
+            .AppendLine($"This link expires in {minutes}.")
+            .AppendLine("If you didn't request this, you can ignore this email — your password won't change.")
+            .ToString();
+
+        return new EmailContent("Reset your Keepr password", html, text);
+    }
+
     /// <summary>
     /// The shared Cove-styled shell: centered ~600px card on the paper canvas, wordmark, headline,
     /// body, a bulletproof button, and a footer with the raw link. A dark-mode block is included as

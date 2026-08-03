@@ -23,6 +23,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Folder> Folders => Set<Folder>();
     public DbSet<AdminActionLog> AdminActionLogs => Set<AdminActionLog>();
     public DbSet<AccountInvite> AccountInvites => Set<AccountInvite>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<EmailSettings> EmailSettings => Set<EmailSettings>();
 
     /// <summary>The Data Protection key ring (§4). Managed by the framework; we only host the table.</summary>
@@ -216,6 +217,31 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasIndex(x => x.UserId)
                 .IsUnique()
                 .HasFilter($"\"{nameof(AccountInvite.ClaimedAt)}\" IS NULL");
+        });
+
+        b.Entity<PasswordResetToken>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            // Every reset resolves by this lookup, so it must be a unique index probe; unique also
+            // turns a token collision into a database error rather than an ambiguous match. 32 bytes
+            // = one SHA-256 digest, like AccountInvite.TokenHash / Session.TokenHash.
+            e.HasIndex(x => x.TokenHash).IsUnique();
+            e.Property(x => x.TokenHash).HasMaxLength(32).IsRequired();
+
+            // Cascade: a deleted (or kicked) account's reset token must not outlive it.
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // At most one *live* (unused) reset token per account, enforced by the database — not
+            // just by a repeat request deleting before inserting. The filter excludes used rows so a
+            // completed reset never conflicts. Also serves the by-user lookups. Mirrors the
+            // AccountInvite one-live-invite index. See docs/feature-26-password-reset.md §4.
+            e.HasIndex(x => x.UserId)
+                .IsUnique()
+                .HasFilter($"\"{nameof(PasswordResetToken.UsedAt)}\" IS NULL");
         });
 
         b.Entity<EmailSettings>(e =>

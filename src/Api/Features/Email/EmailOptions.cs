@@ -30,6 +30,11 @@ public class EmailOptions
     /// <summary>How long an emailed invite stays claimable. Resendable once expired (§8.5).</summary>
     public int InviteExpiryDays { get; set; } = 7;
 
+    /// <summary>How long an emailed password-reset link stays usable, in minutes. Short by design — a
+    /// reset link is more sensitive than an invite. A plain config knob (env
+    /// <c>Email__ResetExpiryMinutes</c>), not a per-provider setting. See docs/feature-26-password-reset.md §4.</summary>
+    public int ResetExpiryMinutes { get; set; } = 60;
+
     /// <summary>
     /// Whether a real sender is configured. Single source of truth for "email is on": Program.cs
     /// uses it to pick the sender, and the admin create path uses it to reject invite mode when no

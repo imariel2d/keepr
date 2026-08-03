@@ -98,6 +98,17 @@ public class SessionService(AppDbContext db, IOptions<AuthSessionOptions> option
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, clock.GetUtcNow()), ct);
     }
 
+    /// <summary>
+    /// Ends every live session for one account and returns how many were revoked. A password reset
+    /// (self-service or admin) boots the old credential everywhere — see docs/feature-26-password-reset.md
+    /// §5.3/§6.1. Runs on the ambient transaction if one is open, so it commits atomically with the
+    /// password change. Idempotent: revokes only rows not already revoked.
+    /// </summary>
+    public Task<int> RevokeAllForUserAsync(Guid userId, CancellationToken ct) =>
+        db.Sessions
+            .Where(s => s.UserId == userId && s.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, clock.GetUtcNow()), ct);
+
     /// <summary>256 bits from a CSPRNG: not guessable, so it needs no slow hash on the way in.</summary>
     private static string GenerateToken() =>
         Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));

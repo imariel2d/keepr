@@ -521,14 +521,21 @@ The primary journey, end to end.
 
 ### 14.5 What gets automated vs. run by hand
 
-- **Automated (`tests/Api.Tests`, fake sender):** §14.1 steps 2–4, E1–E3, E6–E9, §14.3 direct mode +
-  A2/A4/A6/A7, and every §14.4 invariant. These are pure API + DB assertions and the bulk of the
-  value.
-- **Manual (dockerised stack + real/Mailpit provider):** the actual email *rendering* and delivery
-  (§14.1 step 2's captured HTML eyeballed in a browser, §11), the rate-limit window (E5), the two
-  **frontend** click-paths (`/forgot-password`, `/reset-password/:token`) and the login-page
-  link-vs-copy branch (E4) — the same "exercise the user-visible output, don't just assert it" bar
-  the other features were verified against.
+This repo has **no DB/endpoint integration harness** — by deliberate convention, only *pure functions*
+are unit-tested in `tests/Api.Tests`, and every persistence/endpoint flow is verified against the
+**dockerised stack** (the same bar `AccountInvite`, sessions, and #36's invite/claim were held to). So:
+
+- **Automated (`tests/Api.Tests`, pure functions):** `PasswordResetToken.IsUsable` liveness
+  (unused/expired/spent), and the reset email template (`EmailTemplates.PasswordReset` — the link in
+  both bodies, the minute-accurate expiry, the "you can ignore this" line). These mirror
+  `AccountInviteTests` / `EmailTemplateTests`.
+- **Manual (dockerised stack + Mailpit overlay):** everything with a database or a boundary —
+  §14.1 (the full request→email→token→complete journey, reading the reset email from Mailpit's HTTP
+  API), the self-service edge paths E1–E10, the admin direct + link modes and A1–A7, the rate-limit
+  window (E5), and the §14.4 invariants. The `docker-compose.e2e.yml` Mailpit overlay is what makes
+  the email path exercisable locally (it turns on the env-SMTP fallback → `capabilities` reports
+  `selfServiceReset: true`). The two **frontend** click-paths and the login link-vs-copy branch land
+  with the frontend PR.
 
 ---
 
