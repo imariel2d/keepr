@@ -12,6 +12,11 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege: a PR runs test code with the workflow token, and this workflow only reads the
+# repo. checkout keeps its default read-only token; nothing here needs write.
+permissions:
+  contents: read
+
 jobs:
   unit:
     name: .NET unit tests

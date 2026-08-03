@@ -32,10 +32,14 @@ public class SecureTokenTests
     public void Hash_is_a_deterministic_32_byte_digest_that_is_not_the_token()
     {
         const string token = "some-single-use-token";
+        // The SHA-256 of the token's UTF-8 bytes, pinned so this verifies the actual algorithm —
+        // a "padded copy into 32 bytes" would pass a length/inequality check but not this.
+        const string expected = "24CFE072A585CCE48B044381C1D11433D3B71E40AEC67D3FB08841624A412A67";
 
         var digest = SecureToken.Hash(token);
 
         Assert.Equal(32, digest.Length); // SHA-256
+        Assert.Equal(expected, Convert.ToHexString(digest)); // it really is SHA-256(token)
         Assert.Equal(digest, SecureToken.Hash(token)); // same input → same digest (lookup works)
         Assert.NotEqual(token, Encoding.UTF8.GetString(digest)); // the raw token never survives
     }

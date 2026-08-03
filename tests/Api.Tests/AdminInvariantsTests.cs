@@ -7,7 +7,8 @@ namespace Api.Tests;
 /// The two pure guards behind a role change, lifted out of <see cref="AdminController"/> so they can
 /// be checked without a database: you can't demote yourself, and you can't remove the last admin. The
 /// controller's surrounding I/O (loading the user, the advisory-lock-serialized admin count) is
-/// covered end-to-end. See docs/feature-36-account-provisioning.md §5 and docs/testing-strategy.md.
+/// covered end-to-end by the Playwright admin-console journey (Phase 2/3). See
+/// docs/feature-36-account-provisioning.md §5 and docs/testing-strategy.md.
 /// </summary>
 public class AdminInvariantsTests
 {

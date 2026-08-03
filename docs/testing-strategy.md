@@ -70,9 +70,11 @@ exactly one place. The seeded admin carries **must-change-password** and has **n
 setup bootstraps it: it completes the forced password change (the "Your name" card is hidden until
 must-change clears, so the change goes first) and then sets a first/last name (`Ada Lovelace`) so the
 invite's inviter line is exercised. Journeys that need an ordinary account create one through the
-admin API and settle its must-change flag (`createReadyUser`). The bootstrap assumes a **fresh
-stack** (the CI contract, matching the e2e job's up/`down -v` lifecycle); for a deterministic local
-rerun, reset first with `docker compose … down -v`.
+admin API and settle its must-change flag (`createReadyUser`). The setup is retry-safe (it falls
+back to the rotated password if the initial secret has already been used), but the suite as a whole
+targets a **fresh stack** (the CI contract, matching the e2e job's up/`down -v` lifecycle) — journey
+C's "Trash is empty" checks in particular assume no leftover state, so reset with
+`docker compose … down -v` before a deterministic local rerun.
 
 Each journey is specified with its **full expected output**, per the **feature-e2e-design** skill.
 
@@ -108,9 +110,9 @@ Coverage is reported (cobertura artifact) but **never gates** — only a failing
 
 - **`unit`** — `setup-dotnet` (net10) → `dotnet test tests/Api.Tests` → upload coverage artifact. *(Phase 1)*
 - **`e2e`** — bring the compose stack + Mailpit up → wait for the API/SPA/Mailpit to answer →
-  `setup-node@22` → `playwright install --with-deps chromium` → `playwright test` → on failure
-  upload the HTML report and dump service logs → `compose down -v`. *(Phase 2 — landed; runs
-  journey A. Phase 3 adds journeys B→D.)*
+  `actions/setup-node@v4` (Node 22) → `playwright install --with-deps chromium` → `playwright test`
+  → on failure upload the HTML report and dump service logs → `compose down -v`. *(Phases 2–3 —
+  landed; runs the setup project + journeys A–D.)*
 
 ## Phasing
 

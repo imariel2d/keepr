@@ -24,7 +24,10 @@ export default defineConfig({
   },
   projects: [
     // Runs first: authenticates the admin once and saves its storage state (auth.setup.ts).
-    { name: 'setup', testMatch: /.*\.setup\.ts/ },
+    // No retries here: a retry would re-run the bootstrap after the password was already rotated,
+    // so the initial-secret login would fail (bootstrapAdmin also falls back, but a setup failure
+    // is a hard environment problem worth surfacing, not silently retrying).
+    { name: 'setup', testMatch: /.*\.setup\.ts/, retries: 0 },
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },

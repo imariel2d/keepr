@@ -86,22 +86,32 @@ async function setName(page: Page): Promise<void> {
   await expect(page.getByText('Profile saved.')).toBeVisible();
 }
 
+/** Resolves once a submitted login has either signed in (navigated away) or failed (error alert). */
+async function loginSettled(page: Page): Promise<boolean> {
+  await Promise.race([
+    page.waitForURL(/\/profile\?changePassword=1|\/files/).catch(() => {}),
+    page.getByRole('alert').waitFor({ state: 'visible' }).catch(() => {}),
+  ]);
+  return !page.url().includes('/login');
+}
+
 /**
- * Brings the seeded bootstrap admin to a ready state: signs in with the initial secret, completes
- * the forced password change (rotating to ADMIN_PASSWORD), and sets a first/last name so the invite
- * email's inviter line is populated.
+ * Brings the seeded bootstrap admin to a ready state: signs in, completes the forced password change
+ * (rotating to ADMIN_PASSWORD) if one is pending, and sets a first/last name so the invite email's
+ * inviter line is populated.
  *
- * Assumes a fresh stack (the CI contract — the e2e job brings the compose stack up and tears it
- * down), where the account still carries must-change and signing in with the initial secret lands
- * on the forced-change screen. On a reused DB the password has already been rotated, so the initial
- * secret no longer works and this fails at sign-in — reset first with `docker compose … down -v`.
- * The `/files` branch below only covers a fresh account that somehow arrives without must-change.
+ * Retry-safe: it tries the initial secret first (fresh stack), and falls back to the rotated
+ * password when that's already been used (a reused DB, or a re-run after this rotated it). The
+ * forced-change branch only fires while must-change is still set, so the fallback path just sets the
+ * name.
  */
 export async function bootstrapAdmin(page: Page): Promise<void> {
   await login(page, ADMIN_EMAIL, ADMIN_INITIAL_PASSWORD);
-
-  // Fresh DB → forced change lands on /profile?changePassword=1. Reused DB → straight to /files.
-  await page.waitForURL(/\/profile\?changePassword=1|\/files/);
+  if (!(await loginSettled(page))) {
+    // Initial secret rejected → the password was already rotated; sign in with the rotated one.
+    await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+    await page.waitForURL(/\/profile\?changePassword=1|\/files/);
+  }
 
   if (page.url().includes('/profile')) {
     // Change the password first: the "Your name" card is hidden until must-change clears, and this
