@@ -38,7 +38,7 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 26 | Forgot / reset password | ❌ | No email provider and no reset-token table exist. **Blocked on email verification** — a reset link can't be sent to an address the user never proved they own (Q-V6 in [feature-3-registration-validation.md](feature-3-registration-validation.md)). A successful reset should revoke existing sessions ([feature-3-cookie-session.md](feature-3-cookie-session.md) Q-C3) |
+| 26 | Forgot / reset password | ❌ | **Designed 2026-08-03: [feature-26-password-reset.md](feature-26-password-reset.md)** (not yet built). Two paths: **self-service email link** (gated on a mail provider being configured *and* the account being verified) and **admin manual reset** (direct-set or emailed link) — the fallback the *"Contact your admin"* login copy points at. The old **email-verification blocker is resolved by the design**: a new `User.EmailVerified` flag (Q-V6 / #36 §9 Q-P2), set only by proving inbox control, gates every email-based reset. Reset revokes all sessions then auto-signs-in ([feature-3-cookie-session.md](feature-3-cookie-session.md) Q-C3). Adds a `PasswordResetTokens` table (twin of `AccountInvites`, 1-hour tokens) and the app's first rate limiter |
 | 27 | Change email | ❌ | `Email` is already unique + normalized (`AppDbContext`). A change must re-run `EmailPolicy` and, once #26's verification exists, re-verify the new address before it takes effect |
 | 28 | Change password | ✅ | **Backend + UI done** as part of #36 ([feature-36-account-provisioning.md](feature-36-account-provisioning.md) §7.2): `POST /api/me/password` verifies the current password, re-runs `PasswordPolicy` + breach check, re-hashes with BCrypt, revokes the user's other sessions, and clears `MustChangePassword`; the change-password panel lives in the `/profile` screen. **Verified end-to-end against the dockerised stack (2026-07-31):** the forced first-login change (can't-skip guard redirects `/files` → `/profile?changePassword=1`), self-service change, other-sessions revocation (a second live session returned 401 after the change), and old-password rejection were all confirmed |
 | 29 | Profile: first & last name | ✅ | **Backend + UI done** as part of #36 ([feature-36-account-provisioning.md](feature-36-account-provisioning.md) §7). `User` gained `FirstName`/`LastName` (migration `AddAccountProvisioning`) plus `GET`/`PATCH /api/me/profile`, surfaced in the `/profile` screen (feeds `cove-avatar` initials). **Verified end-to-end against the dockerised stack (2026-07-31):** edit + save, persistence across a full reload (fields rehydrate from the server), and the avatar initials updating (`Q` → `QT`) were all confirmed |
@@ -125,9 +125,10 @@ for revisiting malware scanning and content moderation — those become required
 ships, not after.
 
 **Account management (#26–29)** clusters around one prerequisite: **email verification** (Q-V6).
-Reset-password (#26) is blocked on it outright, and change-email (#27) wants it too. Change-password
-(#28) and profile names (#29) are independent and cheaper — #29 is just a migration plus a
-`PATCH /api/me`. Sequence: verification → #26/#27 together, with #28/#29 landable any time.
+Reset-password (#26) **is now designed** ([feature-26-password-reset.md](feature-26-password-reset.md)):
+it introduces the `EmailVerified` flag that unblocks it, and change-email (#27) inherits that same
+flag when built. Change-password (#28) and profile names (#29) are already done. Sequence: build #26
+(which delivers verification) → #27 reuses it.
 
 ### Known follow-ups
 
