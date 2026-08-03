@@ -1,0 +1,136 @@
+name: Release
+
+# release-please watches main: it maintains a "release" PR from the Conventional-Commit history,
+# and merging that PR tags the new version, updates CHANGELOG.md, and creates the GitHub Release.
+# Only then does the image job build and push the container to GHCR. A tag/release created with the
+# built-in GITHUB_TOKEN does NOT trigger a second workflow (loop guard), so the build is gated here
+# in the same run rather than on a separate `release:`/tag trigger. See the README "Releases &
+# registry" section.
+on:
+  push:
+    branches: [main]
+  # Recovery path: if the image job fails *after* release-please already tagged vX.Y.Z, re-running
+  # the workflow would just re-run release-please (it finds the release exists and reports nothing
+  # new), so the image would never publish. Dispatch this manually with the existing tag to
+  # (re)build and push the image for a release that already exists.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to (re)publish the GHCR image for, e.g. v0.1.0"
+        required: true
+        type: string
+
+# Least privilege: read-only floor; each job widens only what it needs.
+permissions:
+  contents: read
+
+# Never cancel a release mid-flight; a superseded run just no-ops (no release to cut).
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Cut release (when commits warrant)
+    # Only the automatic (push) path opens/merges the release PR; manual dispatch goes straight to
+    # the image job for an existing tag.
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # create the tag + the GitHub Release
+      issues: write          # release-please manages release labels/issues
+      pull-requests: write   # open/maintain the release PR
+    outputs:
+      released: ${{ steps.rp.outputs.release_created }}
+      tag: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  image:
+    name: Build & push image to GHCR
+    needs: release-please
+    # Run when release-please just cut a release, OR on manual dispatch for an existing tag. always()
+    # keeps this reachable even though release-please is skipped on workflow_dispatch.
+    if: >-
+      ${{ always()
+          && (needs.release-please.outputs.released == 'true'
+              || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read       # just checkout; no git writes here
+      packages: write      # push the image to GHCR
+    env:
+      # The release tag to build: the manual input on dispatch, else the one release-please cut.
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag }}
+    steps:
+      # Build the exact commit the release tag points at, not the tip of main. persist-credentials
+      # is off: this job only builds/pushes to GHCR (via docker/login), never runs git, so there's
+      # no reason to leave GITHUB_TOKEN in the local git config.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}   # no PAT needed
+
+      # The mutable tags (latest, X.Y) must only ever move forward. On the automatic path the tag
+      # release-please just cut is by definition the newest, so they're safe. On manual recovery the
+      # dispatched tag could be an OLD release — republishing it must not drag latest/X.Y backward to
+      # older bytes — so gate them on "is this the newest stable release?" (the /releases/latest
+      # endpoint excludes drafts and pre-releases).
+      - name: Is this the newest stable release?
+        id: latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "is_latest=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          newest="$(gh api repos/{owner}/{repo}/releases/latest --jq .tag_name 2>/dev/null || echo '')"
+          if [ "$newest" = "$RELEASE_TAG" ]; then
+            echo "is_latest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_latest=false (newest stable is '${newest:-none}', not '$RELEASE_TAG')" >&2
+            echo "is_latest=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # This workflow runs on `push: main` / dispatch, so the ref isn't the tag itself — feed the
+      # release tag to metadata-action explicitly so the semver patterns parse it. include-component-
+      # in-tag is off in release-please-config.json, so the tag is a plain vX.Y.Z semver. The exact
+      # version tag is always published; latest and X.Y only when this is the newest release.
+      - name: Image tags & labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}   # → ghcr.io/imariel2d/keepr
+          tags: |
+            type=semver,pattern={{version}},value=${{ env.RELEASE_TAG }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_TAG }},enable=${{ steps.latest.outputs.is_latest == 'true' }}
+            type=raw,value=latest,enable=${{ steps.latest.outputs.is_latest == 'true' }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Attach SLSA provenance + an SBOM to the published image so consumers can verify what
+          # this build produced and pin by digest. The image is public on GHCR.
+          provenance: true
+          sbom: true

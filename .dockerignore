@@ -1,0 +1,35 @@
+# Build context for the production image (the root-context `Dockerfile`). The dev stack builds
+# from ./src/Api with its own context, so nothing here affects local development.
+
+# Version control / CI metadata
+.git
+.github
+
+# Dev-only settings must NOT ship in the published image — it's public on GHCR, and real config is
+# injected at runtime (see README "Releases & registry"). Keeping this out also means a container
+# started as Development can't silently pick up the seeded dev admin / MinIO defaults.
+**/appsettings.Development.json
+
+# Host build artifacts — the image builds fresh inside Docker (npm ci / dotnet restore).
+**/bin
+**/obj
+**/node_modules
+**/dist
+src/ClientApp/.angular
+
+# Local secrets / env files
+.env
+.env.*
+!.env.example
+
+# Not needed to build the app
+tests
+TestResults
+docs
+*.md
+
+# Editor / OS cruft
+.vs
+.vscode
+.idea
+.DS_Store
