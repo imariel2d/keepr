@@ -99,6 +99,14 @@ if (emailCfg.Enabled)
             + "Leave Email__Provider unset (or 'none') to disable outbound mail.");
 }
 
+// A reset link must be short-lived and usable: reject a nonsensical lifetime at boot (naming the env
+// var), like the storage/share/smtp checks above, instead of silently clamping it on first use. This
+// matters whether mail runs via env-SMTP or a hosted provider, so it's outside the Enabled block. See
+// docs/feature-26-password-reset.md §4.
+if (emailCfg.ResetExpiryMinutes is < 1 or > 1440)
+    throw new InvalidOperationException(
+        "Email__ResetExpiryMinutes must be between 1 and 1440 (minutes; 1440 = 24 hours).");
+
 // Outbound email is chosen PER SEND by EmailSenderFactory, not bound at boot (#36), so a provider
 // switch in /admin/email takes effect immediately. API keys are encrypted at rest with Data
 // Protection, its key ring persisted to Postgres so it survives restarts/redeploys and works across
@@ -180,7 +188,8 @@ builder.Services.AddRateLimiter(o =>
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     o.AddPolicy(RateLimiterPolicies.ForgotPassword, http =>
         RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            // Key on the real client IP, not the App Platform proxy — see ClientPartitionKey.
+            partitionKey: RateLimiterPolicies.ClientPartitionKey(http),
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 5,

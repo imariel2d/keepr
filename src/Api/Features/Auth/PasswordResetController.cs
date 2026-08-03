@@ -3,6 +3,7 @@ using Keepr.Api.Features.Email;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Keepr.Api.Features.Auth;
 
@@ -37,6 +38,7 @@ public class PasswordResetController(
     CredentialValidator credentials,
     SessionService sessions,
     SessionCookie cookie,
+    IServiceScopeFactory scopeFactory,
     TimeProvider clock,
     ILogger<PasswordResetController> log) : ControllerBase
 {
@@ -64,34 +66,63 @@ public class PasswordResetController(
         // whether or not the address exists.
         var user = await db.Users.SingleOrDefaultAsync(u => u.Email == email, ct);
 
+        // Evaluate "mail is configured" on EVERY request, not short-circuited past the eligibility
+        // check — so an ineligible request pays the same lookup cost as an eligible one.
+        var mailEnabled = await emailSettings.IsEnabledAsync(ct);
+
         // Send only to an active (claimed), verified account, and only when mail can actually go out.
         // A pending account (null hash) has no password to reset — it uses resend-invite instead.
-        var eligible = user is { PasswordHash: not null, EmailVerified: true, DeletionRequestedAt: null }
-                       && await emailSettings.IsEnabledAsync(ct);
+        var eligible = mailEnabled
+                       && user is { PasswordHash: not null, EmailVerified: true, DeletionRequestedAt: null };
 
         if (eligible)
         {
             try
             {
-                // One live token per account: supersede any prior link, then commit before sending
-                // (a transport failure must not roll back — the neutral 202 already went out).
+                // One live token per account: supersede any prior link (including an expired-unused
+                // one that still holds the unique slot), then commit.
                 await resets.RemoveExistingAsync(user!.Id, ct);
                 var (token, raw) = resets.Build(user.Id);
                 db.PasswordResetTokens.Add(token);
                 await db.SaveChangesAsync(ct);
 
-                await resets.SendAsync(user.Email, raw, ct);
+                // Dispatch the send OFF the request's critical path. Awaiting an SMTP/HTTP send here
+                // (tens of ms to seconds) only on this branch would make an eligible request reliably
+                // slower than the others — a timing oracle for "this address has a verified, active
+                // account", even though the body is identical on every branch. See §5.1 / §14.4.
+                DispatchResetEmail(user.Email, raw);
             }
             catch (Exception ex)
             {
-                // Non-fatal: never leak failure to the caller (that would be an oracle). The user can
-                // request another link; a fresh request supersedes this token.
-                log.LogError(ex, "Password-reset email for a requested account failed to send.");
+                // Token minting failed (e.g. a concurrent-request unique-index race). Never surface
+                // it — that would itself be an oracle; the neutral 202 below still goes out.
+                log.LogError(ex, "Password-reset token minting failed for a requested account.");
             }
         }
 
         // The single neutral response, identical on every branch.
         return Accepted(new { message = "If an account with that email can be reset by email, we've sent a link." });
+    }
+
+    /// <summary>Sends the reset email on a background task with its own DI scope (its own DbContext /
+    /// sender) and lifetime — never the request's <c>CancellationToken</c>, which ends when the 202
+    /// returns. Fire-and-forget: a failed send is non-fatal (the user can request another link), so it
+    /// is only logged. Keeping the send off the request path is what makes the 202 timing uniform.</summary>
+    private void DispatchResetEmail(string toEmail, string rawToken)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = scopeFactory.CreateScope();
+                var svc = scope.ServiceProvider.GetRequiredService<PasswordResetService>();
+                await svc.SendAsync(toEmail, rawToken, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex, "Background password-reset email send failed; the user can request another link.");
+            }
+        });
     }
 
     /// <summary>Validates a reset token and returns the account email to prime the form.</summary>
@@ -132,6 +163,15 @@ public class PasswordResetController(
             });
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        // Lock the user row for the rest of the transaction, the same FOR UPDATE the login and kick
+        // paths take. This serializes the revoke-all + password change below against a concurrent
+        // login: either login commits its session first and our revoke-all then revokes it too, or we
+        // commit first and login re-reads the rotated hash under the lock and refuses. Without it, a
+        // login holding the old password could slip a live session in after the revoke. See
+        // AuthController.Login and docs/feature-26-password-reset.md §5.3.
+        await db.Database.ExecuteSqlRawAsync(
+            $"SELECT 1 FROM {AppDbContext.Schema}.\"Users\" WHERE \"Id\" = {{0}} FOR UPDATE", [user.Id], ct);
 
         // Single-winner: two concurrent completions (a retried submit) both resolved the token as
         // usable above; decide the winner by an atomic conditional update — only the request whose

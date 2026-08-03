@@ -444,9 +444,10 @@ public class AdminController(
     /// password and forces a change on the user's first sign-in (the admin knows it); link mode
     /// (<c>sendLink:true</c>) emails a reset link and requires both a configured sender and a
     /// <b>verified</b> account (emailing a link to an unverified address is the §9 takeover hazard).
-    /// Both revoke the target's existing sessions. Refused for a pending (unclaimed) account. An admin
-    /// may reset their own account; self-resets skip the forced-change flag. See
-    /// docs/feature-26-password-reset.md §6.
+    /// Direct mode revokes the target's existing sessions immediately; link mode leaves them active
+    /// until the recipient completes the reset (which then revokes everything). Refused for a pending
+    /// (unclaimed) account. An admin may reset their own account; self-resets skip the forced-change
+    /// flag. See docs/feature-26-password-reset.md §6.
     /// </summary>
     [HttpPost("users/{id:guid}/reset-password")]
     [ProducesResponseType<AdminUserDetail>(StatusCodes.Status200OK)]
@@ -529,6 +530,13 @@ public class AdminController(
             });
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        // Lock the user row (the FOR UPDATE the login/kick paths take) so the revoke-all below
+        // serializes against a concurrent login: a login holding the old password can't slip a live
+        // session in after the revoke. See AuthController.Login and docs/feature-26-password-reset.md §5.3.
+        await db.Database.ExecuteSqlRawAsync(
+            $"SELECT 1 FROM {AppDbContext.Schema}.\"Users\" WHERE \"Id\" = {{0}} FOR UPDATE", [user.Id], ct);
+
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
         // The admin knows this password, so force a rotation on the user's next sign-in — except when
         // an admin resets their own account, where there's nothing to rotate away from. Setting a

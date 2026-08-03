@@ -102,6 +102,15 @@ public class AuthController(
         if (locked is null || locked.DeletionRequestedAt is not null)
             return Problem("Invalid credentials.", statusCode: StatusCodes.Status401Unauthorized);
 
+        // The credential may have been rotated (a change-password or a reset) between the unlocked
+        // read above and taking this lock. The hash we BCrypt-verified is then stale, so refuse —
+        // otherwise an old password could mint a live session *after* a reset revoked everything,
+        // defeating "a completed reset boots every session". A cheap hash compare under the lock, no
+        // second BCrypt; mirrors the DeletionRequestedAt recheck. The reset/direct-reset paths take
+        // the same row lock, so the two serialize. See docs/feature-26-password-reset.md §5.3.
+        if (locked.PasswordHash != user.PasswordHash)
+            return Problem("Invalid credentials.", statusCode: StatusCodes.Status401Unauthorized);
+
         var result = await StartSession(locked, ct);
         await tx.CommitAsync(ct);
         return result;

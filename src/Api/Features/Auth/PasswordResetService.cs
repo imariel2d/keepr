@@ -30,7 +30,8 @@ public class PasswordResetService(
     /// </summary>
     public (PasswordResetToken Token, string RawToken) Build(Guid userId)
     {
-        var minutes = Math.Max(1, emailOptions.Value.ResetExpiryMinutes);
+        // Range-validated at startup (Program.cs), so trust it here — no defensive clamp.
+        var minutes = emailOptions.Value.ResetExpiryMinutes;
         var raw = SecureToken.Generate();
         var token = new PasswordResetToken
         {
@@ -52,7 +53,7 @@ public class PasswordResetService(
     public async Task SendAsync(string toEmail, string rawToken, CancellationToken ct)
     {
         var s = await settings.GetAsync(ct);
-        var minutes = Math.Max(1, emailOptions.Value.ResetExpiryMinutes);
+        var minutes = emailOptions.Value.ResetExpiryMinutes; // startup-validated (Program.cs)
         var resetUrl = $"{ResolveBaseUrl(s.PublicBaseUrl)}/reset-password/{rawToken}";
         var content = EmailTemplates.PasswordReset(resetUrl, minutes);
         var email = await senders.CreateAsync(ct);

@@ -185,18 +185,24 @@ observable from outside.
 
 **Abuse controls** (this is the one public, unauthenticated, email-triggering endpoint):
 
-- **Rate-limit it.** There is no rate limiter in the app today, so this feature adds one:
-  ASP.NET's built-in `AddRateLimiter` with a fixed-window partition **per client IP** and
-  **per submitted email** (e.g. a few requests / 15 min), applied via `RequireRateLimiting` on this
-  action (and reused for the token-consume endpoints). This throttles enumeration attempts and
-  outbound-mail abuse without affecting normal use.
+- **Rate-limit it.** There is no rate limiter in the app today, so this feature adds one: ASP.NET's
+  built-in `AddRateLimiter` with a fixed-window partition **per client IP** (5 / 15 min), applied via
+  `[EnableRateLimiting]` on this action. It's keyed on the *real* client IP, not the App Platform
+  proxy — the partition takes the rightmost `X-Forwarded-For` entry (the address the single trusted
+  proxy hop appended, which a public client can't forge), falling back to the socket IP off-platform;
+  otherwise every client would share one bucket and one abuser would `429` everyone. (Per-*email*
+  throttling isn't done: the submitted email isn't available at partition-selection time without
+  buffering the body, and the one-live-token index below already blunts per-account abuse.)
 - **The one-live-token index** (§4) means hammering *Forgot password?* can't fan out into many valid
-  links; each request supersedes the last.
-- Timing is kept roughly uniform (do the user lookup regardless); we don't add artificial delay, but
-  we don't skip the lookup on the "no user" branch in a way that would make it measurably faster.
+  links; each request supersedes the last — this is the per-account backstop.
+- **No timing oracle.** The user lookup and the `IsEnabledAsync` check run on every request, and the
+  outbound email is dispatched on a **background task** (its own DI scope, not the request's
+  cancellation token) rather than awaited — so an eligible request doesn't answer measurably slower
+  than an ineligible one. Awaiting the SMTP/HTTP send inline would leak "this address has a verified,
+  active account" through response time even though the body is identical.
 
-Minting + send reuse the #36 pattern: build the row, **commit**, then send the email (a transport
-failure is logged, not surfaced — the neutral 202 already went out).
+Minting reuses the #36 pattern: build the row, **commit**, then hand the send to the background task
+(a transport failure is logged, not surfaced — the neutral 202 already went out).
 
 ### 5.2 Prime the reset form
 
@@ -218,14 +224,24 @@ In one transaction:
 
 1. Re-resolve the token; `410` if no longer usable.
 2. Run `PasswordPolicy` + breach check on the new password (`CredentialValidator.ValidatePasswordAsync`).
-3. **Single-winner** consume: `UPDATE … SET UsedAt = now WHERE Id = @id AND UsedAt IS NULL` — only
+3. **Lock the user row** (`SELECT … FOR UPDATE`), the same lock the login and kick paths take, so the
+   revoke-all + hash change serialize against a concurrent login. Without it, a login holding the
+   *old* password (validated a moment earlier) could insert a live session *after* the revoke, so an
+   old credential would survive the reset. With both paths on the row lock: either login commits its
+   session first and the revoke-all below revokes it too, or the reset commits first and login
+   re-reads the rotated hash under the lock and refuses (login gains a cheap `PasswordHash`-unchanged
+   recheck alongside its existing `DeletionRequestedAt` one). This closes the same class of race the
+   kick path already guards.
+4. **Single-winner** consume: `UPDATE … SET UsedAt = now WHERE Id = @id AND UsedAt IS NULL` — only
    the request that actually flips `UsedAt` proceeds (guards a double-submit), same guard the claim
    flow uses.
-4. Set the new BCrypt hash, clear `MustChangePassword`, set `EmailVerified = true` (§3.2).
-5. **Revoke every session the user has** — reset means "I may have lost control; sign everyone out"
+5. Set the new BCrypt hash, clear `MustChangePassword`, set `EmailVerified = true` (§3.2).
+6. **Revoke every session the user has** — reset means "I may have lost control; sign everyone out"
    (status doc line 41; cookie-session Q-C3). Unlike change-password (§7.2 of #36), which keeps the
-   *current* session, a reset has no trusted current session to keep.
-6. **Issue one fresh session** for this browser and set the cookie, so the person who just proved
+   *current* session, a reset has no trusted current session to keep. (The revoked rows are cleared by
+   the same login-time GC that reaps any dead session — the security outcome is that no old session
+   authenticates, not that a `RevokedAt` tombstone persists; the app keeps no per-user revocation log.)
+7. **Issue one fresh session** for this browser and set the cookie, so the person who just proved
    inbox control and set the password lands signed in — net effect: they're in, everyone else is out.
    *(Alternative in Q-26-1: issue nothing and bounce to `/login` with a success toast — the more
    conservative "you've been signed out everywhere, sign in again" story. Recommended default is
@@ -239,7 +255,7 @@ Reuses the existing email settings — no new provider wiring. One new tunable:
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `Email:ResetExpiryMinutes` | `60` | Reset-link lifetime. Short by design. Lives alongside `Email:InviteExpiryDays` on the admin email settings (or as a plain config value — Q-26-5). |
+| `Email:ResetExpiryMinutes` | `60` | Reset-link lifetime, in minutes. A plain env config knob (Q-26-5). **Range-validated at startup** (`Program.cs`) to `[1, 1440]` — a `0`/negative value (every link dead on arrival) or a stray-zero huge value (silently weakening the short lifetime) fails the boot with a message naming the env var, like the storage/share/SMTP checks; the token builder then trusts it with no defensive clamp. |
 
 The reset link is `{EmailSettings.PublicBaseUrl}/reset-password/{token}`, resolved by the same
 `ResolveBaseUrl` fallback the invite uses.
@@ -363,7 +379,9 @@ No change to `Sessions`, `MediaFile`, `Folder`, quota, sharing, trash, or `Accou
 | `POST /api/admin/users/{id}/reset-password` | Admin | new — direct or emailed reset (§6) |
 
 Each carries XML docs + `[ProducesResponseType]` for every status, problem+json errors, per the
-`src/Api` conventions. `forgot-password` and both token endpoints get `RequireRateLimiting` (§5.1).
+`src/Api` conventions. Only `forgot-password` carries `[EnableRateLimiting]` (§5.1) — it's the one
+endpoint that triggers outbound mail and can enumerate; the token-consume endpoints are guarded by
+the unguessable 256-bit token itself, not a rate limit.
 
 ---
 
@@ -458,8 +476,12 @@ The primary journey, end to end.
    → **`200`** `SessionResponse { email: "alex@keepr.app", role: "User" }`, `Set-Cookie` with a new
    session. SPA lands on `/files` signed in.
    - **Rows:** alex's `PasswordHash` = new BCrypt hash; `MustChangePassword` = false;
-     `EmailVerified` = true (already was); the token row's `UsedAt` = now; **all of alex's prior
-     `Sessions` `RevokedAt` = now**, and **one new** live session exists (the reset browser).
+     `EmailVerified` = true (already was); the token row's `UsedAt` = now; **every prior session is
+     revoked** — `RevokeAllForUserAsync` stamps `RevokedAt`, and issuing the fresh session then GCs
+     those now-dead rows via the same login-time cleanup that reaps any revoked/expired session, so
+     they may be gone rather than tombstoned — leaving exactly **one** live session (the reset
+     browser). The observable invariant is that no old session authenticates, not that a `RevokedAt`
+     row persists (the app keeps no per-user revocation history).
    - **Invariant checks:** old password no longer authenticates; a previously-live session on another
      device returns `401` on its next call; the raw token now returns `410` (used).
 
@@ -471,7 +493,7 @@ The primary journey, end to end.
 | E2 | `forgot-password` for an **unverified** account (`EmailVerified = false`) | **`202`**, identical body. **No** token, **no** email. |
 | E3 | `forgot-password` for a **pending/unclaimed** account (`PasswordHash IS NULL`) | **`202`**, identical body. **No** token, **no** email (nothing to reset — that account uses resend-invite). |
 | E4 | `forgot-password` when **no mail provider** is configured | **`202`**, identical body. **No** token, **no** email. And `GET /api/auth/capabilities` → `{ selfServiceReset: false }`, so the login screen shows *"Contact your admin to reset it."* instead of a link. |
-| E5 | `forgot-password` **rate limit** exceeded (many requests from one IP/email) | **`429`** once the fixed window is exhausted; no token minted for the throttled requests. |
+| E5 | `forgot-password` **rate limit** exceeded (>5 requests from one client IP in 15 min) | **`429`** once the fixed window is exhausted; no token minted for the throttled requests. (Behind the App Platform proxy the partition is the rightmost `X-Forwarded-For`, so distinct clients don't share a bucket.) |
 | E6 | Prime/complete with an **unknown, expired, or already-used** token | **`410 Gone`**, one opaque body — the three cases are indistinguishable. No row change. |
 | E7 | Complete with a **weak or breached** password | **`400`** `ValidationProblemDetails` from `PasswordPolicy`/breach check. Token **not** consumed (`UsedAt` stays null), no session issued — the user can retry the same link. |
 | E8 | **Double-submit** of a valid completion (two concurrent POSTs, same token) | Exactly **one** wins (`200` + session); the loser gets **`410`** (the `UPDATE … WHERE UsedAt IS NULL` flips for only one). Never two sessions, never a 500. |
@@ -506,9 +528,11 @@ The primary journey, end to end.
 
 ### 14.4 Invariants (must hold across all of the above)
 
-- **No oracle.** `forgot-password` returns the identical `202` body whether the account exists, is
-  verified, is pending, or mail is off (E1–E4). The prime/complete endpoints collapse
-  unknown/expired/used into one `410` (E6).
+- **No oracle — body *and* timing.** `forgot-password` returns the identical `202` body whether the
+  account exists, is verified, is pending, or mail is off (E1–E4), and it does so at roughly uniform
+  speed: the lookup + `IsEnabledAsync` run on every branch and the outbound send is dispatched to a
+  background task rather than awaited (§5.1), so response time doesn't reveal eligibility. The
+  prime/complete endpoints collapse unknown/expired/used into one `410` (E6).
 - **Email-based reset ⇔ verified.** No reset email is ever sent to an `EmailVerified = false`
   account, by *any* path — self-service silently drops (E2), admin link mode refuses `409`
   `email_unverified` (A4). The only way to reset an unverified account is admin **direct** mode.
@@ -516,8 +540,11 @@ The primary journey, end to end.
   account stays verified; a reset never *lowers* verification.
 - **Tokens are hash-only and single-live.** The raw token never appears in any API response; at most
   one usable `PasswordResetTokens` row exists per account (E9).
-- **`EmailVerified` is only ever set true by proving inbox control** — invite-claim, a completed
-  email reset, or the bootstrap-admin seed — never by an admin typing a password.
+- **`EmailVerified` is set true only by proving inbox control** — invite-claim or a completed email
+  reset — **or by the one explicit trust exception: the bootstrap-admin seed** (§3.2), where the
+  operator who set `Admin__Email` is *trusted* to control that mailbox rather than having proven it.
+  It is **never** set by an admin typing a password. The trust exception's risk (a mistyped
+  `Admin__Email`) is called out and accepted in Q-26-7.
 
 ### 14.5 What gets automated vs. run by hand
 
@@ -549,7 +576,7 @@ are unit-tested in `tests/Api.Tests`, and every persistence/endpoint flow is ver
 | Q-26-4 | Self-service *"verify my email"* for direct-set accounts now? | **Defer** — same machinery as change-email (#27); v1 verifies only via invite-claim. |
 | Q-26-5 | Where does `ResetExpiryMinutes` live — admin email settings row, or plain config? | Recommend a plain config value first (it's a policy knob, not a per-provider secret); promote to the admin screen if operators want to tune it live. |
 | Q-26-6 | Audit self-service resets anywhere? | Admin log is for admin actions; a per-user security/activity log is a separate future feature. |
-| Q-26-7 | **Sole-admin lockout.** `AdminSeeder` never resets an existing account's password (#34 Q-A1), so re-setting `Admin__Password` is **not** a break-glass. | **Decided:** the bootstrap admin is seeded `EmailVerified = true` (§3.2), so once mail is configured it can self-recover by email; and the docs state **keep ≥2 admins**. A single admin with *no* mail configured still relies on a second admin or a DB-level intervention — accepted, and the reason the ≥2-admins guidance is explicit. |
+| Q-26-7 | **Sole-admin lockout**, and the **bootstrap-admin trust exception.** `AdminSeeder` never resets an existing account's password (#34 Q-A1), so re-setting `Admin__Password` is **not** a break-glass. Seeding the bootstrap admin `EmailVerified = true` is a *trust* assumption, not proof: if `Admin__Email` is mistyped or names a mailbox the operator doesn't control, that mailbox's real owner could request a reset and take the bootstrap-admin account once mail is on. | **Decided (accepted trust exception):** the operator who sets `Admin__Email` is the deployment owner and is trusted to point it at a mailbox they hold — the blast radius is one account (single-owner data, §9), and getting `Admin__Email` right is squarely the operator's job (called out in the `AdminSeeder` log line and the deploy docs). The bootstrap admin is therefore seeded verified so it can self-recover by email, and the docs state **keep ≥2 admins**. A sole admin with *no* mail configured still relies on a second admin or a DB-level intervention — the reason the ≥2-admins guidance is explicit. (A true bootstrap email-verification step is possible later but out of scope; it would need an email seam the seeder runs before any admin exists.) |
 
 ---
 
