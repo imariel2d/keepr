@@ -101,6 +101,36 @@ Full contract, including request/response shapes: [docs/api-changes-frontend.md]
    multipart client must read. Without this, uploads fail. (Dev/MinIO CORS is already wired in
    `docker-compose.yml`.)
 
+## Releases & registry
+
+Releases are cut with [release-please](https://github.com/googleapis/release-please) from the
+Conventional-Commit history (`feat:` → minor, `fix:` → patch), and each release publishes a
+container image to the **GitHub Container Registry**. The chain:
+
+1. Merge feature PRs to `main` as usual. release-please keeps an open **"release" PR** whose title
+   is the next version and whose body is the accumulated changelog.
+2. **Merge that release PR** to cut the release: it tags `vX.Y.Z`, updates `CHANGELOG.md`, and
+   creates the GitHub Release.
+3. [`.github/workflows/release.yml`](.github/workflows/release.yml) then builds the root
+   `Dockerfile` and pushes the image to **`ghcr.io/imariel2d/keepr`**, tagged `X.Y.Z`, `X.Y`, and
+   `latest`.
+
+Pull the image with:
+
+```bash
+docker pull ghcr.io/imariel2d/keepr:latest
+```
+
+Notes:
+- Auth uses the built-in `GITHUB_TOKEN` — no PAT to manage. CI ([`ci.yml`](.github/workflows/ci.yml))
+  stays read-only; only the release workflow holds `packages: write` / `contents: write`.
+- GHCR packages are **private by default**. To let an unauthenticated host pull, make the package
+  public once (repo → Packages → package settings), or pull with a token.
+- App Platform still **builds from source** on push (`.do/app.yaml`), so GHCR is a parallel,
+  immutable artifact — handy for the VPS/Droplet deploy path. To deploy the exact released image
+  instead, point the App Platform service at an `image:` source (`ghcr.io/imariel2d/keepr:<tag>`)
+  with a registry credential.
+
 ## Not built yet (tracked in the docs)
 - **Frontend for folders + trash** — the backend is done and verified; see
   [docs/api-changes-frontend.md](docs/api-changes-frontend.md)
