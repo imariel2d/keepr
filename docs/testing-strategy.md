@@ -1,8 +1,8 @@
 # Testing strategy & CI
 
-**Status:** 🟡 in progress on branch `test/ci-unit-e2e` — Phases 1 (CI + unit expansion) and 2
-(Playwright scaffold + journey A) landed; Phase 3 in progress: journeys **B** (auth/session) and
-**D** (admin console) landed, journey **C** (files/folders/trash/sharing) still to come.
+**Status:** ✅ landed on branch `test/ci-unit-e2e` — Phase 1 (CI + unit expansion), Phase 2
+(Playwright scaffold + journey A), and Phase 3 (journeys **B** auth/session, **C**
+files/folders/trash/sharing, **D** admin console) are all in place.
 Not a single-feature doc, so it takes a plain name (see the **docs-naming** skill).
 
 How Keepr is tested, and what runs in CI on every push to `main` and every pull request.
@@ -117,5 +117,6 @@ Coverage is reported (cobertura artifact) but **never gates** — only a failing
 1. **Phase 1** — CI `unit` job, the extract-refactors, and the unit tests above. *(done)*
 2. **Phase 2** — Playwright scaffold (`tests/e2e`) + Mailpit overlay + journey **A**, wired into the
    CI `e2e` job. *(done — this branch)*
-3. **Phase 3** — journeys **B → C → D**. B and D landed (via the shared admin setup project);
-   **C** (files/folders/trash/sharing, incl. the real MinIO upload/download) still to come.
+3. **Phase 3** — journeys **B → C → D** (via the shared admin setup project). *(done)* — B
+   (auth/session), C (files/folders/trash/sharing, incl. the real MinIO upload/download and a
+   share link viewed by an anonymous visitor then revoked), D (admin console).
