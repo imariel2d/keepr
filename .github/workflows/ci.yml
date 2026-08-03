@@ -1,0 +1,121 @@
+name: CI
+
+# Runs on every push to main and on every pull request. Coverage is reported as an artifact but
+# never gates the build — only a failing test fails CI. See docs/testing-strategy.md.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch/PR cancels the in-flight run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: a PR runs test code with the workflow token, and this workflow only reads the
+# repo. checkout keeps its default read-only token; nothing here needs write.
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: .NET unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore tests/Api.Tests/Api.Tests.csproj
+
+      - name: Test (with coverage)
+        run: >
+          dotnet test tests/Api.Tests/Api.Tests.csproj
+          --no-restore
+          --configuration Release
+          --collect:"XPlat Code Coverage"
+          --results-directory ./TestResults
+          --logger "trx;LogFileName=unit.trx"
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-cobertura
+          path: ./TestResults/**/coverage.cobertura.xml
+          if-no-files-found: warn
+
+  e2e:
+    name: Playwright e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Full stack + Mailpit. The e2e overlay points the API's env-SMTP at Mailpit and bakes the
+      # browser-reachable claim-link origin. See docs/testing-strategy.md (Phase 2).
+      - name: Bring up the stack (app + Postgres + MinIO + Mailpit)
+        run: >
+          docker compose
+          -f docker-compose.yml
+          -f docker-compose.api.yml
+          -f docker-compose.e2e.yml
+          up -d --build
+
+      # The client container runs `npm install && ng serve`, so readiness can take a couple of
+      # minutes on a cold cache — wait on the API, the SPA, and Mailpit before driving anything.
+      - name: Wait for the stack to be ready
+        run: |
+          wait_for() {
+            local name="$1" url="$2"
+            for _ in $(seq 1 60); do
+              if curl -fsS "$url" >/dev/null 2>&1; then echo "$name ready"; return 0; fi
+              sleep 5
+            done
+            echo "$name did not become ready at $url"; return 1
+          }
+          wait_for "API"     http://localhost:5080/health
+          wait_for "Mailpit" http://localhost:8025/readyz
+          wait_for "SPA"     http://localhost:4200
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install e2e dependencies
+        working-directory: tests/e2e
+        run: npm install
+
+      - name: Install Playwright browser
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright
+        working-directory: tests/e2e
+        run: npx playwright test
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report
+          if-no-files-found: ignore
+
+      - name: Dump service logs on failure
+        if: failure()
+        run: >
+          docker compose
+          -f docker-compose.yml -f docker-compose.api.yml -f docker-compose.e2e.yml
+          logs --no-color api mailpit client
+
+      - name: Tear down
+        if: always()
+        run: >
+          docker compose
+          -f docker-compose.yml -f docker-compose.api.yml -f docker-compose.e2e.yml
+          down -v

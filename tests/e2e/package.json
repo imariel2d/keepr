@@ -1,0 +1,13 @@
+{
+  "name": "keepr-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Playwright end-to-end tests for Keepr (run against the docker compose stack). See docs/testing-strategy.md.",
+  "scripts": {
+    "test": "playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}

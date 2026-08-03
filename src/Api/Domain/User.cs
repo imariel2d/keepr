@@ -57,4 +57,15 @@ public class User
     public ICollection<Session> Sessions { get; set; } = new List<Session>();
 
     public long RemainingBytes => Math.Max(0, QuotaBytes - UsedBytes);
+
+    /// <summary>
+    /// A person's display name from their optional first/last name — "First Last", or whichever part
+    /// is set, or <c>null</c> when neither is. Used where we want to name a user (e.g. the inviter line
+    /// in the account-invite email) and must never fall back to exposing their email address.
+    /// </summary>
+    public static string? DisplayName(string? firstName, string? lastName)
+    {
+        var name = $"{firstName} {lastName}".Trim();
+        return string.IsNullOrWhiteSpace(name) ? null : name;
+    }
 }
