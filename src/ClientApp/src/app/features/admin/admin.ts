@@ -6,10 +6,13 @@ import { BytesPipe } from '../../core/bytes.pipe';
 import { formatDate } from '../../core/file-type';
 import { MIN_PASSWORD_LENGTH, lengthRequirement, meetsMinLength } from '../../core/password-policy';
 import { problemCode, problemDetail, problemStatus, validationErrors } from '../../core/problem-details';
+import { menuAnchor } from '../../core/menu-anchor';
 import { ButtonComponent } from '../../cove/lib/button/button.component';
 import { IconComponent } from '../../cove/lib/icon/icon.component';
+import { IconButtonComponent } from '../../cove/lib/icon-button/icon-button.component';
 import { ModalComponent } from '../../cove/lib/modal/modal.component';
 import { InputComponent } from '../../cove/lib/input/input.component';
+import { ContextMenuComponent, ContextMenuItem } from '../../cove/lib/context-menu/context-menu.component';
 
 const PAGE_SIZE = 50;
 const GB = 1024 ** 3;
@@ -22,7 +25,10 @@ const GB = 1024 ** 3;
  */
 @Component({
   selector: 'app-admin',
-  imports: [BytesPipe, ButtonComponent, IconComponent, ModalComponent, InputComponent],
+  imports: [
+    BytesPipe, ButtonComponent, IconComponent, IconButtonComponent, ModalComponent, InputComponent,
+    ContextMenuComponent,
+  ],
   templateUrl: './admin.html',
   styleUrl: './admin.scss',
 })
@@ -78,6 +84,13 @@ export class Admin {
   /** Id of the account whose invite is currently being resent, so its button disables and a
    *  double-click can't fire a second POST. */
   protected readonly resendingId = signal<string | null>(null);
+
+  // Per-row overflow menu (⋮): role / quota / reset / remove, collapsed off the row to keep it compact.
+  // One shared floating menu positioned at the trigger, mirroring the share-links row menu.
+  protected readonly menuOpen = signal(false);
+  protected readonly menuX = signal(0);
+  protected readonly menuY = signal(0);
+  protected readonly menuItems = signal<ContextMenuItem[]>([]);
 
   // Reset-password modal. Direct mode sets a new password; link mode emails a reset link.
   protected readonly resetTarget = signal<AdminUserListItem | null>(null);
@@ -139,6 +152,33 @@ export class Admin {
   /** The current admin can't remove or demote their own account — the server also refuses. */
   protected isSelf(u: AdminUserListItem): boolean {
     return u.email === this.auth.email();
+  }
+
+  /**
+   * Opens the per-row overflow menu at the trigger: change role (never yourself), set quota
+   * (always), reset password (claimed accounts only — a pending one has no password), and remove
+   * (never yourself). Quota is always present, so the menu is never empty. Mirrors the share-links
+   * row menu.
+   */
+  protected openRowMenu(u: AdminUserListItem, event: MouseEvent): void {
+    event.stopPropagation();
+    const items: ContextMenuItem[] = [];
+    if (!this.isSelf(u)) {
+      items.push({ label: 'Change role', icon: 'shield', onSelect: () => this.openRole(u) });
+    }
+    items.push({ label: 'Set quota', icon: 'sliders-horizontal', onSelect: () => this.openQuota(u) });
+    if (!u.pending) {
+      items.push({ label: 'Reset password', icon: 'key-round', onSelect: () => this.openReset(u) });
+    }
+    if (!this.isSelf(u)) {
+      items.push({ divider: true });
+      items.push({ label: 'Remove account', icon: 'user-x', danger: true, onSelect: () => this.openKick(u) });
+    }
+    this.menuItems.set(items);
+    const { x, y } = menuAnchor(event);
+    this.menuX.set(x);
+    this.menuY.set(y);
+    this.menuOpen.set(true);
   }
 
   protected errorsFor(field: string): string[] {

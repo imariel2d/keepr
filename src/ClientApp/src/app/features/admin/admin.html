@@ -50,16 +50,8 @@
                                [disabled]="resendingId() === u.id"
                                (click)="resend(u)">Resend</cove-button>
                 }
-                <cove-button variant="ghost" size="sm" icon="shield" [disabled]="isSelf(u)"
-                             (click)="openRole(u)">Role</cove-button>
-                <cove-button variant="ghost" size="sm" icon="sliders-horizontal"
-                             (click)="openQuota(u)">Quota</cove-button>
-                @if (!u.pending) {
-                  <cove-button variant="ghost" size="sm" icon="key-round"
-                               (click)="openReset(u)">Reset</cove-button>
-                }
-                <cove-button variant="ghost" size="sm" icon="user-x" [disabled]="isSelf(u)"
-                             (click)="openKick(u)">Remove</cove-button>
+                <cove-icon-button icon="more-vertical" [label]="'Actions for ' + u.email" [size]="32"
+                                  (click)="openRowMenu(u, $event)" />
               </td>
             </tr>
           }
@@ -78,6 +70,14 @@
     </footer>
   }
 </section>
+
+<!-- Per-row overflow menu (⋮): quota / reset / remove -->
+<cove-context-menu
+  [open]="menuOpen()"
+  [x]="menuX()"
+  [y]="menuY()"
+  [items]="menuItems()"
+  (closed)="menuOpen.set(false)" />
 
 <!-- Create account -->
 <cove-modal [open]="createOpen()" [title]="'New account'" [width]="480"
