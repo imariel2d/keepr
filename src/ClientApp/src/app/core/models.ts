@@ -107,6 +107,18 @@ export interface InvitePreview {
   email: string;
 }
 
+/** Whether the deployment offers self-service password reset (a mail provider is configured). A
+ *  global fact — never per-account — so the login screen can safely choose between a "Forgot
+ *  password?" link and "contact your admin" copy. See docs/feature-26-password-reset.md §7. */
+export interface ResetCapabilities {
+  selfServiceReset: boolean;
+}
+
+/** The address a reset link is for, to prime the reset form. 410 if unknown/expired/used. */
+export interface ResetPreview {
+  email: string;
+}
+
 export interface Usage {
   quotaBytes: number;
   usedBytes: number;

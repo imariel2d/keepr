@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { ADMIN_EMAIL, ADMIN_STATE, NEW_USER_PASSWORD, uniqueEmail } from '../support/config';
-import { createReadyUser, login } from '../support/admin';
+import { createReadyUser, login, openRowMenu } from '../support/admin';
 
 // Journey D from docs/testing-strategy.md: the admin console's observable effects — a quota change
 // and a role change reflected in the row, the self-row protected against demotion/removal (the UI
@@ -25,20 +25,23 @@ test('journey D — admin console effects', async ({ page, browser, baseURL }) =
   await expect(targetRow).toBeVisible();
 
   await test.step('a quota change is reflected in the row', async () => {
-    await targetRow.getByRole('button', { name: 'Quota' }).click();
+    await openRowMenu(page, target);
+    await page.getByRole('menuitem', { name: 'Set quota' }).click();
     const dialog = page.getByRole('dialog');
     await dialog.locator('input[type="number"]').fill('7');
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('status')).toContainText(`Quota updated for ${target}.`);
 
     // Re-open to confirm the row now carries the new quota (the dialog seeds from the row's bytes).
-    await targetRow.getByRole('button', { name: 'Quota' }).click();
+    await openRowMenu(page, target);
+    await page.getByRole('menuitem', { name: 'Set quota' }).click();
     await expect(page.getByRole('dialog').locator('input[type="number"]')).toHaveValue('7');
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
   });
 
   await test.step('a role change is reflected in the row', async () => {
-    await targetRow.getByRole('button', { name: 'Role' }).click();
+    await openRowMenu(page, target);
+    await page.getByRole('menuitem', { name: 'Change role' }).click();
     const dialog = page.getByRole('dialog');
     await dialog.locator('select').selectOption('Admin');
     await dialog.getByRole('button', { name: 'Save' }).click();
@@ -47,9 +50,12 @@ test('journey D — admin console effects', async ({ page, browser, baseURL }) =
   });
 
   await test.step('the admin cannot demote or remove itself (last-admin guard)', async () => {
-    const selfRow = page.getByRole('row').filter({ hasText: ADMIN_EMAIL });
-    await expect(selfRow.getByRole('button', { name: 'Role' })).toBeDisabled();
-    await expect(selfRow.getByRole('button', { name: 'Remove' })).toBeDisabled();
+    // For your own row the ⋮ menu omits Change role and Remove entirely — the UI face of the guard.
+    await openRowMenu(page, ADMIN_EMAIL);
+    await expect(page.getByRole('menuitem', { name: 'Set quota' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Change role' })).toHaveCount(0);
+    await expect(page.getByRole('menuitem', { name: 'Remove account' })).toHaveCount(0);
+    await page.keyboard.press('Escape'); // close the menu before the next step
   });
 
   await test.step('kicking a user removes them and kills their live session', async () => {
@@ -59,8 +65,8 @@ test('journey D — admin console effects', async ({ page, browser, baseURL }) =
     await login(victimPage, victim, NEW_USER_PASSWORD);
     await victimPage.waitForURL(/\/files/);
 
-    const victimRow = page.getByRole('row').filter({ hasText: victim });
-    await victimRow.getByRole('button', { name: 'Remove' }).click();
+    await openRowMenu(page, victim);
+    await page.getByRole('menuitem', { name: 'Remove account' }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByRole('textbox').fill(victim); // type-to-confirm
     await dialog.getByRole('button', { name: 'Remove account' }).click();

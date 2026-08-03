@@ -79,6 +79,9 @@ public class InvitesController(
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
         // The invitee chose this password themselves, so there is nothing to force-rotate.
         user.MustChangePassword = false;
+        // Claiming followed a link we emailed to this address, so the inbox is now proven — this is
+        // one of the only places EmailVerified is set true. See docs/feature-26-password-reset.md §3.2.
+        user.EmailVerified = true;
         await db.SaveChangesAsync(ct);
 
         // Issue the session inside the transaction so it exists only if the whole claim commits.

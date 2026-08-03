@@ -1,5 +1,6 @@
 import {
   Component, Input, Output, EventEmitter, HostListener, ElementRef, OnChanges, SimpleChanges,
+  ChangeDetectorRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../icon/icon.component';
@@ -33,14 +34,26 @@ export class ContextMenuComponent implements OnChanges {
   /** Where focus was before the menu opened (the trigger), so we can restore it on close. */
   private returnFocus: HTMLElement | null = null;
 
-  constructor(private el: ElementRef<HTMLElement>) {}
+  // The position actually rendered — starts at the requested (x, y) anchor, then corrected once
+  // the menu has measured itself so it never spills off the bottom/right edge. See clampToViewport.
+  protected resolvedX = 0;
+  protected resolvedY = 0;
+
+  constructor(private el: ElementRef<HTMLElement>, private cdr: ChangeDetectorRef) {}
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!changes['open']) return;
     if (this.open) {
       this.returnFocus = document.activeElement as HTMLElement | null;
-      // Focus the first item once the menu has rendered, so keyboard users land inside it.
-      queueMicrotask(() => this.focusItem(0));
+      // First paint at the raw anchor; the microtask below measures and corrects before it's seen.
+      this.resolvedX = this.x;
+      this.resolvedY = this.y;
+      // Once the menu has rendered: flip/clamp it into view, then focus the first item so keyboard
+      // users land inside it.
+      queueMicrotask(() => {
+        this.clampToViewport();
+        this.focusItem(0);
+      });
     } else if (changes['open'].previousValue) {
       // Restore focus to the trigger. If a selected action opened a modal, that modal moves
       // focus into itself in a later microtask and wins — so this is safe either way.
@@ -86,9 +99,31 @@ export class ContextMenuComponent implements OnChanges {
     this.hover = -1; // let the focus ring show the active row; drop any stale mouse highlight
   }
 
+  /**
+   * Keep the menu on-screen: if opening at the anchor would overflow the right/bottom edge, flip it
+   * to open above / to the left of the anchor instead, then clamp so a menu taller or wider than the
+   * viewport still starts at the safe margin. Runs after the menu has rendered, so its real measured
+   * size is used.
+   */
+  private clampToViewport(): void {
+    const menu = this.el.nativeElement.querySelector<HTMLElement>('[role="menu"]');
+    if (!menu) return;
+    const { width, height } = menu.getBoundingClientRect();
+    const margin = 8;
+
+    let x = this.x;
+    let y = this.y;
+    if (x + width > window.innerWidth - margin) x = this.x - width; // flip left of the anchor
+    if (y + height > window.innerHeight - margin) y = this.y - height; // flip above the anchor
+
+    this.resolvedX = Math.max(margin, Math.min(x, window.innerWidth - width - margin));
+    this.resolvedY = Math.max(margin, Math.min(y, window.innerHeight - height - margin));
+    this.cdr.detectChanges(); // re-render at the corrected position (safe: we're past this CD cycle)
+  }
+
   menuStyle() {
     return {
-      position: 'fixed', top: this.y + 'px', left: this.x + 'px', minWidth: '200px',
+      position: 'fixed', top: this.resolvedY + 'px', left: this.resolvedX + 'px', minWidth: '200px',
       background: 'var(--surface-overlay)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-md)',
       border: '1px solid var(--border-subtle)', padding: '6px', zIndex: 1100, fontFamily: 'var(--font-body)',
     };

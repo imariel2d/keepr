@@ -37,6 +37,16 @@ public class User
     /// </summary>
     public bool MustChangePassword { get; set; }
 
+    /// <summary>
+    /// True once the account holder has <b>proven control of this inbox</b> — by claiming an email
+    /// invite, completing an email-based password reset, or being the operator-configured bootstrap
+    /// admin. Gates every email-based reset (self-service <i>and</i> admin-emailed link): an
+    /// admin-invented, unverified address can never be handed to a stranger via a reset link. Set
+    /// only by proving inbox control; an admin typing a password never sets it. See
+    /// docs/feature-26-password-reset.md §3 and feature-36-account-provisioning.md §9 (Q-P2).
+    /// </summary>
+    public bool EmailVerified { get; set; }
+
     /// <summary>Total storage the user is allowed. Default 5 GB.</summary>
     public long QuotaBytes { get; set; } = 5L * 1024 * 1024 * 1024;
 

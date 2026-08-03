@@ -60,4 +60,34 @@ public class EmailTemplateTests
         Assert.DoesNotContain("<script>", content.HtmlBody);
         Assert.Contains("&lt;script&gt;", content.HtmlBody);
     }
+
+    private const string ResetUrl = "https://keepr.app/reset-password/abc123";
+
+    [Fact]
+    public void Reset_includes_the_reset_url_in_both_bodies()
+    {
+        var content = EmailTemplates.PasswordReset(ResetUrl, expiryMinutes: 60);
+
+        Assert.Contains(ResetUrl, content.HtmlBody);
+        Assert.Contains(ResetUrl, content.TextBody);
+        Assert.False(string.IsNullOrWhiteSpace(content.Subject));
+    }
+
+    [Fact]
+    public void Reset_states_the_expiry_in_minutes()
+    {
+        Assert.Contains("60 minutes", EmailTemplates.PasswordReset(ResetUrl, 60).TextBody);
+        // Singular is not "1 minutes".
+        Assert.Contains("1 minute", EmailTemplates.PasswordReset(ResetUrl, 1).TextBody);
+        Assert.DoesNotContain("1 minutes", EmailTemplates.PasswordReset(ResetUrl, 1).TextBody);
+    }
+
+    [Fact]
+    public void Reset_reassures_the_reader_they_can_ignore_it()
+    {
+        // The "you can ignore this" line is what makes an unsolicited reset email non-alarming.
+        var content = EmailTemplates.PasswordReset(ResetUrl, 60);
+        Assert.Contains("ignore this email", content.TextBody);
+        Assert.Contains("ignore this email", content.HtmlBody);
+    }
 }

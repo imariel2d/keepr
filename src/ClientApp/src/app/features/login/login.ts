@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { PasswordResetService } from '../../core/password-reset.service';
 import { ProfileStore } from '../../core/profile.store';
 import { problemDetail } from '../../core/problem-details';
 import { ButtonComponent } from '../../cove/lib/button/button.component';
@@ -14,12 +15,13 @@ import { IconComponent } from '../../cove/lib/icon/icon.component';
  */
 @Component({
   selector: 'app-login',
-  imports: [ButtonComponent, InputComponent, IconComponent],
+  imports: [RouterLink, ButtonComponent, InputComponent, IconComponent],
   templateUrl: './login.html',
   styleUrl: './login.scss',
 })
 export class Login {
   private readonly auth = inject(AuthService);
+  private readonly resets = inject(PasswordResetService);
   private readonly profile = inject(ProfileStore);
   private readonly router = inject(Router);
 
@@ -28,6 +30,24 @@ export class Login {
   protected readonly showPassword = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly busy = signal(false);
+
+  /** Whether this deployment offers self-service reset (mail configured). Drives the "Forgot
+   *  password?" affordance: a link when true, "contact your admin" copy when false. §7. */
+  protected readonly selfServiceReset = signal(false);
+
+  constructor() {
+    void this.loadCapability();
+  }
+
+  private async loadCapability(): Promise<void> {
+    try {
+      this.selfServiceReset.set((await this.resets.capabilities()).selfServiceReset);
+    } catch {
+      // A failed probe just hides the self-service link and shows the admin fallback copy — the
+      // safe default, never a dead link.
+      this.selfServiceReset.set(false);
+    }
+  }
 
   protected async submit(event?: Event): Promise<void> {
     event?.preventDefault();

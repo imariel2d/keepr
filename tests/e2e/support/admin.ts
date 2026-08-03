@@ -68,6 +68,17 @@ export async function login(page: Page, email: string, password: string): Promis
   await page.getByRole('button', { name: 'Sign in' }).click();
 }
 
+/**
+ * Opens a user row's overflow (⋮) menu, where the per-row actions now live (change role, set quota,
+ * reset password, remove) instead of inline buttons. The trigger's accessible name is
+ * "Actions for {email}". After this resolves, click the item via
+ * `page.getByRole('menuitem', { name: … })` — the menu is a single shared, page-level element.
+ */
+export async function openRowMenu(page: Page, email: string): Promise<void> {
+  const row = page.getByRole('row').filter({ hasText: email });
+  await row.getByRole('button', { name: `Actions for ${email}` }).click();
+}
+
 /** Signs the current account out from the top bar and waits for the login screen. */
 export async function logout(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Log out' }).click();

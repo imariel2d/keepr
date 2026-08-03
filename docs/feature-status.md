@@ -3,8 +3,8 @@
 Tracking the planned feature set against what is actually implemented in the codebase.
 
 Keepr is a **personal media store** with a folder hierarchy, rename, and a 10-day trash:
-single-owner (no user-to-user sharing yet). Of the 36 planned features, **12 are complete**
-(backend + UI), 3 are partial (built, verification or per-screen work remaining), and 21 are not started.
+single-owner (no user-to-user sharing yet). Of the 36 planned features, **13 are complete**
+(backend + UI), 3 are partial (built, verification or per-screen work remaining), and 20 are not started.
 
 **Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
@@ -38,7 +38,7 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 26 | Forgot / reset password | ❌ | No email provider and no reset-token table exist. **Blocked on email verification** — a reset link can't be sent to an address the user never proved they own (Q-V6 in [feature-3-registration-validation.md](feature-3-registration-validation.md)). A successful reset should revoke existing sessions ([feature-3-cookie-session.md](feature-3-cookie-session.md) Q-C3) |
+| 26 | Forgot / reset password | 🟡 | **Built end-to-end (backend + UI + tests) — [feature-26-password-reset.md](feature-26-password-reset.md); live e2e pending.** Two paths: **self-service email link** (gated on a mail provider being configured *and* the account being `EmailVerified`) and **admin manual reset** (direct-set or emailed link) — the fallback the *"Contact your admin"* login copy points at. Backend: `PasswordResetController` (forgot / preview / reset / capabilities) + `PasswordResetService`, a `PasswordResetTokens` table (twin of `AccountInvites`, 1-hour tokens) via the `AddPasswordReset` migration, and the app's **first rate limiter** (`RateLimiterPolicies`, per-IP). Completing a reset revokes all sessions then auto-signs-in ([feature-3-cookie-session.md](feature-3-cookie-session.md) Q-C3). The **email-verification blocker is resolved**: `User.EmailVerified` (Q-V6 / #36 §9 Q-P2), set only by proving inbox control, gates every email-based reset. UI: `/forgot-password` + `/reset-password/:token` screens and a "Forgot password?" link on login; admin gains a reset-password action. **Verification pending** like #36's email path — the self-service link needs a configured mail provider the local stack doesn't set; the admin direct-set path is exercisable without one |
 | 27 | Change email | ❌ | `Email` is already unique + normalized (`AppDbContext`). A change must re-run `EmailPolicy` and, once #26's verification exists, re-verify the new address before it takes effect |
 | 28 | Change password | ✅ | **Backend + UI done** as part of #36 ([feature-36-account-provisioning.md](feature-36-account-provisioning.md) §7.2): `POST /api/me/password` verifies the current password, re-runs `PasswordPolicy` + breach check, re-hashes with BCrypt, revokes the user's other sessions, and clears `MustChangePassword`; the change-password panel lives in the `/profile` screen. **Verified end-to-end against the dockerised stack (2026-07-31):** the forced first-login change (can't-skip guard redirects `/files` → `/profile?changePassword=1`), self-service change, other-sessions revocation (a second live session returned 401 after the change), and old-password rejection were all confirmed |
 | 29 | Profile: first & last name | ✅ | **Backend + UI done** as part of #36 ([feature-36-account-provisioning.md](feature-36-account-provisioning.md) §7). `User` gained `FirstName`/`LastName` (migration `AddAccountProvisioning`) plus `GET`/`PATCH /api/me/profile`, surfaced in the `/profile` screen (feeds `cove-avatar` initials). **Verified end-to-end against the dockerised stack (2026-07-31):** edit + save, persistence across a full reload (fields rehydrate from the server), and the avatar initials updating (`Q` → `QT`) were all confirmed |
@@ -98,7 +98,7 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 35 | Accessibility & mobile responsiveness | 🟡 | [feature-35-accessibility-mobile.md](feature-35-accessibility-mobile.md). **Foundation + mobile drawer done, per-screen sweep ongoing.** Fixed at the Cove component level so every screen benefits: outline-based `:focus-visible` ring (`styles.scss`), `prefers-reduced-motion` guard, skip link + landmarks, keyboard-operable sidebar nav (`<button>` + `aria-current`), accessible modal (`role="dialog"`, ESC, focus trap + restore), keyboard-operable file/folder cards (`role="button"`, Enter=open/Space=select, controls reveal on focus), accessible context menu (`role="menu"`, arrow-key nav, focus restore) + keyboard-aware positioning (`core/menu-anchor.ts`), and Enter-to-submit inputs. Mobile (<720px): hamburger **off-canvas drawer** (`role="dialog"`, focus trap, ESC) replacing the desktop rail. **Pending:** per-screen sweep (trash/admin/login/upload-toast/preview/share-viewer), `aria-haspopup`/`aria-expanded` on the ⋮ trigger, optional roving-`tabindex` grid nav, and the Tab-in-menu decision (Q-A1). Interactive changes are compile- + semantics-verified; the focus traps were not exercised live (need the backend) |
+| 35 | Accessibility & mobile responsiveness | 🟡 | [feature-35-accessibility-mobile.md](feature-35-accessibility-mobile.md). **Foundation + mobile drawer done, per-screen sweep ongoing.** Fixed at the Cove component level so every screen benefits: outline-based `:focus-visible` ring (`styles.scss`), `prefers-reduced-motion` guard, skip link + landmarks, keyboard-operable sidebar nav (`<button>` + `aria-current`), accessible modal (`role="dialog"`, ESC, focus trap + restore), keyboard-operable file/folder cards (`role="button"`, Enter=open/Space=select, controls reveal on focus), accessible context menu (`role="menu"`, arrow-key nav, focus restore) + keyboard-aware positioning (`core/menu-anchor.ts`) that now **flips/clamps to stay in-viewport** near screen edges, and Enter-to-submit inputs. Mobile (<720px): hamburger **off-canvas drawer** (`role="dialog"`, focus trap, ESC) replacing the desktop rail. **Pending:** per-screen sweep (trash/admin/login/upload-toast/preview/share-viewer), `aria-haspopup`/`aria-expanded` on the ⋮ trigger, optional roving-`tabindex` grid nav, and the Tab-in-menu decision (Q-A1). Interactive changes are compile- + semantics-verified; the focus traps were not exercised live (need the backend) |
 
 ---
 
@@ -107,10 +107,12 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 - **Done (13):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
   rename/delete, trash, in-browser preview, shareable links, admin account administration (#34),
   change-password (#28), profile names (#29), search by file name (#9).
-- **Partial (2):** accessibility & mobile (#35) — foundation + drawer in, per-screen sweep remains;
-  admin-provisioned accounts & email invites (#36) — direct-provision + forced-change path
-  live-verified, email-invite/claim path pending a mail provider.
-- **Not started (21):** everything else. **Tier 1 is complete.**
+- **Partial (3):** forgot/reset password (#26) — built end-to-end (backend + UI + tests), live e2e
+  pending a mail provider (admin direct-set path exercisable without one); accessibility & mobile
+  (#35) — foundation + drawer in, per-screen sweep remains; admin-provisioned accounts & email
+  invites (#36) — direct-provision + forced-change path live-verified, email-invite/claim path
+  pending a mail provider.
+- **Not started (20):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2
 
@@ -125,9 +127,11 @@ for revisiting malware scanning and content moderation — those become required
 ships, not after.
 
 **Account management (#26–29)** clusters around one prerequisite: **email verification** (Q-V6).
-Reset-password (#26) is blocked on it outright, and change-email (#27) wants it too. Change-password
-(#28) and profile names (#29) are independent and cheaper — #29 is just a migration plus a
-`PATCH /api/me`. Sequence: verification → #26/#27 together, with #28/#29 landable any time.
+Reset-password (#26) **is now built** ([feature-26-password-reset.md](feature-26-password-reset.md)):
+it delivers the `EmailVerified` flag that unblocks the cluster (live e2e still pending a mail
+provider), and change-email (#27) inherits that same flag when built. Change-password (#28) and
+profile names (#29) are already done. Sequence: #26 delivered verification → **#27 is next** and
+reuses it.
 
 ### Known follow-ups
 

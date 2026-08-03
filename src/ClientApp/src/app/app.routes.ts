@@ -19,6 +19,18 @@ export const routes: Routes = [
     loadComponent: () => import('./features/invites/claim').then((m) => m.Claim),
   },
   {
+    // Public "forgot password" request page — anonymous by design (the user is signed out).
+    path: 'forgot-password',
+    loadComponent: () =>
+      import('./features/password-reset/forgot-password').then((m) => m.ForgotPassword),
+  },
+  {
+    // Public reset-password page — the token in the URL is the authorization, like claim.
+    path: 'reset-password/:token',
+    loadComponent: () =>
+      import('./features/password-reset/reset-password').then((m) => m.ResetPassword),
+  },
+  {
     // The folder id is in the URL so a folder is linkable and the back button walks the tree.
     // No id = the owner's root, which has no row of its own server-side.
     path: 'files',

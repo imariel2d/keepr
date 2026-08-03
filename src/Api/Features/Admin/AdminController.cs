@@ -47,6 +47,11 @@ public record CreateUserResponse(AdminUserDetail Account, bool Invited, bool Inv
 /// <param name="Role">The account's new role: "User" or "Admin".</param>
 public record UpdateRoleRequest(string Role);
 
+/// <param name="SendLink">true → email the user a reset link (requires a configured sender and a
+/// verified account); false → set a new password directly. See docs/feature-26-password-reset.md §6.</param>
+/// <param name="Password">Required when <paramref name="SendLink"/> is false; ignored otherwise.</param>
+public record ResetUserRequest(bool SendLink, string? Password);
+
 /// <summary>
 /// Account administration, restricted to admins by the "Admin" policy. A non-admin caller is
 /// authenticated but forbidden (403); an anonymous caller is unauthorized (401). See
@@ -63,6 +68,8 @@ public class AdminController(
     AdminAuditService audit,
     CredentialValidator credentials,
     InviteService invites,
+    PasswordResetService resets,
+    SessionService sessions,
     EmailSettingsService emailSettings,
     IOptions<QuotaOptions> quota,
     TimeProvider clock,
@@ -429,6 +436,119 @@ public class AdminController(
         }
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Resets a user's password — the fallback the "contact your admin" copy points at, and the only
+    /// recovery for unverified or no-email accounts. Direct mode (<c>sendLink:false</c>) sets a new
+    /// password and forces a change on the user's first sign-in (the admin knows it); link mode
+    /// (<c>sendLink:true</c>) emails a reset link and requires both a configured sender and a
+    /// <b>verified</b> account (emailing a link to an unverified address is the §9 takeover hazard).
+    /// Direct mode revokes the target's existing sessions immediately; link mode leaves them active
+    /// until the recipient completes the reset (which then revokes everything). Refused for a pending
+    /// (unclaimed) account. An admin may reset their own account; self-resets skip the forced-change
+    /// flag. See docs/feature-26-password-reset.md §6.
+    /// </summary>
+    [HttpPost("users/{id:guid}/reset-password")]
+    [ProducesResponseType<AdminUserDetail>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status502BadGateway)]
+    public async Task<IActionResult> ResetPassword(Guid id, ResetUserRequest req, CancellationToken ct)
+    {
+        var user = await db.Users.FindAsync([id], ct);
+        if (user is null || user.DeletionRequestedAt is not null) return NotFound();
+
+        // Only an active (claimed) account has a password to reset. A pending account (null hash) has
+        // no password yet — it uses resend-invite, not reset.
+        if (user.PasswordHash is null)
+            return Problem("This account hasn't been claimed yet — resend its invite instead.",
+                statusCode: StatusCodes.Status409Conflict);
+
+        if (req.SendLink)
+        {
+            // Never silently no-op a link, and never send one to an unverified inbox. Both refusals
+            // carry a machine-readable code so the client can tell them apart and show the right copy.
+            if (!await emailSettings.IsEnabledAsync(ct))
+            {
+                var pd = new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Detail = "Email delivery is not configured — set a password instead."
+                };
+                pd.Extensions["code"] = "email_not_configured";
+                return Conflict(pd);
+            }
+            if (!user.EmailVerified)
+            {
+                var pd = new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Detail = "This account's email isn't verified — set a password directly instead."
+                };
+                pd.Extensions["code"] = "email_unverified";
+                return Conflict(pd);
+            }
+
+            await resets.RemoveExistingAsync(user.Id, ct);
+            var (token, raw) = resets.Build(user.Id);
+            db.PasswordResetTokens.Add(token);
+            audit.RecordPasswordReset(User.UserId(), ActorEmail(), user, "link");
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+            {
+                // Lost a race with a concurrent reset: the one-live-token index rejected this insert.
+                return Problem("Another reset for this account was just issued. Try again.",
+                    statusCode: StatusCodes.Status409Conflict);
+            }
+
+            try
+            {
+                await resets.SendAsync(user.Email, raw, ct);
+            }
+            catch (Exception ex)
+            {
+                // The admin explicitly asked to send, so surface the failure (unlike self-service).
+                log.LogError(ex, "Admin-initiated reset email for {Email} failed to send.", user.Email);
+                return Problem("Could not send the reset email. Try again.",
+                    statusCode: StatusCodes.Status502BadGateway);
+            }
+            return Accepted();
+        }
+
+        // Direct mode: the admin sets a new password.
+        if (await credentials.ValidatePasswordAsync(req.Password, user.Email, ct) is { } errors)
+            return BadRequest(new ValidationProblemDetails(errors)
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Detail = string.Join(" ", errors.Values.SelectMany(v => v))
+            });
+
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        // Lock the user row (the FOR UPDATE the login/kick paths take) so the revoke-all below
+        // serializes against a concurrent login: a login holding the old password can't slip a live
+        // session in after the revoke. See AuthController.Login and docs/feature-26-password-reset.md §5.3.
+        await db.Database.ExecuteSqlRawAsync(
+            $"SELECT 1 FROM {AppDbContext.Schema}.\"Users\" WHERE \"Id\" = {{0}} FOR UPDATE", [user.Id], ct);
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
+        // The admin knows this password, so force a rotation on the user's next sign-in — except when
+        // an admin resets their own account, where there's nothing to rotate away from. Setting a
+        // password directly proves nothing about the inbox, so EmailVerified is left untouched.
+        user.MustChangePassword = id != User.UserId();
+        // A reset boots the old credential everywhere.
+        await sessions.RevokeAllForUserAsync(user.Id, ct);
+        audit.RecordPasswordReset(User.UserId(), ActorEmail(), user, "direct");
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        return Ok(await BuildDetailAsync(user, ct));
     }
 
     private async Task<AdminUserDetail> BuildDetailAsync(User user, CancellationToken ct)

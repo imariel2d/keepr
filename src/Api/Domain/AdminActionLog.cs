@@ -17,7 +17,11 @@ public enum AdminActionType
 
     /// <summary>An admin changed the outbound-email provider settings (#36). The audit detail is a
     /// secret-free allowlist — never the API key. See docs/feature-36-email-providers.md §6.</summary>
-    EmailSettingsChanged = 4
+    EmailSettingsChanged = 4,
+
+    /// <summary>An admin reset a user's password — either by setting a new one directly or by emailing
+    /// a reset link. The detail records which (never the password). See docs/feature-26-password-reset.md §6.</summary>
+    PasswordReset = 5
 }
 
 /// <summary>
