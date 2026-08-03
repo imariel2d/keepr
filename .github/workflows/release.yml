@@ -84,9 +84,33 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}   # no PAT needed
 
+      # The mutable tags (latest, X.Y) must only ever move forward. On the automatic path the tag
+      # release-please just cut is by definition the newest, so they're safe. On manual recovery the
+      # dispatched tag could be an OLD release — republishing it must not drag latest/X.Y backward to
+      # older bytes — so gate them on "is this the newest stable release?" (the /releases/latest
+      # endpoint excludes drafts and pre-releases).
+      - name: Is this the newest stable release?
+        id: latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "is_latest=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          newest="$(gh api repos/{owner}/{repo}/releases/latest --jq .tag_name 2>/dev/null || echo '')"
+          if [ "$newest" = "$RELEASE_TAG" ]; then
+            echo "is_latest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_latest=false (newest stable is '${newest:-none}', not '$RELEASE_TAG')" >&2
+            echo "is_latest=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # This workflow runs on `push: main` / dispatch, so the ref isn't the tag itself — feed the
       # release tag to metadata-action explicitly so the semver patterns parse it. include-component-
-      # in-tag is off in release-please-config.json, so the tag is a plain vX.Y.Z semver.
+      # in-tag is off in release-please-config.json, so the tag is a plain vX.Y.Z semver. The exact
+      # version tag is always published; latest and X.Y only when this is the newest release.
       - name: Image tags & labels
         id: meta
         uses: docker/metadata-action@v5
@@ -94,8 +118,8 @@ jobs:
           images: ghcr.io/${{ github.repository }}   # → ghcr.io/imariel2d/keepr
           tags: |
             type=semver,pattern={{version}},value=${{ env.RELEASE_TAG }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_TAG }}
-            type=raw,value=latest
+            type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_TAG }},enable=${{ steps.latest.outputs.is_latest == 'true' }}
+            type=raw,value=latest,enable=${{ steps.latest.outputs.is_latest == 'true' }}
 
       - name: Build & push
         uses: docker/build-push-action@v6
