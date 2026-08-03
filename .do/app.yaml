@@ -17,6 +17,12 @@ services:
     health_check:
       http_path: /health
     envs:
+      # Pin the runtime environment so the app never loads appsettings.Development.json (dev admin,
+      # MinIO defaults). That file is also excluded from the image via .dockerignore; this is the
+      # belt-and-braces half.
+      - key: ASPNETCORE_ENVIRONMENT
+        scope: RUN_TIME
+        value: Production
       # Postgres as discrete fields (set the real values as SECRETs in the DO dashboard).
       # SslMode defaults to Require in code, so Db__SslMode is optional.
       # Alternatively set a single ConnectionStrings__Postgres (key-value or postgres:// URI).

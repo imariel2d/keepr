@@ -106,3 +106,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Attach SLSA provenance + an SBOM to the published image so consumers can verify what
+          # this build produced and pin by digest. The image is public on GHCR.
+          provenance: true
+          sbom: true

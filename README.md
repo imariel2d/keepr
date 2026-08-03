@@ -128,6 +128,10 @@ Notes:
   `packages: write`.
 - GHCR packages are **private by default**. To let an unauthenticated host pull, make the package
   public once (repo → Packages → package settings), or pull with a token.
+- The published image is **hardened for public distribution**: `appsettings.Development.json` (the
+  dev admin / MinIO defaults) is excluded via [`.dockerignore`](.dockerignore) and never ships, the
+  runtime is pinned to `ASPNETCORE_ENVIRONMENT=Production` in [`.do/app.yaml`](.do/app.yaml), and the
+  build attaches **SLSA provenance + an SBOM** so consumers can verify provenance and pin by digest.
 - App Platform still **builds from source** on push (`.do/app.yaml`), so GHCR is a parallel,
   versioned artifact — handy for the VPS/Droplet deploy path. The `X.Y.Z` / `X.Y` / `latest` tags
   are convenient but **mutable** (a later release reuses `latest` and `X.Y`); when a deployment must
