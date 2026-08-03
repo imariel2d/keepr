@@ -1,9 +1,15 @@
 # Search by File Name — Design
 
-> Status: **built — pending live verification**. Feature #9 in [feature-status.md](feature-status.md).
+> Status: **Done — verified live 2026-08-02**. Feature #9 in [feature-status.md](feature-status.md).
 > Backend (`SearchController`), client (`SearchService`, topbar box, Files dual-mode) and the a11y
-> pass are all in; unit-tested and compile/template-verified. Not yet exercised against the
-> dockerised stack (auth-gated), so the end-to-end run is the one open item.
+> pass are all in; unit-tested, compile/template-verified, and exercised end-to-end against the
+> dockerised stack. The live run confirmed: case-insensitive substring match on both files and
+> folders (`voice` → `Invoice-…`), each hit's `location` path (`My Files / Reports / 2026`), trash
+> excluded (a soft-deleted file never surfaces), LIKE-metacharacter escaping (a search for `%`
+> returns only names containing a literal `%`, not everything), empty/whitespace term → `400`, the
+> topbar box driving `/files?q=` into results mode with an `aria-live` count, a folder result
+> opening via Enter (keyboard-operable) and clearing `q`, and a clean mobile layout with no
+> horizontal scroll.
 >
 > Decided by Ariel, 2026-07-29: (1) search lives in the **topbar** and drives the existing **My
 > Files** grid into a flat "results" mode — no separate `/search` route/component; (2) it matches

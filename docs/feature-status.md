@@ -27,7 +27,7 @@ single-owner (no user-to-user sharing yet). Of the 36 planned features, **12 are
 | 6 | Sharing with specific users (view/edit) | ❌ | No share/permission model; everything is owner-scoped |
 | 7 | Shareable links | ✅ | [feature-7-shareable-links.md](feature-7-shareable-links.md). Single-file capability URLs (`src/Api/Features/Sharing/`), owner-editable expiry (1/7/30 days or never), per-link + whole-file revoke, presigned-R2 resolve gated by `PreviewPolicy`. UI: public `/s/:token` viewer + an owner Share dialog (create, copy active links, edit expiry, revoke). Verified end-to-end against the dockerised stack. Tokens are stored so links are re-copyable (Q-S5); Q5 risk accepted for single-owner sharing, scanning still required before #6 |
 | 8 | Trash / soft delete with restore | ✅ | `DeletedAt`/`DeletedRootId`, EF global query filters, `TrashController`, `TrashPurgeService` sweeper at 10 days. UI: `features/trash/` with restore, purge, empty, and a "in Trash" line on the quota meter. **Overrides Q9 hard delete** |
-| 9 | Search by file name | 🟡 | [feature-9-search.md](feature-9-search.md). **Built, pending live verification.** Owner-scoped name search over the whole tree, matching **files and folders** by a case-insensitive substring (`SearchController` on `OriginalNameLower`/`NameLower`, LIKE metacharacters escaped via a shared `LikeEscape`); each hit carries its folder path, built in memory from one folder-skeleton read (no per-result CTE). UI: a topbar search box that drives `/files?q=` — the Files grid switches to a flat results mode (per-hit location, folder-click-navigates, marquee/DnD gated off), with `role="search"` + live result count. Trash excluded by the soft-delete filters. Unit + compile/template verified; not yet exercised against the dockerised backend |
+| 9 | Search by file name | ✅ | [feature-9-search.md](feature-9-search.md). **Done — verified live 2026-08-02.** Owner-scoped name search over the whole tree, matching **files and folders** by a case-insensitive substring (`SearchController` on `OriginalNameLower`/`NameLower`, LIKE metacharacters escaped via a shared `LikeEscape`); each hit carries its folder path, built in memory from one folder-skeleton read (no per-result CTE). UI: a topbar search box that drives `/files?q=` — the Files grid switches to a flat results mode (per-hit location, folder-click-navigates, marquee/DnD gated off), with `role="search"` + live result count. Trash excluded by the soft-delete filters. Unit + compile/template verified and exercised end-to-end against the dockerised stack (substring match, location paths, trash exclusion, `%`/`_` escaping, empty-term 400, topbar→results mode, Enter-opens-folder-and-clears-`q`, clean mobile layout) |
 | 10 | In-browser preview (images, PDFs) | ✅ | Full-screen overlay with prev/next + keyboard (`features/files/preview-overlay.ts`). Server-side allowlist (`PreviewPolicy`) decides what may render; images/SVG via `<img>`, PDFs via `<iframe>` with a forced content type, plus video/audio. Lazy size-capped grid thumbnails |
 
 ## Account management (self-service)
@@ -104,23 +104,20 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 
 ## Summary
 
-- **Done (12):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
+- **Done (13):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
   rename/delete, trash, in-browser preview, shareable links, admin account administration (#34),
-  change-password (#28), profile names (#29).
-- **Partial (3):** search by file name (#9) — built end-to-end, pending a live run;
-  accessibility & mobile (#35) — foundation + drawer in, per-screen sweep remains;
+  change-password (#28), profile names (#29), search by file name (#9).
+- **Partial (2):** accessibility & mobile (#35) — foundation + drawer in, per-screen sweep remains;
   admin-provisioned accounts & email invites (#36) — direct-provision + forced-change path
   live-verified, email-invite/claim path pending a mail provider.
 - **Not started (21):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2
 
-The cheapest next wins, in order:
+The cheapest next wins, in order (**#9 search by file name shipped — verified live 2026-08-02**):
 
-1. **#9 search by file name** — **built** (see above); the remaining step is verifying it against
-   the dockerised stack, after which it flips to ✅.
-2. **#14 starred** — one boolean on `MediaFile` plus a sidebar view.
-3. **#16 thumbnails** — grid thumbnails are currently capped at 500 KB and reuse the original
+1. **#14 starred** — one boolean on `MediaFile` plus a sidebar view.
+2. **#16 thumbnails** — grid thumbnails are currently capped at 500 KB and reuse the original
    image; generating real derivatives would lift that cap and cut the bytes ~200×.
 
 **#6 sharing** is the big one, and per [my-decisions.md](my-decisions.md) Q5 it is the trigger
