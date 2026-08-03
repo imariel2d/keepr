@@ -4,9 +4,10 @@ description: >
   Building or changing anything the user sees in the Angular client. Use this whenever you add or
   edit UI — a component, template, stylesheet, layout, screen, dialog, form, table, or nav element —
   or touch any file under src/ClientApp (`.ts` components, `.html` templates, `.scss`), or add/reuse
-  a Cove component. The load-bearing rule: every visible change must be RESPONSIVE — it has to work
-  and read well on mobile, tablet, and desktop widths, not just the size it was built at. Consult
-  this before writing UI and before claiming a UI change is done.
+  a Cove component. The load-bearing rules: every visible change must be RESPONSIVE (work and read
+  well on mobile, tablet, and desktop widths, not just the size it was built at) and ACCESSIBLE
+  (a11y — keyboard-operable, correct roles/names, visible focus). Consult this before writing UI and
+  before claiming a UI change is done.
 ---
 
 # Frontend Developer
@@ -29,6 +30,34 @@ rescue a desktop-only layout.
   [feature-35-accessibility-mobile.md](../../../docs/feature-35-accessibility-mobile.md). Follow it:
   focus-visible rings, keyboard operability, `role`/`aria-*` on custom controls, and the off-canvas
   drawer that replaces the sidebar on small screens. Responsiveness and accessibility ship together.
+
+## Accessibility (a11y) is not optional
+
+Every UI change — a component, template, dialog, form, table, menu, or nav element — must be
+**accessible (a11y)** from the first line, the same way it must be responsive. This is a load-bearing
+requirement, not a polish pass. When you add or edit anything visible:
+
+- **Semantics first.** Reach for the right native element (`<button>`, `<a>`, `<label>`, `<nav>`,
+  `<table>`) before adding `role`. A real `<button>` is keyboard- and screen-reader-ready for free;
+  a `<div>` with a click handler is not.
+- **Keyboard operable.** Everything interactive works with Tab / Shift+Tab / Enter / Space / Escape
+  and arrow keys where appropriate (menus, tabs). Nothing is mouse- or hover-only. Focus order is
+  logical and focus is never trapped except in an open modal (where it should be trapped, and Escape
+  closes).
+- **Names & roles.** Every control has an accessible name — visible label, `aria-label`, or
+  `aria-labelledby`. Icon-only buttons **must** carry an `aria-label`. Custom widgets get the
+  correct `role` and state (`aria-expanded`, `aria-selected`, `aria-checked`, `aria-current`,
+  `aria-disabled`).
+- **Visible focus.** Never remove focus outlines without replacing them — keep the Cove
+  focus-visible ring.
+- **Announce the dynamic.** Errors, toasts, and async status use `role="alert"` / `aria-live` so
+  screen readers hear them; form errors are tied to their field via `aria-describedby` /
+  `aria-invalid`.
+- **Perceivable.** Text contrast meets WCAG AA (use the design tokens — they're tuned for it);
+  never signal state with colour alone; images/icons that carry meaning have alt text, decorative
+  ones are hidden (`alt=""` / `aria-hidden`).
+- **Prefer Cove.** Reusing a Cove component gets most of this for free — that's another reason not to
+  hand-roll markup.
 
 ## Breakpoints — match existing usage, don't scatter new ones
 
@@ -64,5 +93,9 @@ rescue a desktop-only layout.
   (1280×800)** — plus check **dark mode**. Confirm: no horizontal body scroll, nothing clipped or
   overlapping, tap targets reachable, text legible, and the layout reflows (not just shrinks) as it
   narrows.
+- **Check a11y, not just looks.** Tab through the change with the keyboard alone (reach every
+  control, visible focus, Escape closes modals), confirm icon-only buttons and custom widgets have
+  accessible names/roles, and that errors/status are announced. `role`/`aria-*` presence is
+  verifiable in `read_page`'s accessibility tree.
 - **Report honestly.** If you couldn't run it live, say which widths are unverified —
   "build passes; not exercised at mobile width live" is a fine sentence.
