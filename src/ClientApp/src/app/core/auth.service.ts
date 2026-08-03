@@ -64,6 +64,21 @@ export class AuthService {
   }
 
   /**
+   * Completes a password reset: sets the new password and signs in on this browser (the server
+   * revoked every prior session). The token in the URL is the authorization. 410 if the link is no
+   * longer valid, 400 on a policy failure. See docs/feature-26-password-reset.md §5.3.
+   */
+  async resetPassword(token: string, password: string): Promise<void> {
+    const res = await firstValueFrom(
+      this.http.post<SessionResponse>(
+        `/api/auth/reset-password/${encodeURIComponent(token)}`,
+        { password }
+      )
+    );
+    this.accept(res);
+  }
+
+  /**
    * Logout has to reach the server: the cookie is HttpOnly, so the browser will keep sending a
    * fully valid session no matter what this client forgets. Local state is cleared either way —
    * a failed request must not strand the user in a signed-in-looking app.

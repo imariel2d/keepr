@@ -45,6 +45,14 @@
         </cove-input>
       </div>
 
+      <div class="forgot">
+        @if (selfServiceReset()) {
+          <a routerLink="/forgot-password">Forgot password?</a>
+        } @else {
+          <span class="muted">Forgot your password? Contact your admin to reset it.</span>
+        }
+      </div>
+
       @if (error()) {
         <p class="error" role="alert">
           <cove-icon name="alert-circle" [size]="15"></cove-icon>

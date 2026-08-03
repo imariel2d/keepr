@@ -54,6 +54,10 @@
                              (click)="openRole(u)">Role</cove-button>
                 <cove-button variant="ghost" size="sm" icon="sliders-horizontal"
                              (click)="openQuota(u)">Quota</cove-button>
+                @if (!u.pending) {
+                  <cove-button variant="ghost" size="sm" icon="key-round"
+                               (click)="openReset(u)">Reset</cove-button>
+                }
                 <cove-button variant="ghost" size="sm" icon="user-x" [disabled]="isSelf(u)"
                              (click)="openKick(u)">Remove</cove-button>
               </td>
@@ -163,6 +167,85 @@
       {{ newSendInvite() ? 'Send invite' : 'Create account' }}
     </cove-button>
   </div>
+</cove-modal>
+
+<!-- Reset password -->
+<cove-modal [open]="resetTarget() !== null" [title]="'Reset password'" [width]="480"
+            (close)="resetTarget.set(null)">
+  @if (resetTarget(); as u) {
+    <div class="dialog">
+      <p class="dialog-sub">{{ u.email }}</p>
+
+      <fieldset class="field toggle">
+        <legend>How to reset</legend>
+        <label class="radio">
+          <input type="radio" name="reset-mode" [checked]="!resetSendLink()"
+                 (change)="setResetSendLink(false)" />
+          <span>Set a new password now</span>
+        </label>
+        <label class="radio">
+          <input type="radio" name="reset-mode" [checked]="resetSendLink()"
+                 (change)="setResetSendLink(true)" />
+          <span>Email a reset link</span>
+        </label>
+      </fieldset>
+
+      @if (!resetSendLink()) {
+        <label class="field">
+          <span>New password</span>
+          <cove-input [type]="showResetPwd() ? 'text' : 'password'" autocomplete="new-password"
+                      placeholder="At least {{ minPasswordLength }} characters"
+                      [value]="resetPwd()" (valueChange)="resetPwd.set($event)">
+            <button
+              trailing
+              type="button"
+              class="reveal"
+              [attr.aria-label]="showResetPwd() ? 'Hide password' : 'Show password'"
+              [attr.aria-pressed]="showResetPwd()"
+              (click)="showResetPwd.set(!showResetPwd())">
+              <cove-icon [name]="showResetPwd() ? 'eye-off' : 'eye'" [size]="16" />
+            </button>
+          </cove-input>
+          <ul class="requirements">
+            @for (requirement of resetPasswordRequirements(); track requirement.label) {
+              <li [class.met]="requirement.met">
+                <cove-icon [name]="requirement.met ? 'check' : 'circle'" [size]="13" />
+                {{ requirement.label }}
+              </li>
+            }
+          </ul>
+          @for (message of resetErrorsFor('password'); track message) {
+            <p class="field-error">{{ message }}</p>
+          }
+        </label>
+        <p class="hint">Signs them out everywhere and asks them to change this password on next sign-in.</p>
+      } @else {
+        <p class="hint">
+          We'll email a link to choose a new password. Needs a configured mail sender and a verified email.
+        </p>
+        @if (resetEmailUnavailable()) {
+          <p class="field-error">
+            No mail sender is configured — switch to “Set a new password now”, or configure email first.
+          </p>
+        }
+        @if (resetEmailUnverified()) {
+          <p class="field-error">
+            This account's email isn't verified — set a new password directly instead.
+          </p>
+        }
+      }
+
+      @if (dialogError() && !resetEmailUnavailable() && !resetEmailUnverified()) {
+        <p class="error" role="alert">{{ dialogError() }}</p>
+      }
+    </div>
+    <div class="foot">
+      <cove-button variant="ghost" (click)="resetTarget.set(null)">Cancel</cove-button>
+      <cove-button variant="primary" [disabled]="resetting() || !canReset()" (click)="submitReset()">
+        {{ resetSendLink() ? 'Send reset link' : 'Reset password' }}
+      </cove-button>
+    </div>
+  }
 </cove-modal>
 
 <!-- Change role -->

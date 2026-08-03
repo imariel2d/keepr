@@ -84,6 +84,22 @@ export class Admin {
    *  double-click can't fire a second POST. */
   protected readonly resendingId = signal<string | null>(null);
 
+  // Reset-password modal. Direct mode sets a new password; link mode emails a reset link.
+  protected readonly resetTarget = signal<AdminUserListItem | null>(null);
+  protected readonly resetSendLink = signal(false);
+  protected readonly resetPwd = signal('');
+  protected readonly showResetPwd = signal(false);
+  protected readonly resetting = signal(false);
+  protected readonly resetFieldErrors = signal<Record<string, string[]>>({});
+  /** Set from a link-mode 409: no mailer configured, or the account's email isn't verified. */
+  protected readonly resetEmailUnavailable = signal(false);
+  protected readonly resetEmailUnverified = signal(false);
+  protected readonly canReset = computed(() =>
+    this.resetSendLink() || [...this.resetPwd()].length >= MIN_PASSWORD_LENGTH);
+  protected readonly resetPasswordRequirements = computed(() => [
+    { label: `At least ${MIN_PASSWORD_LENGTH} characters`, met: [...this.resetPwd()].length >= MIN_PASSWORD_LENGTH },
+  ]);
+
   // Remove (kick) modal. The admin must retype the target email — a guardrail for an action that
   // permanently deletes the account and all its files.
   protected readonly kickTarget = signal<AdminUserListItem | null>(null);
@@ -248,6 +264,68 @@ export class Admin {
       }
     } finally {
       this.resendingId.set(null);
+    }
+  }
+
+  // ---- reset password ------------------------------------------------------
+
+  protected openReset(u: AdminUserListItem): void {
+    this.resetTarget.set(u);
+    this.resetSendLink.set(false);
+    this.resetPwd.set('');
+    this.showResetPwd.set(false);
+    this.resetFieldErrors.set({});
+    this.resetEmailUnavailable.set(false);
+    this.resetEmailUnverified.set(false);
+    this.dialogError.set(null);
+  }
+
+  protected setResetSendLink(send: boolean): void {
+    this.resetSendLink.set(send);
+    this.dialogError.set(null);
+    this.resetEmailUnavailable.set(false);
+    this.resetEmailUnverified.set(false);
+    // Clear the stale "password too short" hint when switching to link mode.
+    if (send) this.resetFieldErrors.update((e) => ({ ...e, password: [] }));
+  }
+
+  protected resetErrorsFor(field: string): string[] {
+    return this.resetFieldErrors()[field] ?? [];
+  }
+
+  protected async submitReset(): Promise<void> {
+    const u = this.resetTarget();
+    if (!u || !this.canReset()) return;
+    this.resetting.set(true);
+    this.dialogError.set(null);
+    this.resetFieldErrors.set({});
+    this.resetEmailUnavailable.set(false);
+    this.resetEmailUnverified.set(false);
+    try {
+      await this.api.resetPassword(u.id, {
+        sendLink: this.resetSendLink(),
+        password: this.resetSendLink() ? undefined : this.resetPwd(),
+      });
+      this.resetTarget.set(null);
+      this.notice.set(
+        this.resetSendLink()
+          ? `Reset link sent to ${u.email}.`
+          : `Password reset for ${u.email} — they'll be asked to change it on next sign-in.`);
+      await this.load();
+    } catch (e) {
+      const fieldErrors = validationErrors(e);
+      if (Object.keys(fieldErrors).length > 0) {
+        this.resetFieldErrors.set(fieldErrors);
+        return;
+      }
+      // Link mode returns two coded 409s; key off the code so the right hint shows (and a
+      // not-yet-claimed 409, which carries no code, falls through to the generic message).
+      const code = problemCode(e);
+      this.resetEmailUnavailable.set(code === 'email_not_configured');
+      this.resetEmailUnverified.set(code === 'email_unverified');
+      this.dialogError.set(problemDetail(e, 'Could not reset the password.'));
+    } finally {
+      this.resetting.set(false);
     }
   }
 

@@ -53,6 +53,16 @@ export class AdminService {
   }
 
   /**
+   * Resets a user's password. Direct mode (`sendLink:false`) sets a new password and forces a change
+   * on the user's next sign-in; link mode emails a reset link (needs a mailer *and* a verified
+   * account). 200 (direct) / 202 (link); 400 validation; 409 not-yet-claimed / `email_not_configured`
+   * / `email_unverified`; 502 send failed. See docs/feature-26-password-reset.md §6.
+   */
+  resetPassword(id: string, req: { sendLink: boolean; password?: string }): Promise<void> {
+    return firstValueFrom(this.http.post<void>(`/api/admin/users/${id}/reset-password`, req));
+  }
+
+  /**
    * Kicks a user: revokes their sessions now and queues the account (and its files) for permanent
    * deletion. 202 on success; 400 kicking yourself; 409 removing the last admin.
    */
