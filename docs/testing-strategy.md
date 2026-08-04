@@ -2,7 +2,8 @@
 
 **Status:** ✅ landed on branch `test/ci-unit-e2e` — Phase 1 (CI + unit expansion), Phase 2
 (Playwright scaffold + journey A), and Phase 3 (journeys **B** auth/session, **C**
-files/folders/trash/sharing, **D** admin console) are all in place.
+files/folders/trash/sharing, **D** admin console) are all in place. Journey **E** (self-service
+password reset, feature #26) was added alongside that feature.
 Not a single-feature doc, so it takes a plain name (see the **docs-naming** skill).
 
 How Keepr is tested, and what runs in CI on every push to `main` and every pull request.
@@ -103,6 +104,29 @@ live session dies (next navigation bounces to `/login`). *Audit entries are writ
 but have no read surface in the app (no admin audit view or endpoint), so they aren't asserted
 end-to-end; the write path is exercised server-side.*
 
+### E. Forgot password → reset by email (feature #26)
+The self-service reset, end to end through Angular → API → Postgres → Mailpit. `forgot-password`
+only mints a link for an `EmailVerified` account, and only invite-claim verifies one, so the journey
+first mints a verified user via invite → claim, then resets.
+1. **Mint a verified account.** Admin invites `resetuser@…` (email invite); the invitee reads the
+   invite from Mailpit, opens the claim link, sets a password → `/files`. Claiming sets
+   `EmailVerified = true`.
+2. **Request a reset.** On `/login` the *Forgot password?* link is shown (capabilities →
+   `selfServiceReset: true`, because env-SMTP is on). Submit the email at `/forgot-password` → the
+   always-neutral *"Check your email"* confirmation. Mailpit → **exactly one** message, subject
+   *"Reset your Keepr password"*, containing a `/reset-password/{token}` link.
+3. **Complete the reset.** Open the link → the form is primed read-only with the account address; set
+   a new password → redirect to `/files`, authenticated.
+4. **Invariants.** The old (pre-reset) password no longer signs in (inline error, still `/login`);
+   the new one does; re-opening the used reset link shows **Link not valid** (single-use); and a
+   `forgot-password` for an unknown address still returns a neutral `202` with **no** email sent
+   (the no-oracle property at the delivery boundary).
+
+*Not covered here: the **admin manual-reset** path (§6 of the design) and the `/admin/email`
+**runtime-provider** send. The latter can't run against Mailpit by design — the stored providers are
+Resend/Brevo/Mailgun (HTTP) and SMTP is excluded as a stored provider — so it stays a manual live run
+against a real provider key.*
+
 ## CI (`.github/workflows/ci.yml`)
 
 Triggers: `push` to `main` and every `pull_request`. Concurrency cancels superseded PR runs.
@@ -112,7 +136,7 @@ Coverage is reported (cobertura artifact) but **never gates** — only a failing
 - **`e2e`** — bring the compose stack + Mailpit up → wait for the API/SPA/Mailpit to answer →
   `actions/setup-node@v4` (Node 22) → `playwright install --with-deps chromium` → `playwright test`
   → on failure upload the HTML report and dump service logs → `compose down -v`. *(Phases 2–3 —
-  landed; runs the setup project + journeys A–D.)*
+  landed; runs the setup project + journeys A–E.)*
 
 ## Phasing
 
