@@ -135,8 +135,8 @@ ships, not after.
 **Account management (#26–29)** clusters around one prerequisite: **email verification** (Q-V6).
 Reset-password (#26) **is now done and verified** ([feature-26-password-reset.md](feature-26-password-reset.md)):
 it delivers the `EmailVerified` flag that unblocks the cluster, and its self-service flow is covered
-end-to-end by Playwright journey E against the Mailpit overlay. Change-email (#27) inherits that same
-flag when built. Change-password (#28) and
+end-to-end by Playwright journey E against the Mailpit overlay. Change-email (#27) now reuses that
+same flag (its backend is built + verified). Change-password (#28) and
 profile names (#29) are already done. Sequence: #26 delivered verification → **#27's backend is now
 built + verified** ([feature-27-change-email.md](feature-27-change-email.md)) and reuses it; its
 **Angular UI** (the `/profile` change-email panel + `/confirm-email/:token` page) **is next**.

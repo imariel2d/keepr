@@ -38,6 +38,11 @@ public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 /// <param name="CurrentPassword">The existing password, re-verified before the change (#27 §3).</param>
 public record ChangeEmailRequest(string NewEmail, string CurrentPassword);
 
+/// <summary>The staged (mail-on) change-email response: the address a confirmation link was sent to.
+/// The change isn't applied until that link is confirmed (§5.1).</summary>
+/// <param name="PendingEmail">The new address awaiting confirmation.</param>
+public record EmailChangePendingResponse(string PendingEmail);
+
 [ApiController]
 [Authorize]
 [Route("api/me")]
@@ -153,7 +158,7 @@ public class MeController(
     [HttpPost("email")]
     [EnableRateLimiting(RateLimiterPolicies.ChangeEmail)]
     [ProducesResponseType<ProfileResponse>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType<EmailChangePendingResponse>(StatusCodes.Status202Accepted)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -177,26 +182,55 @@ public class MeController(
         if (await db.Users.AnyAsync(u => u.Email == newEmail && u.Id != user.Id, ct))
             return Coded(StatusCodes.Status409Conflict, "email_in_use", "That email is already in use.");
 
+        // The AnyAsync check above isn't atomic with the write below, so a concurrent
+        // registration/change can still take newEmail first; the unique Users.Email index then rejects
+        // our write. Each branch runs in a transaction and maps that DbUpdateException to the documented
+        // 409 (never a raw 500), the same guard the confirm path uses. The transaction also keeps the
+        // supersede-delete and the write atomic, so a failed write can't leave a prior pending link
+        // dropped with nothing applied.
+
         // Mail off → apply immediately, marked unverified (there is no channel to prove the new inbox).
         if (!await emailSettings.IsEnabledAsync(ct))
         {
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
             user.Email = newEmail;
             user.EmailVerified = false;
             await emailChanges.RemoveExistingAsync(user.Id, ct); // any prior pending confirm is moot
-            await db.SaveChangesAsync(ct);
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException)
+            {
+                return Coded(StatusCodes.Status409Conflict, "email_in_use", "That email is already in use.");
+            }
+            await tx.CommitAsync(ct);
             return Ok(await ToProfileAsync(user, ct));
         }
 
         // Mail on → stage it (verify-before-commit): supersede any prior pending change, mint a token,
         // commit, then send the confirmation to the NEW address off the request path (like the reset
         // send) so the response returns promptly and a transport hiccup is non-fatal (§5.1).
-        await emailChanges.RemoveExistingAsync(user.Id, ct);
-        var (token, raw) = emailChanges.Build(user.Id, newEmail);
-        db.EmailChangeTokens.Add(token);
-        await db.SaveChangesAsync(ct);
-
-        DispatchConfirmationEmail(newEmail, raw);
-        return Accepted(new { pendingEmail = newEmail });
+        await using (var tx = await db.Database.BeginTransactionAsync(ct))
+        {
+            await emailChanges.RemoveExistingAsync(user.Id, ct);
+            var (token, raw) = emailChanges.Build(user.Id, newEmail);
+            db.EmailChangeTokens.Add(token);
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException)
+            {
+                // A concurrent request from the same account won the one-live-token slot (the partial
+                // unique index on EmailChangeTokens.UserId). The rollback preserves that live token.
+                return Coded(StatusCodes.Status409Conflict, "email_change_pending",
+                    "A change to your email is already pending. Cancel it or use the link we sent, then try again.");
+            }
+            await tx.CommitAsync(ct);
+            DispatchConfirmationEmail(newEmail, raw);
+        }
+        return Accepted(new EmailChangePendingResponse(newEmail));
     }
 
     /// <summary>Cancels a pending (unconfirmed) email change, dropping the token so its emailed link

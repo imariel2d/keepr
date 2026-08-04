@@ -289,10 +289,13 @@ The state transitions, stated once:
 | verified or not | Mail-off request | `newEmail` | **`false`** (unproven, no channel) |
 | any | Admin change-email (§6) | `newEmail` | **`false`** |
 
-The only path that yields `EmailVerified = true` is clicking a link delivered to the new address —
-the same single rule #26 established. An email change therefore never fabricates verification; it
-either proves the new address or marks it unproven, and the account simply routes to admin reset until
-some later verification (its own #27 confirm, or a future "verify my email" action, #26 Q-26-4).
+Within the change-email flow, the only path that yields `EmailVerified = true` is clicking a link
+delivered to the new address — the same single rule #26 established. (Password reset also assigns the
+flag, but only on an account that is *already* verified, so it re-asserts rather than grants it: every
+path that sets `EmailVerified` first proves inbox control, and none weakens the invariant.) An email
+change therefore never fabricates verification; it either proves the new address or marks it unproven,
+and the account simply routes to admin reset until some later verification (its own #27 confirm, or a
+future "verify my email" action, #26 Q-26-4).
 
 ---
 
@@ -334,7 +337,7 @@ sharing, trash, `AccountInvites`, or `PasswordResetTokens`.
 
 | Endpoint | Auth | New? |
 |---|---|---|
-| `POST /api/me/email` | user | new — request a change; `202` staged (mail on) or `200` applied (mail off); `400`/`409` (§5.1) |
+| `POST /api/me/email` | user | new — request a change; `202` staged (mail on) or `200` applied (mail off); `400`/`409`/`429` (§5.1) |
 | `DELETE /api/me/email` | user | new — cancel a pending change; `204`/`404` (§5.4) |
 | `GET /api/auth/confirm-email/{token}` | anon (token) | new — prime the confirm form; `410` opaque (§5.2) |
 | `POST /api/auth/confirm-email/{token}` | anon (token) | new — apply the change + verify; `410`/`409` (§5.3) |
@@ -410,9 +413,10 @@ Steps 1–3 are the whole self-service story; step 4 is independent.
 "End-to-end" here is the whole journey across the boundaries this feature crosses: Angular → API →
 Postgres → the email provider → back to the screen. The repo now has a **Playwright** suite with a
 **Mailpit** overlay (`docker-compose.e2e.yml`, see [testing-strategy.md](testing-strategy.md)), so —
-unlike #26 when it was written — the mail-on path is fully automatable: a new **journey F** drives it
-and reads the confirmation email from Mailpit. Pure functions (`EmailChangeToken.IsUsable`, the two
-templates) are unit-tested in `tests/Api.Tests`. Each scenario names its concrete expected output.
+unlike #26 when it was written — the mail-on path is fully automatable: a **journey F** (planned, lands
+with the frontend) will drive it and read the confirmation email from Mailpit. The pure functions
+(`EmailChangeToken.IsUsable`, the two templates) **are** unit-tested in `tests/Api.Tests` (added with
+the backend). Each scenario names its concrete expected output.
 
 ### 14.1 Happy path — mail configured (verify-before-commit)
 
@@ -457,8 +461,10 @@ templates) are unit-tested in `tests/Api.Tests`. Each scenario names its concret
 | E8 | Repeat *Change email* while one is pending | **`202`**; the prior token is superseded (one-live partial index), the **old** link now `410`s, only the newest works. A lost race maps to a clean response, not a 500. |
 | E9 | `GET` the confirm link (prefetch) then never `POST` | `GET` returns `200` and **changes nothing**; the change lands only on `POST`. |
 | E10 | Cancel a pending change (`DELETE /api/me/email`) | **`204`**; row deleted; the emailed link now `410`s. `DELETE` with nothing pending → **`404`**. |
-| E11 | Rate limit exceeded (>5 requests/15 min for one user) | **`429`**; no token minted for the throttled requests. |
+| E11 | Rate limit exceeded (>5 requests/15 min for one user) | **`429`** with an `application/problem+json` body (a `detail` the client can show); no token minted for the throttled requests. |
 | E12 | Transport failure sending the confirm email (mail on) | Still **`202`** (the row exists; *Resend* supersedes/retries); logged, not surfaced. |
+| E13 | **Concurrent request race for the new address** (mail-off): two accounts pass the existence check for the same address, both write | The loser's write hits the unique `Users.Email` index; each request runs in a transaction that maps the `DbUpdateException` to **`409`** `{ code: "email_in_use" }` and rolls back (email unchanged) — **never a raw 500**, matching the confirm path. |
+| E14 | **Concurrent same-account requests** (mail-on): two requests both supersede then insert a token | One wins (**`202`**); the other loses the one-live-token slot (partial unique index) and its transaction rolls back — preserving the winner's live token — returning **`409`** `{ code: "email_change_pending" }`, not a 500. |
 
 ### 14.4 Invariants (must hold across all of the above)
 
@@ -479,11 +485,12 @@ templates) are unit-tested in `tests/Api.Tests`. Each scenario names its concret
 
 ### 14.5 What gets automated vs. run by hand
 
-- **Automated (`tests/Api.Tests`, pure functions):** `EmailChangeToken.IsUsable`
-  (unused/expired/spent) and the two templates (`ConfirmEmailChange`, `EmailChanged` — link in both
-  bodies, expiry text, the reassurance/heads-up lines). Mirrors `PasswordResetToken` / `EmailTemplates`
-  tests.
-- **Automated (Playwright **journey F**, mail-on):** §14.1 end to end — request from `/profile`, read
+- **Automated (`tests/Api.Tests`, pure functions) — done:** `EmailChangeToken.IsUsable`
+  (unused/expired/spent); `ConfirmEmailChange` (the confirm link in both bodies, expiry text, the
+  reassurance line); `EmailChanged` (the masked address + the "contact your admin" heads-up, no link,
+  and HTML-encoding of the value); and `EmailChangeService.Mask`. Mirrors `PasswordResetToken` /
+  `EmailTemplates` tests.
+- **Automated (Playwright **journey F**, mail-on) — planned, lands with the frontend:** §14.1 end to end — request from `/profile`, read
   the confirm email from Mailpit, `GET` prime, `POST` confirm, then assert new-email sign-in works, old
   fails, the link `410`s, and the old-address heads-up arrived. Plus E5–E8, E10 through the API. Runs
   in the `e2e` CI job on a fresh stack (default `Provider=None` → env-SMTP → Mailpit).

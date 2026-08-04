@@ -189,12 +189,24 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("Admin", p => p.RequireClaim(KeeprClaims.Role, nameof(Role.Admin)));
 });
 
-// Rate limiting. Currently just the public forgot-password endpoint (#26): a fixed window per client
-// IP so a single source can't enumerate accounts or drive a flood of outbound reset mail. A rejected
-// request gets 429; every other endpoint is unlimited. See docs/feature-26-password-reset.md §5.1.
+// Rate limiting. The public forgot-password endpoint (#26, per client IP) and the authenticated
+// change-email request (#27, per user) each get a fixed window; every other endpoint is unlimited. A
+// rejected request gets a 429 carrying an application/problem+json body, so the client has an
+// error.detail to show rather than a bare status. See docs/feature-26-password-reset.md §5.1 and
+// docs/feature-27-change-email.md §5.1.
 builder.Services.AddRateLimiter(o =>
 {
-    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.OnRejected = async (context, token) =>
+    {
+        var response = context.HttpContext.Response;
+        response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await response.WriteAsJsonAsync(new Microsoft.AspNetCore.Mvc.ProblemDetails
+        {
+            Status = StatusCodes.Status429TooManyRequests,
+            Title = "Too many requests",
+            Detail = "You've made too many requests. Please wait a little while and try again."
+        }, (System.Text.Json.JsonSerializerOptions?)null, "application/problem+json", token);
+    };
     o.AddPolicy(RateLimiterPolicies.ForgotPassword, http =>
         RateLimitPartition.GetFixedWindowLimiter(
             // Key on the real client IP, not the App Platform proxy — see ClientPartitionKey.

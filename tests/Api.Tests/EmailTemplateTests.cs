@@ -133,4 +133,15 @@ public class EmailTemplateTests
         Assert.DoesNotContain("<a href", content.HtmlBody);
         Assert.Contains("contact your admin", content.TextBody);
     }
+
+    [Fact]
+    public void EmailChanged_html_encodes_the_masked_address()
+    {
+        // The masked address is rendered into the HTML body, so a crafted value must be encoded and
+        // never land as live markup — the same guard the invite template has.
+        var content = EmailTemplates.EmailChanged("<script>x</script>");
+
+        Assert.DoesNotContain("<script>", content.HtmlBody);
+        Assert.Contains("&lt;script&gt;", content.HtmlBody);
+    }
 }

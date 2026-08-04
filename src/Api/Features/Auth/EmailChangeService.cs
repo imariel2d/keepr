@@ -45,10 +45,12 @@ public class EmailChangeService(
         return (token, raw);
     }
 
-    /// <summary>Drops any prior pending change for a user so a new request (or a cancel) supersedes the
-    /// old link (§5.1/§5.4).</summary>
+    /// <summary>Drops the user's <b>live</b> (unused) pending change so a new request supersedes the old
+    /// link (§5.1). Filtered to <c>UsedAt == null</c> so a confirmed change's spent row survives as
+    /// history — matching the one-live partial unique index and <c>MeController.CancelEmailChange</c>,
+    /// which "supersede" and "cancel" both mean "drop the live token".</summary>
     public Task<int> RemoveExistingAsync(Guid userId, CancellationToken ct) =>
-        db.EmailChangeTokens.Where(t => t.UserId == userId).ExecuteDeleteAsync(ct);
+        db.EmailChangeTokens.Where(t => t.UserId == userId && t.UsedAt == null).ExecuteDeleteAsync(ct);
 
     /// <summary>Renders and sends the confirmation email to the <b>new</b> address via the currently
     /// configured provider. Throws on transport failure — the caller treats that as non-fatal (the 202
