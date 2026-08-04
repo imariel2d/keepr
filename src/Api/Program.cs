@@ -107,6 +107,12 @@ if (emailCfg.ResetExpiryMinutes is < 1 or > 1440)
     throw new InvalidOperationException(
         "Email__ResetExpiryMinutes must be between 1 and 1440 (minutes; 1440 = 24 hours).");
 
+// The change-email confirmation link is longer-lived than a reset (24 h default) but still bounded;
+// reject a nonsensical lifetime at boot the same way. See docs/feature-27-change-email.md §5.5.
+if (emailCfg.EmailChangeExpiryMinutes is < 1 or > 10080)
+    throw new InvalidOperationException(
+        "Email__EmailChangeExpiryMinutes must be between 1 and 10080 (minutes; 10080 = 7 days).");
+
 // Outbound email is chosen PER SEND by EmailSenderFactory, not bound at boot (#36), so a provider
 // switch in /admin/email takes effect immediately. API keys are encrypted at rest with Data
 // Protection, its key ring persisted to Postgres so it survives restarts/redeploys and works across
@@ -139,6 +145,9 @@ builder.Services.AddScoped<CredentialValidator>();
 builder.Services.AddScoped<InviteService>();
 // Password reset: token minting, the reset email, and resolve. See feature-26.
 builder.Services.AddScoped<PasswordResetService>();
+// Change email: pending-change token minting, the confirmation + old-address notice emails, and
+// resolve. See feature-27.
+builder.Services.AddScoped<EmailChangeService>();
 
 // Seeds the first admin at startup (env Admin__Email/Password) so the console is reachable on a
 // fresh deployment where signups are invite-gated. See docs/feature-34-admin-console.md §3.
@@ -190,6 +199,16 @@ builder.Services.AddRateLimiter(o =>
         RateLimitPartition.GetFixedWindowLimiter(
             // Key on the real client IP, not the App Platform proxy — see ClientPartitionKey.
             partitionKey: RateLimiterPolicies.ClientPartitionKey(http),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0
+            }));
+    // Authenticated change-email request (#27): partitioned per user, since it's behind [Authorize].
+    o.AddPolicy(RateLimiterPolicies.ChangeEmail, http =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: RateLimiterPolicies.UserPartitionKey(http),
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 5,
