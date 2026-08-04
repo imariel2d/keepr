@@ -3,8 +3,8 @@
 Tracking the planned feature set against what is actually implemented in the codebase.
 
 Keepr is a **personal media store** with a folder hierarchy, rename, and a 10-day trash:
-single-owner (no user-to-user sharing yet). Of the 36 planned features, **14 are complete**
-(backend + UI), 2 are partial (built, verification or per-screen work remaining), and 20 are not started.
+single-owner (no user-to-user sharing yet). Of the 38 planned features, **14 are complete**
+(backend + UI), 2 are partial (built, verification or per-screen work remaining), and 22 are not started.
 
 **Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
@@ -61,6 +61,8 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 | 14 | Starred/favorites | ❌ | No flag on `MediaFile` |
 | 15 | "Recent" and "Shared with me" views | ❌ | List is sorted newest-first, but no dedicated views; sharing doesn't exist |
 | 16 | Thumbnail generation | ❌ | Docs note post-processing is deferred |
+| 37 | Media-type views (Images / Videos / Documents) in My Files | ❌ | Sub-navigation under **My Files** (the `files` entry in `app.ts`'s sidebar) for **Images**, **Videos**, and **Documents** — each a filtered flat view of the owner's whole tree by `MediaFile.ContentType` (`image/*`, `video/*`, and a document allowlist, reusing `PreviewPolicy`'s categories). Backend: a type-filtered listing (a `type=` param on the existing list, or a small dedicated endpoint). UI: the three sidebar children (+ `aria-current`) driving the flat results-grid mode #9 already introduced (per-hit location, marquee/DnD gated off). No new data — `ContentType` is already stored |
+| 38 | PDF thumbnail previews | ❌ | A small rendered first-page preview for PDF files in the grid — today PDFs show a generic file icon; only images get a size-capped inline thumbnail (#10). Needs server-side first-page rasterization (a PDF render step via a library/sidecar), cached like any other derivative. A specialization of **#16** thumbnail generation, which currently reuses the original image and skips non-images |
 
 ## Tier 4 — Collaboration layer
 
@@ -113,7 +115,7 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
   Mailpit; only the `/admin/email` runtime-provider **send** remains, and that can't be automated
   (Mailpit is SMTP-only; the stored providers are HTTP) — it needs a one-off manual live run against
   a real provider key.
-- **Not started (20):** everything else. **Tier 1 is complete.**
+- **Not started (22):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2
 
