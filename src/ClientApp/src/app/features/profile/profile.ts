@@ -3,8 +3,11 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ProfileService } from '../../core/profile.service';
 import { ProfileStore } from '../../core/profile.store';
 import { EmailChangeService } from '../../core/email-change.service';
+import { LocaleService } from '../../core/locale.service';
+import { Locale } from '../../core/locale';
 import { MIN_PASSWORD_LENGTH } from '../../core/password-policy';
-import { problemDetail, validationErrors } from '../../core/problem-details';
+import { errorMessage, problemDetail, validationErrors } from '../../core/problem-details';
+import { LanguageSwitcher } from '../i18n/language-switcher';
 import { ButtonComponent } from '../../cove/lib/button/button.component';
 import { InputComponent } from '../../cove/lib/input/input.component';
 import { IconComponent } from '../../cove/lib/icon/icon.component';
@@ -18,7 +21,7 @@ import { AvatarComponent } from '../../cove/lib/avatar/avatar.component';
  */
 @Component({
   selector: 'app-profile',
-  imports: [ButtonComponent, InputComponent, IconComponent, AvatarComponent],
+  imports: [ButtonComponent, InputComponent, IconComponent, AvatarComponent, LanguageSwitcher],
   templateUrl: './profile.html',
   styleUrl: './profile.scss',
 })
@@ -26,6 +29,7 @@ export class Profile {
   private readonly api = inject(ProfileService);
   private readonly store = inject(ProfileStore);
   private readonly emailChanges = inject(EmailChangeService);
+  protected readonly locale = inject(LocaleService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -107,13 +111,36 @@ export class Profile {
     this.nameNotice.set(null);
     this.nameError.set(null);
     try {
-      const updated = await this.api.update(this.firstName().trim() || null, this.lastName().trim() || null);
+      const updated = await this.api.update(
+        this.firstName().trim() || null,
+        this.lastName().trim() || null,
+        this.profile()?.preferredLanguage ?? null // full-replace: keep the stored language untouched
+      );
       this.store.set(updated);
-      this.nameNotice.set('Profile saved.');
+      this.nameNotice.set($localize`:@@profile.name.saved:Profile saved.`);
     } catch (e) {
-      this.nameError.set(problemDetail(e, 'Could not save your profile.'));
+      this.nameError.set(errorMessage(e));
     } finally {
       this.savingName.set(false);
+    }
+  }
+
+  // Language (#30). The switcher persists the choice to the account, then reloads into that locale's
+  // build (compile-time i18n has no in-place swap). Uses the stored names so it never disturbs them.
+  protected readonly savingLanguage = signal(false);
+  protected readonly languageError = signal<string | null>(null);
+
+  protected async changeLanguage(locale: Locale): Promise<void> {
+    const p = this.profile();
+    if (!p || this.savingLanguage() || locale === this.locale.current) return;
+    this.savingLanguage.set(true);
+    this.languageError.set(null);
+    try {
+      await this.api.update(p.firstName, p.lastName, locale);
+      this.locale.switchTo(locale); // persists cookie + reloads into /{locale}/
+    } catch (e) {
+      this.languageError.set(errorMessage(e));
+      this.savingLanguage.set(false);
     }
   }
 

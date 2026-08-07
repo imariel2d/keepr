@@ -15,9 +15,15 @@ export class ProfileService {
     return firstValueFrom(this.http.get<ProfileResponse>('/api/me/profile'));
   }
 
-  update(firstName: string | null, lastName: string | null): Promise<ProfileResponse> {
+  /** Full-replace of the profile fields (#29/#30): every call sends the whole set, so a blank value
+   *  clears it. `preferredLanguage` null → the default (English); an unsupported code → 400. */
+  update(
+    firstName: string | null,
+    lastName: string | null,
+    preferredLanguage: string | null
+  ): Promise<ProfileResponse> {
     return firstValueFrom(
-      this.http.patch<ProfileResponse>('/api/me/profile', { firstName, lastName })
+      this.http.patch<ProfileResponse>('/api/me/profile', { firstName, lastName, preferredLanguage })
     );
   }
 

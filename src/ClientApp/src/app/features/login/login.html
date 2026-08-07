@@ -2,25 +2,26 @@
   <div class="auth-card">
     <div class="head">
       <img class="mark" src="cove-mark.svg" alt="" width="56" height="56" aria-hidden="true" />
-      <h1>Welcome back</h1>
-      <p class="sub">Sign in to your Keepr account.</p>
+      <h1 i18n="@@login.title">Welcome back</h1>
+      <p class="sub" i18n="@@login.subtitle">Sign in to your Keepr account.</p>
     </div>
 
     <form (submit)="submit($event)">
       <div class="field">
-        <label for="email">Email</label>
+        <label for="email" i18n="@@login.email.label">Email</label>
         <cove-input
           icon="mail"
           type="email"
           name="email"
           autocomplete="email"
           placeholder="you@example.com"
+          i18n-placeholder="@@login.email.placeholder"
           [value]="email()"
           (valueChange)="email.set($event)" />
       </div>
 
       <div class="field">
-        <label for="password">Password</label>
+        <label for="password" i18n="@@login.password.label">Password</label>
         <cove-input
           icon="lock"
           [type]="showPassword() ? 'text' : 'password'"
@@ -33,7 +34,7 @@
             trailing
             type="button"
             class="reveal"
-            [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+            [attr.aria-label]="revealLabel()"
             [attr.aria-pressed]="showPassword()"
             (click)="showPassword.set(!showPassword())">
             @if (showPassword()) {
@@ -47,9 +48,9 @@
 
       <div class="forgot">
         @if (selfServiceReset()) {
-          <a routerLink="/forgot-password">Forgot password?</a>
+          <a routerLink="/forgot-password" i18n="@@login.forgot.link">Forgot password?</a>
         } @else {
-          <span class="muted">Forgot your password? Contact your admin to reset it.</span>
+          <span class="muted" i18n="@@login.forgot.admin">Forgot your password? Contact your admin to reset it.</span>
         }
       </div>
 
@@ -61,12 +62,16 @@
       }
 
       <cove-button variant="primary" size="lg" [disabled]="busy()" class="submit">
-        {{ busy() ? 'Please wait…' : 'Sign in' }}
+        {{ submitLabel() }}
       </cove-button>
     </form>
 
-    <p class="switch">
+    <p class="switch" i18n="@@login.no_account">
       Need an account? Ask a Keepr admin to set one up for you.
     </p>
+
+    <div class="lang-row">
+      <app-language-switcher (localeSelect)="locale.switchTo($event)" />
+    </div>
   </div>
 </section>

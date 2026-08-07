@@ -42,6 +42,14 @@
         <cove-button variant="primary" [disabled]="savingName()" (click)="saveName()">Save</cove-button>
       </div>
     </div>
+
+    <!-- Language (#30) -->
+    <div class="card">
+      <h2 i18n="@@profile.language.title">Language</h2>
+      <p class="card-sub" i18n="@@profile.language.sub">The language Keepr is shown in. Changing it reloads the app.</p>
+      <app-language-switcher (localeSelect)="changeLanguage($event)" />
+      @if (languageError()) { <p class="error" role="alert">{{ languageError() }}</p> }
+    </div>
   }
 
   <!-- Password -->

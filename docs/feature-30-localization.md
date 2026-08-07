@@ -1,19 +1,32 @@
 # Localization (i18n) — English / Spanish / French — Design
 
-> Feature #30 in [feature-status.md](feature-status.md). Status: **🟡 Designed; backend
-> preferred-language slice built** (design 2026-08-07, backend 2026-08-07). Supersedes the old #30
-> scope ("Spanish language") with full localization into **English (default), Spanish, and French**,
-> covering both **client UI copy** and **user-facing server errors**, plus a **per-user preferred
-> language**.
+> Feature #30 in [feature-status.md](feature-status.md). Status: **🟡 Backend done; client foundation
+> + login localized** (design 2026-08-07, backend 2026-08-07, client foundation 2026-08-07). Supersedes
+> the old #30 scope ("Spanish language") with full localization into **English (default), Spanish, and
+> French**, covering both **client UI copy** and **user-facing server errors**, plus a **per-user
+> preferred language**.
 >
-> **Built so far (backend):** `User.PreferredLanguage` (nullable) + the `AddPreferredLanguage`
-> migration; `SupportedLanguages` (the pure `en`/`es`/`fr` validator, unit-tested); `ProfileResponse`
-> gains `preferredLanguage`; `PATCH /api/me/profile` accepts + validates it (`400 invalid_language`
-> on an unsupported code). **The server error-`code` sweep is done** (§5): the `ErrorCodes` registry +
-> `CodedProblem` extension in `src/Api/Http/`, every problem+json error across the 15 controllers and
-> the folder/trash/quota service exceptions now coded, guarded by a uniqueness test. **Not built
-> yet:** the whole client (`@angular/localize` setup, catalogs, switcher, locale serving in
-> `Program.cs`), the Phase-2 field-validation codes (§5.3), and emails (§10 P3).
+> **Built (backend):** `User.PreferredLanguage` (nullable) + the `AddPreferredLanguage` migration;
+> `SupportedLanguages` (the pure `en`/`es`/`fr` validator, unit-tested); `ProfileResponse` gains
+> `preferredLanguage`; `PATCH /api/me/profile` accepts + validates it (`400 invalid_language`); the
+> **server error-`code` sweep** (§5) — `ErrorCodes` + `CodedProblem` in `src/Api/Http/`, every
+> problem+json error across the 15 controllers and the folder/trash/quota service exceptions coded;
+> and the **locale-serving** change in `Program.cs` (§4.3) — `UseDefaultFiles` + a `/` → `/{locale}/`
+> redirect (`LocalePicker`, cookie-or-English) + per-locale SPA fallbacks.
+>
+> **Built (client foundation, §4):** `@angular/localize` wired (`angular.json` i18n block +
+> `"localize": true` production build + polyfill + `$localize` types); `core/locale.ts` +
+> `LocaleService` (current locale, cookie-persisting `switchTo` that reloads into `/{locale}/`); a
+> shared `LanguageSwitcher`; `errorMessage()` in `problem-details.ts` (code → `$localize` copy, server
+> `detail` fallback). The **login screen is fully localized** and the **/profile language card** wires
+> the switcher to `PATCH /api/me/profile`. `es`/`fr` XLIFF catalogs (machine-translated,
+> `needs-review`) — the production build emits `browser/{en,es,fr}/` with the right base hrefs and
+> per-locale copy (verified, no English leak in `es`); the Dockerfile carries all three unchanged.
+>
+> **Not built yet:** the remaining screens' copy (files, trash, admin, share viewer, the other auth
+> screens — still hardcoded English), the Phase-2 field-validation codes (§5.3), the client
+> bootstrap auto-redirect for a signed-in user whose account preference differs from the current build
+> (the server cookie redirect covers the same-browser case), and emails (§10 P3).
 >
 > Two load-bearing decisions the user made up front (see §2):
 >

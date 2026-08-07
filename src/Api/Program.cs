@@ -4,6 +4,7 @@ using Keepr.Api.Features.Auth;
 using Keepr.Api.Features.Email;
 using Keepr.Api.Features.Invites;
 using Keepr.Api.Features.Sharing;
+using Keepr.Api.Http;
 using Keepr.Api.OpenApi;
 using Keepr.Api.Services;
 using Keepr.Api.Storage;
@@ -266,9 +267,23 @@ app.UseRateLimiter();
 
 app.MapControllers();
 
-// ---- Serve the Angular SPA (built into wwwroot by the Dockerfile) ----------
+// ---- Serve the localized Angular SPA (per-locale builds wwwroot/{en,es,fr}, #30) ----
+// UseDefaultFiles rewrites a directory request like "/es/" to "/es/index.html" (only when that file
+// exists), so each locale's build is served from its own folder. There is no wwwroot/index.html any
+// more — the bare root is a redirect below.
 app.UseDefaultFiles();
 app.UseStaticFiles();
-app.MapFallbackToFile("index.html");
+
+// "/" (and any unprefixed entry) → the picked locale's build. Cookie-or-English (Q-30-3).
+app.MapGet("/", (HttpContext ctx) => Results.Redirect($"/{LocalePicker.Pick(ctx)}/"));
+
+foreach (var locale in LocalePicker.Supported)
+{
+    // Bare "/es" → "/es/" so the directory default-file + base href resolve.
+    app.MapGet($"/{locale}", () => Results.Redirect($"/{locale}/"));
+    // Deep links inside a locale (e.g. "/es/files") have no file on disk — serve that locale's SPA
+    // shell so Angular's router can take over. Per-locale so the right base href/bundle is returned.
+    app.MapFallbackToFile($"{locale}/{{*path}}", $"{locale}/index.html");
+}
 
 app.Run();

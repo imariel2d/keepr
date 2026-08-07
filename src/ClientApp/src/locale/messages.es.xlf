@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Spanish (es) catalog for #30. Machine-translated; every target is marked
+     state="needs-review-translation" pending a human pass (Q-30-4). Keep in step with
+     messages.xlf (the source) via `npm run extract-i18n` — the i18n-translations skill. -->
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file source-language="en" target-language="es" datatype="plaintext" original="ng2.template">
+    <body>
+      <trans-unit id="errors.invalid_credentials" datatype="html">
+        <source>Invalid credentials.</source>
+        <target state="needs-review-translation">Credenciales no válidas.</target>
+      </trans-unit>
+      <trans-unit id="errors.email_registered" datatype="html">
+        <source>Email already registered.</source>
+        <target state="needs-review-translation">Ese correo electrónico ya está registrado.</target>
+      </trans-unit>
+      <trans-unit id="errors.registration_closed" datatype="html">
+        <source>Registration is closed. Ask an admin to set up an account.</source>
+        <target state="needs-review-translation">El registro está cerrado. Pide a un administrador que cree una cuenta.</target>
+      </trans-unit>
+      <trans-unit id="errors.password_incorrect" datatype="html">
+        <source>Your current password is incorrect.</source>
+        <target state="needs-review-translation">Tu contraseña actual es incorrecta.</target>
+      </trans-unit>
+      <trans-unit id="errors.invalid_language" datatype="html">
+        <source>That isn&apos;t a supported language.</source>
+        <target state="needs-review-translation">Ese idioma no es compatible.</target>
+      </trans-unit>
+      <trans-unit id="errors.generic" datatype="html">
+        <source>Something went wrong. Please try again.</source>
+        <target state="needs-review-translation">Algo salió mal. Inténtalo de nuevo.</target>
+      </trans-unit>
+      <trans-unit id="lang.label" datatype="html">
+        <source>Language</source>
+        <target state="needs-review-translation">Idioma</target>
+      </trans-unit>
+      <trans-unit id="login.title" datatype="html">
+        <source>Welcome back</source>
+        <target state="needs-review-translation">Bienvenido de nuevo</target>
+      </trans-unit>
+      <trans-unit id="login.subtitle" datatype="html">
+        <source>Sign in to your Keepr account.</source>
+        <target state="needs-review-translation">Inicia sesión en tu cuenta de Keepr.</target>
+      </trans-unit>
+      <trans-unit id="login.email.label" datatype="html">
+        <source>Email</source>
+        <target state="needs-review-translation">Correo electrónico</target>
+      </trans-unit>
+      <trans-unit id="login.email.placeholder" datatype="html">
+        <source>you@example.com</source>
+        <target state="needs-review-translation">tu@ejemplo.com</target>
+      </trans-unit>
+      <trans-unit id="login.password.label" datatype="html">
+        <source>Password</source>
+        <target state="needs-review-translation">Contraseña</target>
+      </trans-unit>
+      <trans-unit id="login.forgot.link" datatype="html">
+        <source>Forgot password?</source>
+        <target state="needs-review-translation">¿Olvidaste tu contraseña?</target>
+      </trans-unit>
+      <trans-unit id="login.forgot.admin" datatype="html">
+        <source>Forgot your password? Contact your admin to reset it.</source>
+        <target state="needs-review-translation">¿Olvidaste tu contraseña? Contacta a tu administrador para restablecerla.</target>
+      </trans-unit>
+      <trans-unit id="login.no_account" datatype="html">
+        <source> Need an account? Ask a Keepr admin to set one up for you. </source>
+        <target state="needs-review-translation"> ¿Necesitas una cuenta? Pide a un administrador de Keepr que te cree una. </target>
+      </trans-unit>
+      <trans-unit id="common.please_wait" datatype="html">
+        <source>Please wait…</source>
+        <target state="needs-review-translation">Espera…</target>
+      </trans-unit>
+      <trans-unit id="login.submit" datatype="html">
+        <source>Sign in</source>
+        <target state="needs-review-translation">Iniciar sesión</target>
+      </trans-unit>
+      <trans-unit id="password.hide" datatype="html">
+        <source>Hide password</source>
+        <target state="needs-review-translation">Ocultar contraseña</target>
+      </trans-unit>
+      <trans-unit id="password.show" datatype="html">
+        <source>Show password</source>
+        <target state="needs-review-translation">Mostrar contraseña</target>
+      </trans-unit>
+      <trans-unit id="profile.language.title" datatype="html">
+        <source>Language</source>
+        <target state="needs-review-translation">Idioma</target>
+      </trans-unit>
+      <trans-unit id="profile.language.sub" datatype="html">
+        <source>The language Keepr is shown in. Changing it reloads the app.</source>
+        <target state="needs-review-translation">El idioma en que se muestra Keepr. Cambiarlo recarga la aplicación.</target>
+      </trans-unit>
+      <trans-unit id="profile.name.saved" datatype="html">
+        <source>Profile saved.</source>
+        <target state="needs-review-translation">Perfil guardado.</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

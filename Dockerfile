@@ -9,7 +9,9 @@ COPY src/ClientApp/package*.json ./
 RUN npm ci
 COPY src/ClientApp/ ./
 RUN npm run build -- --configuration production
-# Angular outputs to dist/ClientApp/browser; that dir becomes the API's wwwroot below.
+# Angular outputs to dist/ClientApp/browser; the production config is localized (#30), so that dir
+# holds one build per locale — browser/{en,es,fr}/ — and the whole tree becomes the API's wwwroot
+# below. Program.cs serves each locale from its own folder and redirects "/" to the picked one.
 
 # ---- Stage 2: build & publish the .NET API ---------------------------------
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS api

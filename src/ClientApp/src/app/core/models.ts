@@ -104,6 +104,8 @@ export interface ProfileResponse {
   mustChangePassword: boolean;
   emailVerified: boolean;
   pendingEmail: string | null;
+  /** Preferred UI locale ('en'|'es'|'fr'), or null for the default (English) (#30). */
+  preferredLanguage: string | null;
 }
 
 /** The staged (mail-on) change-email response: the address a confirmation link was sent to. The

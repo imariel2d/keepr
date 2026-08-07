@@ -25,3 +25,30 @@ export function validationErrors(e: unknown): Record<string, string[]> {
   const errors = (e as { error?: { errors?: Record<string, string[]> } })?.error?.errors;
   return errors && typeof errors === 'object' ? errors : {};
 }
+
+// Localized copy for the server's stable error `code`s (#30). Each entry is a `$localize` string,
+// translated in es/fr like any UI copy. The server owns the code (src/Api/Http/ErrorCodes.cs) and
+// keeps the English `detail` as the fallback; this map lets the client render the message in the
+// user's language instead. Grows as screens are localized — a code with no entry falls back to the
+// server `detail`, never a blank or a raw code. See docs/feature-30-localization.md §5.2.
+const ERROR_MESSAGES: Record<string, () => string> = {
+  invalid_credentials: () => $localize`:@@errors.invalid_credentials:Invalid credentials.`,
+  email_registered: () => $localize`:@@errors.email_registered:Email already registered.`,
+  registration_closed: () =>
+    $localize`:@@errors.registration_closed:Registration is closed. Ask an admin to set up an account.`,
+  password_incorrect: () =>
+    $localize`:@@errors.password_incorrect:Your current password is incorrect.`,
+  invalid_language: () => $localize`:@@errors.invalid_language:That isn't a supported language.`,
+};
+
+/**
+ * The localized, user-facing message for a failed call: the server's stable `code` mapped to
+ * translated copy, falling back to the server's English `detail`, then to a generic message. Prefer
+ * this over `problemDetail` anywhere the message is shown to a user (#30 §5.2).
+ */
+export function errorMessage(e: unknown): string {
+  const code = problemCode(e);
+  const mapped = code ? ERROR_MESSAGES[code] : undefined;
+  if (mapped) return mapped();
+  return problemDetail(e, $localize`:@@errors.generic:Something went wrong. Please try again.`);
+}

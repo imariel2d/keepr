@@ -1,9 +1,11 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { PasswordResetService } from '../../core/password-reset.service';
 import { ProfileStore } from '../../core/profile.store';
-import { problemDetail } from '../../core/problem-details';
+import { LocaleService } from '../../core/locale.service';
+import { errorMessage } from '../../core/problem-details';
+import { LanguageSwitcher } from '../i18n/language-switcher';
 import { ButtonComponent } from '../../cove/lib/button/button.component';
 import { InputComponent } from '../../cove/lib/input/input.component';
 import { IconComponent } from '../../cove/lib/icon/icon.component';
@@ -15,7 +17,7 @@ import { IconComponent } from '../../cove/lib/icon/icon.component';
  */
 @Component({
   selector: 'app-login',
-  imports: [RouterLink, ButtonComponent, InputComponent, IconComponent],
+  imports: [RouterLink, ButtonComponent, InputComponent, IconComponent, LanguageSwitcher],
   templateUrl: './login.html',
   styleUrl: './login.scss',
 })
@@ -23,6 +25,7 @@ export class Login {
   private readonly auth = inject(AuthService);
   private readonly resets = inject(PasswordResetService);
   private readonly profile = inject(ProfileStore);
+  protected readonly locale = inject(LocaleService);
   private readonly router = inject(Router);
 
   protected readonly email = signal('');
@@ -30,6 +33,14 @@ export class Login {
   protected readonly showPassword = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly busy = signal(false);
+
+  // Dynamic strings can't use the template `i18n` attribute, so they're localized here with $localize.
+  protected readonly submitLabel = computed(() =>
+    this.busy() ? $localize`:@@common.please_wait:Please wait…` : $localize`:@@login.submit:Sign in`);
+  protected readonly revealLabel = computed(() =>
+    this.showPassword()
+      ? $localize`:@@password.hide:Hide password`
+      : $localize`:@@password.show:Show password`);
 
   /** Whether this deployment offers self-service reset (mail configured). Drives the "Forgot
    *  password?" affordance: a link when true, "contact your admin" copy when false. §7. */
@@ -61,7 +72,7 @@ export class Login {
       await this.profile.refresh().catch(() => {});
       await this.router.navigate(['']);
     } catch (e) {
-      this.error.set(problemDetail(e, 'Login failed. Check your email and password.'));
+      this.error.set(errorMessage(e));
     } finally {
       this.busy.set(false);
     }
