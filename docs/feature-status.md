@@ -4,8 +4,8 @@ Tracking the planned feature set against what is actually implemented in the cod
 
 Keepr is a **personal media store** with a folder hierarchy, rename, and a 10-day trash:
 single-owner (no user-to-user sharing yet). Of the 38 planned features, **14 are complete**
-(backend + UI), 3 are partial (built, verification or per-screen work remaining), 1 is designed (not
-built), and 20 are not started.
+(backend + UI), 4 are partial (built, verification or per-screen work remaining), and 20 are not
+started.
 
 **Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
@@ -50,7 +50,7 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 30 | Localization (i18n): English / Spanish / French | 📐 | **Designed — [feature-30-localization.md](feature-30-localization.md) (2026-08-07).** Broadened from "Spanish only" to full localization into **English (default), Spanish, and French**, covering **UI copy and user-facing server errors**, with a **per-user preferred language** (`User.PreferredLanguage`, nullable → English). Two decisions taken up front: **client copy is compile-time `@angular/localize`** — one built bundle per locale served under `/en//es//fr/`, so a language change is a **reload into that build**, not an instant swap (Q-30-1); and **server errors are localized client-side off stable `code`s** (each user-facing `Problem()` carries a machine `code`, the client owns the translated copy, the English `detail` is the fallback) — extends the `code` seed already in the repo (`email_in_use`, `email_not_configured`, `email_unverified`) (Q-30-2). Phasing: **P1** foundation + primary screens + business-error codes, **P2** field-validation codes, **P3** server-side localized emails. A repo skill **`i18n-translations`** enforces that every UI string lands in all three locales and every server error gets a code + translated message. **Not built yet** — no i18n framework installed, all copy still hardcoded English |
+| 30 | Localization (i18n): English / Spanish / French | 🟡 | **Designed — [feature-30-localization.md](feature-30-localization.md) (2026-08-07); backend preferred-language slice built (2026-08-07).** Broadened from "Spanish only" to full localization into **English (default), Spanish, and French**, covering **UI copy and user-facing server errors**, with a **per-user preferred language** (`User.PreferredLanguage`, nullable → English). Two decisions taken up front: **client copy is compile-time `@angular/localize`** — one built bundle per locale served under `/en//es//fr/`, so a language change is a **reload into that build**, not an instant swap (Q-30-1); and **server errors are localized client-side off stable `code`s** (each user-facing `Problem()` carries a machine `code`, the client owns the translated copy, the English `detail` is the fallback) — extends the `code` seed already in the repo (`email_in_use`, `email_not_configured`, `email_unverified`) (Q-30-2). **Built (backend):** `User.PreferredLanguage` + `AddPreferredLanguage` migration, `SupportedLanguages` (pure `en`/`es`/`fr` validator, unit-tested), `ProfileResponse.preferredLanguage`, and `PATCH /api/me/profile` validating it (`400 invalid_language`). Phasing: **P1** foundation + primary screens + business-error codes, **P2** field-validation codes, **P3** server-side localized emails. A repo skill **`i18n-translations`** enforces that every UI string lands in all three locales and every server error gets a code + translated message. **Remaining:** the whole client (no i18n framework installed yet, all copy still hardcoded English), the `ErrorCodes` registry + `Problem()` sweep, locale serving in `Program.cs`, and emails |
 
 ## Tier 3 — Expected by users who've used real Drive/Dropbox
 
@@ -110,7 +110,7 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 - **Done (14):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
   rename/delete, trash, in-browser preview, shareable links, admin account administration (#34),
   change-password (#28), profile names (#29), search by file name (#9), forgot/reset password (#26).
-- **Partial (3):** change email (#27) — **backend + Angular UI built and verified live** (the mail-on
+- **Partial (4):** change email (#27) — **backend + Angular UI built and verified live** (the mail-on
   flow end-to-end through the real UI, plus responsive + a11y); the automated Playwright journey F and
   the mail-off live run remain ([feature-27-change-email.md](feature-27-change-email.md));
   accessibility & mobile (#35) — foundation + drawer in, per-screen sweep remains;
@@ -119,9 +119,11 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
   Mailpit; only the `/admin/email` runtime-provider **send** remains, and that can't be automated
   (Mailpit is SMTP-only; the stored providers are HTTP) — it needs a one-off manual live run against
   a real provider key.
-- **Designed, not built (1):** localization (#30) — full i18n into English/Spanish/French with a
-  per-user preferred language, compile-time `@angular/localize` + client-owned server-error copy
-  ([feature-30-localization.md](feature-30-localization.md)).
+- **Localization (#30):** full i18n into English/Spanish/French with a per-user preferred language,
+  compile-time `@angular/localize` + client-owned server-error copy
+  ([feature-30-localization.md](feature-30-localization.md)); the **backend preferred-language slice
+  is built** (`User.PreferredLanguage`, migration, validator, profile endpoint), the client and the
+  server error-code sweep remain.
 - **Not started (20):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2

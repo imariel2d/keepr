@@ -47,6 +47,17 @@ public class User
     /// </summary>
     public bool EmailVerified { get; set; }
 
+    /// <summary>
+    /// The account's preferred UI language as a supported locale code ("en" | "es" | "fr"), or
+    /// <c>null</c> to mean "unset — fall back to the default (English)". Set from the profile screen
+    /// (#30). Read on entry to route the user to their locale build, and by the server to localize
+    /// outbound email (Phase 3). Never inferred from Accept-Language automatically; a null value is a
+    /// real, honored state (default English), not a missing one. Validated against
+    /// <see cref="Keepr.Api.Features.Localization.SupportedLanguages"/>. See
+    /// docs/feature-30-localization.md §3.1.
+    /// </summary>
+    public string? PreferredLanguage { get; set; }
+
     /// <summary>Total storage the user is allowed. Default 5 GB.</summary>
     public long QuotaBytes { get; set; } = 5L * 1024 * 1024 * 1024;
 

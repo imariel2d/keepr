@@ -1,9 +1,17 @@
 # Localization (i18n) — English / Spanish / French — Design
 
-> Feature #30 in [feature-status.md](feature-status.md). Status: **📐 Designed (not built)** (design
-> 2026-08-07). Supersedes the old #30 scope ("Spanish language") with full localization into
-> **English (default), Spanish, and French**, covering both **client UI copy** and **user-facing
-> server errors**, plus a **per-user preferred language**.
+> Feature #30 in [feature-status.md](feature-status.md). Status: **🟡 Designed; backend
+> preferred-language slice built** (design 2026-08-07, backend 2026-08-07). Supersedes the old #30
+> scope ("Spanish language") with full localization into **English (default), Spanish, and French**,
+> covering both **client UI copy** and **user-facing server errors**, plus a **per-user preferred
+> language**.
+>
+> **Built so far (backend):** `User.PreferredLanguage` (nullable) + the `AddPreferredLanguage`
+> migration; `SupportedLanguages` (the pure `en`/`es`/`fr` validator, unit-tested); `ProfileResponse`
+> gains `preferredLanguage`; `PATCH /api/me/profile` accepts + validates it (`400 invalid_language`
+> on an unsupported code). **Not built yet:** the whole client (`@angular/localize` setup, catalogs,
+> switcher, locale serving in `Program.cs`), the server error-`code` sweep + `ErrorCodes` registry
+> (§5), and emails (§10 P3).
 >
 > Two load-bearing decisions the user made up front (see §2):
 >
@@ -114,8 +122,10 @@ public string? PreferredLanguage { get; set; }
 Reuse the existing profile surface rather than adding a new controller:
 
 - **`ProfileResponse`** gains `preferredLanguage: string | null` (mirrors `User.PreferredLanguage`).
-- **`PATCH /api/me/profile`** accepts an optional `preferredLanguage`. Omitted → unchanged; explicit
-  `null` → clear (back to default); a supported code → set. Invalid → `400 invalid_language`.
+- **`PATCH /api/me/profile`** carries `preferredLanguage` as part of the **full-profile replace**
+  (like the name fields — the client sends the whole set each call): a supported code sets it;
+  blank/null clears it back to the default (English); any other value → `400 invalid_language`.
+  Validation is `SupportedLanguages.TryNormalize` (trims + lowercases, blank → null). *(Built.)*
 - **Anonymous users** (login, claim, confirm-email, reset screens) have no account yet. With **no
   explicit choice they get English** (Q-30-3) — the browser's `Accept-Language` is deliberately
   **not** consulted. Only picking a language in the switcher records it, in a **cookie**
@@ -235,6 +245,11 @@ protected IActionResult CodedProblem(string code, string detail, int status) { �
 Each of the ~88 `Problem()` sites is swept to attach a code (existing `email_in_use`,
 `email_not_configured`, `email_unverified` already comply). The English `detail` stays as the
 fallback and as the API's own documentation of what the code means.
+
+> **Status:** not started. The first new coded error, `invalid_language` (from the profile endpoint),
+> uses the **existing inline `Coded(...)` helper** in `MeController` (`pd.Extensions["code"] = …`) to
+> match the surrounding code — the `ErrorCodes` registry and the 15-controller sweep are a distinct
+> follow-up PR, not folded into the preferred-language slice.
 
 ### 5.2 Client-side rendering
 
