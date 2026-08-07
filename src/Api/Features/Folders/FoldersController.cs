@@ -1,6 +1,7 @@
 using Keepr.Api.Data;
 using Keepr.Api.Domain;
 using Keepr.Api.Features.Media;
+using Keepr.Api.Http;
 using Keepr.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -101,7 +102,7 @@ public class FoldersController(
         }
         catch (FolderException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.CodedProblem(ex.StatusCode, ex.Code, ex.Message);
         }
     }
 
@@ -122,7 +123,7 @@ public class FoldersController(
         }
         catch (FolderException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.CodedProblem(ex.StatusCode, ex.Code, ex.Message);
         }
     }
 
@@ -139,7 +140,7 @@ public class FoldersController(
         }
         catch (FolderException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.CodedProblem(ex.StatusCode, ex.Code, ex.Message);
         }
     }
 
@@ -159,7 +160,7 @@ public class FoldersController(
         }
         catch (TrashException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.CodedProblem(ex.StatusCode, ex.Code, ex.Message);
         }
     }
 

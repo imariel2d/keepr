@@ -1,15 +1,19 @@
 using Keepr.Api.Data;
 using Keepr.Api.Domain;
+using Keepr.Api.Http;
 using Keepr.Api.Storage;
 using Microsoft.EntityFrameworkCore;
 
 namespace Keepr.Api.Services;
 
-/// <summary>A trash operation the caller can fix; <see cref="StatusCode"/> carries the HTTP meaning.</summary>
-public class TrashException(string message, int statusCode = StatusCodes.Status400BadRequest)
+/// <summary>A trash operation the caller can fix; <see cref="StatusCode"/> carries the HTTP meaning
+/// and <see cref="Code"/> the stable machine <c>code</c> (#30) controllers forward to <c>CodedProblem</c>.</summary>
+public class TrashException(
+    string message, int statusCode = StatusCodes.Status400BadRequest, string code = ErrorCodes.InvalidRequest)
     : Exception(message)
 {
     public int StatusCode { get; } = statusCode;
+    public string Code { get; } = code;
 }
 
 /// <summary>What a trashed entry is, for the unified trash listing.</summary>
@@ -43,7 +47,7 @@ public class TrashService(
     public async Task TrashFolderAsync(Guid ownerId, Guid folderId, CancellationToken ct)
     {
         _ = await folders.OwnedAsync(ownerId, folderId, ct)
-            ?? throw new TrashException("Folder not found.", StatusCodes.Status404NotFound);
+            ?? throw new TrashException("Folder not found.", StatusCodes.Status404NotFound, ErrorCodes.FolderNotFound);
 
         var subtree = await folders.SubtreeIdsAsync(ownerId, folderId, ct);
         var now = DateTimeOffset.UtcNow;
@@ -74,7 +78,7 @@ public class TrashService(
     {
         var media = await db.MediaFiles.SingleOrDefaultAsync(
             m => m.Id == mediaId && m.OwnerId == ownerId && m.Status == MediaStatus.Ready, ct)
-            ?? throw new TrashException("File not found.", StatusCodes.Status404NotFound);
+            ?? throw new TrashException("File not found.", StatusCodes.Status404NotFound, ErrorCodes.FileNotFound);
 
         media.DeletedAt = DateTimeOffset.UtcNow;
         media.DeletedRootId = media.Id;
@@ -150,7 +154,7 @@ public class TrashService(
     private async Task<string> RestoreFolderAsync(Guid ownerId, Folder folder, CancellationToken ct)
     {
         if (folder.DeletedRootId != folder.Id)
-            throw new TrashException("This folder was deleted with its parent; restore the parent instead.", StatusCodes.Status409Conflict);
+            throw new TrashException("This folder was deleted with its parent; restore the parent instead.", StatusCodes.Status409Conflict, ErrorCodes.RestoreParentFirst);
 
         // A parent that was purged, or is itself still trashed, cannot receive the restore.
         var parentId = await LiveFolderIdOrNullAsync(ownerId, folder.ParentId, ct);
@@ -171,10 +175,10 @@ public class TrashService(
     {
         var media = await db.MediaFiles.IgnoreQueryFilters()
             .SingleOrDefaultAsync(m => m.Id == id && m.OwnerId == ownerId && m.DeletedAt != null, ct)
-            ?? throw new TrashException("Item not found in trash.", StatusCodes.Status404NotFound);
+            ?? throw new TrashException("Item not found in trash.", StatusCodes.Status404NotFound, ErrorCodes.TrashItemNotFound);
 
         if (media.DeletedRootId != media.Id)
-            throw new TrashException("This file was deleted with its folder; restore the folder instead.", StatusCodes.Status409Conflict);
+            throw new TrashException("This file was deleted with its folder; restore the folder instead.", StatusCodes.Status409Conflict, ErrorCodes.RestoreParentFirst);
 
         var folderId = await LiveFolderIdOrNullAsync(ownerId, media.FolderId, ct);
         media.FolderId = folderId;
@@ -232,7 +236,7 @@ public class TrashService(
 
         var media = await db.MediaFiles.IgnoreQueryFilters()
             .SingleOrDefaultAsync(m => m.Id == id && m.OwnerId == ownerId && m.DeletedAt != null, ct)
-            ?? throw new TrashException("Item not found in trash.", StatusCodes.Status404NotFound);
+            ?? throw new TrashException("Item not found in trash.", StatusCodes.Status404NotFound, ErrorCodes.TrashItemNotFound);
 
         await PurgeFilesAsync([media], ct);
     }

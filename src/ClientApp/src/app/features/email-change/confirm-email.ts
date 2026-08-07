@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EmailChangeService } from '../../core/email-change.service';
 import { problemStatus } from '../../core/problem-details';
@@ -32,6 +32,9 @@ export class ConfirmEmail {
   protected readonly newEmail = signal('');
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
+
+  protected readonly submitLabel = computed(() =>
+    this.busy() ? $localize`:@@common.please_wait:Please wait…` : $localize`:@@confirm_email.confirm:Confirm this email`);
 
   constructor() {
     void this.validate();
@@ -72,9 +75,9 @@ export class ConfirmEmail {
         // The link lapsed between loading and confirming.
         this.invalid.set(true);
       } else if (status === 409) {
-        this.error.set('That address is now in use. Start the change again from your profile.');
+        this.error.set($localize`:@@confirm_email.err.in_use:That address is now in use. Start the change again from your profile.`);
       } else {
-        this.error.set('Could not confirm your new email. Try the link again.');
+        this.error.set($localize`:@@confirm_email.err.generic:Could not confirm your new email. Try the link again.`);
       }
     } finally {
       this.busy.set(false);

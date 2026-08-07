@@ -164,6 +164,14 @@ form {
   }
 }
 
+// Anonymous language picker — no account yet, so it just remembers the choice (cookie) and reloads
+// into that locale's build. Centred under the card. See docs/feature-30-localization.md §4.4.
+.lang-row {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-5);
+}
+
 .switch {
   margin: var(--space-6) 0 0;
   text-align: center;

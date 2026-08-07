@@ -50,6 +50,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(x => x.FirstName).HasMaxLength(100);
             e.Property(x => x.LastName).HasMaxLength(100);
 
+            // Preferred UI locale (#30): a short code like "en"/"es"/"fr", or null for "unset →
+            // default English". Capped small; validated against SupportedLanguages before write.
+            e.Property(x => x.PreferredLanguage).HasMaxLength(16);
+
             // Stored as a string like MediaFile.Status, so the column reads 'User'/'Admin' rather
             // than an opaque int. The default backfills every pre-existing row to User — no
             // account is silently promoted by the migration.

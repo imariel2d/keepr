@@ -2,6 +2,7 @@ using System.Net.Mail;
 using Keepr.Api.Data;
 using Keepr.Api.Domain;
 using Keepr.Api.Features.Email;
+using Keepr.Api.Http;
 using Keepr.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -175,10 +176,12 @@ public class EmailSettingsController(
     public async Task<ActionResult<EmailTestResult>> SendTest(CancellationToken ct)
     {
         if (!await settings.IsEnabledAsync(ct))
-            return Problem("Email delivery is not configured.", statusCode: StatusCodes.Status409Conflict);
+            return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailNotConfigured,
+                "Email delivery is not configured.");
 
         if (Interlocked.CompareExchange(ref _testInFlight, 1, 0) == 1)
-            return Problem("A test send is already in progress.", statusCode: StatusCodes.Status409Conflict);
+            return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailTestInProgress,
+                "A test send is already in progress.");
 
         try
         {

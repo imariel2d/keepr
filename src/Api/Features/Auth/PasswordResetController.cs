@@ -1,5 +1,6 @@
 using Keepr.Api.Data;
 using Keepr.Api.Features.Email;
+using Keepr.Api.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -133,7 +134,8 @@ public class PasswordResetController(
     {
         var row = await resets.ResolveAsync(token, ct);
         if (row is null)
-            return Problem("This reset link is no longer valid.", statusCode: StatusCodes.Status410Gone);
+            return this.CodedProblem(StatusCodes.Status410Gone, ErrorCodes.ResetLinkInvalid,
+                "This reset link is no longer valid.");
 
         return new ResetPreview(row.User.Email);
     }
@@ -151,7 +153,8 @@ public class PasswordResetController(
     {
         var row = await resets.ResolveAsync(token, ct);
         if (row is null)
-            return Problem("This reset link is no longer valid.", statusCode: StatusCodes.Status410Gone);
+            return this.CodedProblem(StatusCodes.Status410Gone, ErrorCodes.ResetLinkInvalid,
+                "This reset link is no longer valid.");
 
         var user = row.User;
 
@@ -181,7 +184,8 @@ public class PasswordResetController(
             .Where(t => t.Id == row.Id && t.UsedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.UsedAt, clock.GetUtcNow()), ct);
         if (won == 0)
-            return Problem("This reset link is no longer valid.", statusCode: StatusCodes.Status410Gone);
+            return this.CodedProblem(StatusCodes.Status410Gone, ErrorCodes.ResetLinkInvalid,
+                "This reset link is no longer valid.");
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
         user.MustChangePassword = false;

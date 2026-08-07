@@ -1,5 +1,6 @@
 using Keepr.Api.Data;
 using Keepr.Api.Domain;
+using Keepr.Api.Http;
 using Keepr.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -41,8 +42,8 @@ public class SharesController(AppDbContext db, ShareLinkService shares) : Contro
     {
         // Null = never expires; any provided value must be at least a day.
         if (req.ExpiresInDays is < 1)
-            return Problem("A link must be valid for at least one day.",
-                statusCode: StatusCodes.Status400BadRequest);
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.ShareExpiryTooShort,
+                "A link must be valid for at least one day.");
 
         var userId = User.UserId();
         if (!await OwnsReadyFile(id, userId, ct)) return NotFound();
@@ -87,16 +88,15 @@ public class SharesController(AppDbContext db, ShareLinkService shares) : Contro
     {
         // Null = switch the link to never-expires; any provided value must be at least a day.
         if (req.ExpiresInDays is < 1)
-            return Problem("A link must be valid for at least one day.",
-                statusCode: StatusCodes.Status400BadRequest);
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.ShareExpiryTooShort,
+                "A link must be valid for at least one day.");
 
         var (status, link) = await shares.UpdateExpiryAsync(linkId, User.UserId(), req.ExpiresInDays, ct);
         return status switch
         {
             UpdateExpiryStatus.NotFound => NotFound(),
-            UpdateExpiryStatus.Revoked => Problem(
-                "This link has been revoked; create a new one to share again.",
-                statusCode: StatusCodes.Status409Conflict),
+            UpdateExpiryStatus.Revoked => this.CodedProblem(StatusCodes.Status409Conflict,
+                ErrorCodes.ShareRevoked, "This link has been revoked; create a new one to share again."),
             _ => Ok(ToResponse(link!))
         };
     }

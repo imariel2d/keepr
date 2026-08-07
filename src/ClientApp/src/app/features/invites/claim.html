@@ -1,39 +1,40 @@
 <section class="auth">
   <div class="auth-card">
     @if (loading()) {
-      <p class="loading">Checking your invitation…</p>
+      <p class="loading" i18n="@@claim.loading">Checking your invitation…</p>
     } @else if (invalid()) {
       <div class="head">
         <img class="mark" src="cove-mark.svg" alt="" width="56" height="56" aria-hidden="true" />
-        <h1>Invitation not valid</h1>
-        <p class="sub">This invitation has expired or was already used. Ask an admin to send a new one.</p>
+        <h1 i18n="@@claim.invalid.title">Invitation not valid</h1>
+        <p class="sub" i18n="@@claim.invalid.sub">This invitation has expired or was already used. Ask an admin to send a new one.</p>
       </div>
-      <cove-button variant="secondary" size="lg" class="submit" (click)="goToLogin()">
+      <cove-button variant="secondary" size="lg" class="submit" (click)="goToLogin()" i18n="@@claim.go_to_sign_in">
         Go to sign in
       </cove-button>
     } @else {
       <div class="head">
         <img class="mark" src="cove-mark.svg" alt="" width="56" height="56" aria-hidden="true" />
-        <h1>Set your password</h1>
-        <p class="sub">Finish setting up <strong>{{ email() }}</strong>.</p>
+        <h1 i18n="@@claim.title">Set your password</h1>
+        <p class="sub" i18n="@@claim.sub">Finish setting up <strong>{{ email() }}</strong>.</p>
       </div>
 
       <form (submit)="submit($event)">
         <label class="field">
-          <span>Password</span>
+          <span i18n="@@field.password">Password</span>
           <cove-input
             icon="lock"
             [type]="showPassword() ? 'text' : 'password'"
             name="password"
             autocomplete="new-password"
             placeholder="At least {{ minPasswordLength }} characters"
+            i18n-placeholder="@@field.password_min"
             [value]="password()"
             (valueChange)="password.set($event)">
             <button
               trailing
               type="button"
               class="reveal"
-              [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+              [attr.aria-label]="revealLabel()"
               [attr.aria-pressed]="showPassword()"
               (click)="showPassword.set(!showPassword())">
               @if (showPassword()) {
@@ -49,7 +50,7 @@
         </label>
 
         <label class="field">
-          <span>Confirm password</span>
+          <span i18n="@@field.confirm_password">Confirm password</span>
           <cove-input
             icon="lock"
             [type]="showPassword() ? 'text' : 'password'"
@@ -59,7 +60,7 @@
             [value]="confirm()"
             (valueChange)="confirm.set($event)" />
           @if (confirm().length > 0 && !matches()) {
-            <p class="field-error">Passwords don't match.</p>
+            <p class="field-error" i18n="@@common.passwords_no_match">Passwords don't match.</p>
           }
         </label>
 
@@ -71,7 +72,7 @@
         }
 
         <cove-button variant="primary" size="lg" [disabled]="busy() || !canSubmit()" class="submit">
-          {{ busy() ? 'Please wait…' : 'Set password & sign in' }}
+          {{ submitLabel() }}
         </cove-button>
       </form>
     }

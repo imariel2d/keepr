@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- fr catalog for #30. Machine-translated; every target is marked
+     state="needs-review-translation" pending a human pass (Q-30-4). Keep in step with the source
+     (messages.xlf) via `npm run extract-i18n` — the i18n-translations skill. -->
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file source-language="en" target-language="fr" datatype="plaintext" original="ng2.template">
+    <body>
+      <trans-unit id="errors.invalid_credentials" datatype="html">
+        <source>Invalid credentials.</source>
+        <target state="needs-review-translation">Identifiants invalides.</target>
+      </trans-unit>
+      <trans-unit id="errors.email_registered" datatype="html">
+        <source>Email already registered.</source>
+        <target state="needs-review-translation">E-mail déjà enregistré.</target>
+      </trans-unit>
+      <trans-unit id="errors.registration_closed" datatype="html">
+        <source>Registration is closed. Ask an admin to set up an account.</source>
+        <target state="needs-review-translation">Les inscriptions sont fermées. Demandez à un administrateur de créer un compte.</target>
+      </trans-unit>
+      <trans-unit id="errors.password_incorrect" datatype="html">
+        <source>Your current password is incorrect.</source>
+        <target state="needs-review-translation">Votre mot de passe actuel est incorrect.</target>
+      </trans-unit>
+      <trans-unit id="errors.invalid_language" datatype="html">
+        <source>That isn&apos;t a supported language.</source>
+        <target state="needs-review-translation">Cette langue n&apos;est pas prise en charge.</target>
+      </trans-unit>
+      <trans-unit id="errors.generic" datatype="html">
+        <source>Something went wrong. Please try again.</source>
+        <target state="needs-review-translation">Une erreur s&apos;est produite. Veuillez réessayer.</target>
+      </trans-unit>
+      <trans-unit id="common.checking_link" datatype="html">
+        <source>Checking your link…</source>
+        <target state="needs-review-translation">Vérification de votre lien…</target>
+      </trans-unit>
+      <trans-unit id="common.link_not_valid" datatype="html">
+        <source>Link not valid</source>
+        <target state="needs-review-translation">Lien non valide</target>
+      </trans-unit>
+      <trans-unit id="confirm_email.invalid.sub" datatype="html">
+        <source>This confirmation link has expired or was already used. Start the change again from your profile.</source>
+        <target state="needs-review-translation">Ce lien de confirmation a expiré ou a déjà été utilisé. Recommencez le changement depuis votre profil.</target>
+      </trans-unit>
+      <trans-unit id="confirm_email.back" datatype="html">
+        <source>Back to Keepr</source>
+        <target state="needs-review-translation">Retour à Keepr</target>
+      </trans-unit>
+      <trans-unit id="confirm_email.done.title" datatype="html">
+        <source>Email confirmed</source>
+        <target state="needs-review-translation">E-mail confirmé</target>
+      </trans-unit>
+      <trans-unit id="confirm_email.done.sub" datatype="html">
+        <source>Your email is now <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="INTERPOLATION" equiv-text="{{ newEmail() }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>. Use it to sign in from now on.</source>
+        <target state="needs-review-translation">Votre e-mail est désormais <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="INTERPOLATION" equiv-text="{{ newEmail() }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>. Utilisez-le pour vous connecter à partir de maintenant.</target>
+      </trans-unit>
+      <trans-unit id="confirm_email.continue" datatype="html">
+        <source> Continue to Keepr </source>
+        <target state="needs-review-translation">Continuer vers Keepr</target>
+      </trans-unit>
+      <trans-unit id="confirm_email.title" datatype="html">
+        <source>Confirm your new email</source>
+        <target state="needs-review-translation">Confirmez votre nouvel e-mail</target>
+      </trans-unit>
+      <trans-unit id="confirm_email.sub" datatype="html">
+        <source>Confirm <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="INTERPOLATION" equiv-text="{{ newEmail() }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> to start using it to sign in to Keepr.</source>
+        <target state="needs-review-translation">Confirmez <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="INTERPOLATION" equiv-text="{{ newEmail() }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> pour commencer à l'utiliser pour vous connecter à Keepr.</target>
+      </trans-unit>
+      <trans-unit id="confirm_email.not_now" datatype="html">
+        <source>Not now</source>
+        <target state="needs-review-translation">Pas maintenant</target>
+      </trans-unit>
+      <trans-unit id="common.please_wait" datatype="html">
+        <source>Please wait…</source>
+        <target state="needs-review-translation">Veuillez patienter…</target>
+      </trans-unit>
+      <trans-unit id="confirm_email.confirm" datatype="html">
+        <source>Confirm this email</source>
+        <target state="needs-review-translation">Confirmer cet e-mail</target>
+      </trans-unit>
+      <trans-unit id="confirm_email.err.in_use" datatype="html">
+        <source>That address is now in use. Start the change again from your profile.</source>
+        <target state="needs-review-translation">Cette adresse est désormais utilisée. Recommencez le changement depuis votre profil.</target>
+      </trans-unit>
+      <trans-unit id="confirm_email.err.generic" datatype="html">
+        <source>Could not confirm your new email. Try the link again.</source>
+        <target state="needs-review-translation">Impossible de confirmer votre nouvel e-mail. Réessayez le lien.</target>
+      </trans-unit>
+      <trans-unit id="lang.label" datatype="html">
+        <source>Language</source>
+        <target state="needs-review-translation">Langue</target>
+      </trans-unit>
+      <trans-unit id="claim.loading" datatype="html">
+        <source>Checking your invitation…</source>
+        <target state="needs-review-translation">Vérification de votre invitation…</target>
+      </trans-unit>
+      <trans-unit id="claim.invalid.title" datatype="html">
+        <source>Invitation not valid</source>
+        <target state="needs-review-translation">Invitation non valide</target>
+      </trans-unit>
+      <trans-unit id="claim.invalid.sub" datatype="html">
+        <source>This invitation has expired or was already used. Ask an admin to send a new one.</source>
+        <target state="needs-review-translation">Cette invitation a expiré ou a déjà été utilisée. Demandez à un administrateur d'en envoyer une nouvelle.</target>
+      </trans-unit>
+      <trans-unit id="claim.go_to_sign_in" datatype="html">
+        <source> Go to sign in </source>
+        <target state="needs-review-translation">Aller à la connexion</target>
+      </trans-unit>
+      <trans-unit id="claim.title" datatype="html">
+        <source>Set your password</source>
+        <target state="needs-review-translation">Définissez votre mot de passe</target>
+      </trans-unit>
+      <trans-unit id="claim.sub" datatype="html">
+        <source>Finish setting up <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="INTERPOLATION" equiv-text="{{ email() }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>.</source>
+        <target state="needs-review-translation">Terminez la configuration de <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="INTERPOLATION" equiv-text="{{ email() }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>.</target>
+      </trans-unit>
+      <trans-unit id="field.password" datatype="html">
+        <source>Password</source>
+        <target state="needs-review-translation">Mot de passe</target>
+      </trans-unit>
+      <trans-unit id="field.password_min" datatype="html">
+        <source>At least <x id="INTERPOLATION" equiv-text="{{ minPasswordLength }}"/> characters</source>
+        <target state="needs-review-translation">Au moins <x id="INTERPOLATION" equiv-text="{{ minPasswordLength }}"/> caractères</target>
+      </trans-unit>
+      <trans-unit id="field.confirm_password" datatype="html">
+        <source>Confirm password</source>
+        <target state="needs-review-translation">Confirmer le mot de passe</target>
+      </trans-unit>
+      <trans-unit id="common.passwords_no_match" datatype="html">
+        <source>Passwords don&apos;t match.</source>
+        <target state="needs-review-translation">Les mots de passe ne correspondent pas.</target>
+      </trans-unit>
+      <trans-unit id="password.hide" datatype="html">
+        <source>Hide password</source>
+        <target state="needs-review-translation">Masquer le mot de passe</target>
+      </trans-unit>
+      <trans-unit id="password.show" datatype="html">
+        <source>Show password</source>
+        <target state="needs-review-translation">Afficher le mot de passe</target>
+      </trans-unit>
+      <trans-unit id="claim.submit" datatype="html">
+        <source>Set password &amp; sign in</source>
+        <target state="needs-review-translation">Définir le mot de passe et se connecter</target>
+      </trans-unit>
+      <trans-unit id="login.title" datatype="html">
+        <source>Welcome back</source>
+        <target state="needs-review-translation">Bon retour</target>
+      </trans-unit>
+      <trans-unit id="login.subtitle" datatype="html">
+        <source>Sign in to your Keepr account.</source>
+        <target state="needs-review-translation">Connectez-vous à votre compte Keepr.</target>
+      </trans-unit>
+      <trans-unit id="login.email.label" datatype="html">
+        <source>Email</source>
+        <target state="needs-review-translation">E-mail</target>
+      </trans-unit>
+      <trans-unit id="login.email.placeholder" datatype="html">
+        <source>you@example.com</source>
+        <target state="needs-review-translation">vous@exemple.com</target>
+      </trans-unit>
+      <trans-unit id="login.password.label" datatype="html">
+        <source>Password</source>
+        <target state="needs-review-translation">Mot de passe</target>
+      </trans-unit>
+      <trans-unit id="login.forgot.link" datatype="html">
+        <source>Forgot password?</source>
+        <target state="needs-review-translation">Mot de passe oublié ?</target>
+      </trans-unit>
+      <trans-unit id="login.forgot.admin" datatype="html">
+        <source>Forgot your password? Contact your admin to reset it.</source>
+        <target state="needs-review-translation">Mot de passe oublié ? Contactez votre administrateur pour le réinitialiser.</target>
+      </trans-unit>
+      <trans-unit id="login.no_account" datatype="html">
+        <source> Need an account? Ask a Keepr admin to set one up for you. </source>
+        <target state="needs-review-translation"> Besoin d&apos;un compte ? Demandez à un administrateur Keepr d&apos;en créer un pour vous. </target>
+      </trans-unit>
+      <trans-unit id="login.submit" datatype="html">
+        <source>Sign in</source>
+        <target state="needs-review-translation">Se connecter</target>
+      </trans-unit>
+      <trans-unit id="forgot.loading" datatype="html">
+        <source>One moment…</source>
+        <target state="needs-review-translation">Un instant…</target>
+      </trans-unit>
+      <trans-unit id="forgot.title" datatype="html">
+        <source>Forgot your password?</source>
+        <target state="needs-review-translation">Mot de passe oublié ?</target>
+      </trans-unit>
+      <trans-unit id="forgot.noservice.sub" datatype="html">
+        <source>Resetting by email isn&apos;t available on this site. Contact your admin to reset your password.</source>
+        <target state="needs-review-translation">La réinitialisation par e-mail n'est pas disponible sur ce site. Contactez votre administrateur pour réinitialiser votre mot de passe.</target>
+      </trans-unit>
+      <trans-unit id="common.back_to_sign_in" datatype="html">
+        <source> Back to sign in </source>
+        <target state="needs-review-translation">Retour à la connexion</target>
+      </trans-unit>
+      <trans-unit id="forgot.sent.title" datatype="html">
+        <source>Check your email</source>
+        <target state="needs-review-translation">Consultez votre e-mail</target>
+      </trans-unit>
+      <trans-unit id="forgot.sent.sub" datatype="html">
+        <source> If an account with that email can be reset by email, we&apos;ve sent a link. Check your inbox (and spam) — the link expires soon. </source>
+        <target state="needs-review-translation">Si un compte associé à cet e-mail peut être réinitialisé par e-mail, nous avons envoyé un lien. Vérifiez votre boîte de réception (et les spams) ; le lien expire bientôt.</target>
+      </trans-unit>
+      <trans-unit id="forgot.form.sub" datatype="html">
+        <source>Enter your email and we&apos;ll send a link to reset it.</source>
+        <target state="needs-review-translation">Saisissez votre e-mail et nous vous enverrons un lien pour le réinitialiser.</target>
+      </trans-unit>
+      <trans-unit id="field.email" datatype="html">
+        <source>Email</source>
+        <target state="needs-review-translation">E-mail</target>
+      </trans-unit>
+      <trans-unit id="forgot.sending" datatype="html">
+        <source>Sending…</source>
+        <target state="needs-review-translation">Envoi…</target>
+      </trans-unit>
+      <trans-unit id="forgot.send" datatype="html">
+        <source>Send reset link</source>
+        <target state="needs-review-translation">Envoyer le lien de réinitialisation</target>
+      </trans-unit>
+      <trans-unit id="reset.invalid.sub" datatype="html">
+        <source>This reset link has expired or was already used. Request a new one to continue.</source>
+        <target state="needs-review-translation">Ce lien de réinitialisation a expiré ou a déjà été utilisé. Demandez-en un nouveau pour continuer.</target>
+      </trans-unit>
+      <trans-unit id="reset.invalid.action" datatype="html">
+        <source> Request a new link </source>
+        <target state="needs-review-translation">Demander un nouveau lien</target>
+      </trans-unit>
+      <trans-unit id="reset.title" datatype="html">
+        <source>Reset your password</source>
+        <target state="needs-review-translation">Réinitialisez votre mot de passe</target>
+      </trans-unit>
+      <trans-unit id="reset.sub" datatype="html">
+        <source>Choose a new password for <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="INTERPOLATION" equiv-text="{{ email() }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>.</source>
+        <target state="needs-review-translation">Choisissez un nouveau mot de passe pour <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="INTERPOLATION" equiv-text="{{ email() }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>.</target>
+      </trans-unit>
+      <trans-unit id="field.new_password" datatype="html">
+        <source>New password</source>
+        <target state="needs-review-translation">Nouveau mot de passe</target>
+      </trans-unit>
+      <trans-unit id="reset.submit" datatype="html">
+        <source>Reset password &amp; sign in</source>
+        <target state="needs-review-translation">Réinitialiser le mot de passe et se connecter</target>
+      </trans-unit>
+      <trans-unit id="profile.language.title" datatype="html">
+        <source>Language</source>
+        <target state="needs-review-translation">Langue</target>
+      </trans-unit>
+      <trans-unit id="profile.language.sub" datatype="html">
+        <source>The language Keepr is shown in. Changing it reloads the app.</source>
+        <target state="needs-review-translation">La langue d&apos;affichage de Keepr. La modifier recharge l&apos;application.</target>
+      </trans-unit>
+      <trans-unit id="profile.name.saved" datatype="html">
+        <source>Profile saved.</source>
+        <target state="needs-review-translation">Profil enregistré.</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

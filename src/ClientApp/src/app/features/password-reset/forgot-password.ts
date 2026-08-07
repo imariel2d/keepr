@@ -31,6 +31,9 @@ export class ForgotPassword {
 
   protected readonly canSubmit = computed(() => this.email().trim().length > 0);
 
+  protected readonly submitLabel = computed(() =>
+    this.busy() ? $localize`:@@forgot.sending:Sending…` : $localize`:@@forgot.send:Send reset link`);
+
   protected goToLogin(): void {
     void this.router.navigate(['/login']);
   }

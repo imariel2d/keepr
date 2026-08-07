@@ -1,0 +1,509 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file source-language="en" datatype="plaintext" original="ng2.template">
+    <body>
+      <trans-unit id="errors.invalid_credentials" datatype="html">
+        <source>Invalid credentials.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/problem-details.ts</context>
+          <context context-type="linenumber">35</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="errors.email_registered" datatype="html">
+        <source>Email already registered.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/problem-details.ts</context>
+          <context context-type="linenumber">36</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="errors.registration_closed" datatype="html">
+        <source>Registration is closed. Ask an admin to set up an account.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/problem-details.ts</context>
+          <context context-type="linenumber">38</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="errors.password_incorrect" datatype="html">
+        <source>Your current password is incorrect.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/problem-details.ts</context>
+          <context context-type="linenumber">40</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="errors.invalid_language" datatype="html">
+        <source>That isn&apos;t a supported language.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/problem-details.ts</context>
+          <context context-type="linenumber">41</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="errors.generic" datatype="html">
+        <source>Something went wrong. Please try again.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/problem-details.ts</context>
+          <context context-type="linenumber">53</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="common.checking_link" datatype="html">
+        <source>Checking your link…</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/email-change/confirm-email.html</context>
+          <context context-type="linenumber">4,6</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.html</context>
+          <context context-type="linenumber">4,6</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="common.link_not_valid" datatype="html">
+        <source>Link not valid</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/email-change/confirm-email.html</context>
+          <context context-type="linenumber">8,9</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.html</context>
+          <context context-type="linenumber">8,9</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="confirm_email.invalid.sub" datatype="html">
+        <source>This confirmation link has expired or was already used. Start the change again from your profile.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/email-change/confirm-email.html</context>
+          <context context-type="linenumber">9,12</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="confirm_email.back" datatype="html">
+        <source>Back to Keepr</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/email-change/confirm-email.html</context>
+          <context context-type="linenumber">12,13</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="confirm_email.done.title" datatype="html">
+        <source>Email confirmed</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/email-change/confirm-email.html</context>
+          <context context-type="linenumber">16,17</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="confirm_email.done.sub" datatype="html">
+        <source>Your email is now <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="INTERPOLATION" equiv-text="{{ newEmail() }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>. Use it to sign in from now on.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/email-change/confirm-email.html</context>
+          <context context-type="linenumber">17,19</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="confirm_email.continue" datatype="html">
+        <source> Continue to Keepr </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/email-change/confirm-email.html</context>
+          <context context-type="linenumber">21,23</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="confirm_email.title" datatype="html">
+        <source>Confirm your new email</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/email-change/confirm-email.html</context>
+          <context context-type="linenumber">26,27</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="confirm_email.sub" datatype="html">
+        <source>Confirm <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="INTERPOLATION" equiv-text="{{ newEmail() }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> to start using it to sign in to Keepr.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/email-change/confirm-email.html</context>
+          <context context-type="linenumber">27,30</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="confirm_email.not_now" datatype="html">
+        <source>Not now</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/email-change/confirm-email.html</context>
+          <context context-type="linenumber">40,44</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="common.please_wait" datatype="html">
+        <source>Please wait…</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/email-change/confirm-email.ts</context>
+          <context context-type="linenumber">37</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/invites/claim.ts</context>
+          <context context-type="linenumber">52</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/login/login.ts</context>
+          <context context-type="linenumber">39</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.ts</context>
+          <context context-type="linenumber">52</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="confirm_email.confirm" datatype="html">
+        <source>Confirm this email</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/email-change/confirm-email.ts</context>
+          <context context-type="linenumber">37</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="confirm_email.err.in_use" datatype="html">
+        <source>That address is now in use. Start the change again from your profile.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/email-change/confirm-email.ts</context>
+          <context context-type="linenumber">78</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="confirm_email.err.generic" datatype="html">
+        <source>Could not confirm your new email. Try the link again.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/email-change/confirm-email.ts</context>
+          <context context-type="linenumber">80</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="lang.label" datatype="html">
+        <source>Language</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/i18n/language-switcher.ts</context>
+          <context context-type="linenumber">19,20</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="claim.loading" datatype="html">
+        <source>Checking your invitation…</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/invites/claim.html</context>
+          <context context-type="linenumber">4,5</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="claim.invalid.title" datatype="html">
+        <source>Invitation not valid</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/invites/claim.html</context>
+          <context context-type="linenumber">8,9</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="claim.invalid.sub" datatype="html">
+        <source>This invitation has expired or was already used. Ask an admin to send a new one.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/invites/claim.html</context>
+          <context context-type="linenumber">9,11</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="claim.go_to_sign_in" datatype="html">
+        <source> Go to sign in </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/invites/claim.html</context>
+          <context context-type="linenumber">12,14</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="claim.title" datatype="html">
+        <source>Set your password</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/invites/claim.html</context>
+          <context context-type="linenumber">17,18</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="claim.sub" datatype="html">
+        <source>Finish setting up <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="INTERPOLATION" equiv-text="{{ email() }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/invites/claim.html</context>
+          <context context-type="linenumber">18,21</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="field.password" datatype="html">
+        <source>Password</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/invites/claim.html</context>
+          <context context-type="linenumber">23,24</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="field.password_min" datatype="html">
+        <source>At least <x id="INTERPOLATION" equiv-text="{{ minPasswordLength }}"/> characters</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/invites/claim.html</context>
+          <context context-type="linenumber">29,30</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.html</context>
+          <context context-type="linenumber">30,31</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="field.confirm_password" datatype="html">
+        <source>Confirm password</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/invites/claim.html</context>
+          <context context-type="linenumber">53,55</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.html</context>
+          <context context-type="linenumber">54,56</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="common.passwords_no_match" datatype="html">
+        <source>Passwords don&apos;t match.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/invites/claim.html</context>
+          <context context-type="linenumber">63,67</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.html</context>
+          <context context-type="linenumber">64,68</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="password.hide" datatype="html">
+        <source>Hide password</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/invites/claim.ts</context>
+          <context context-type="linenumber">50</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/login/login.ts</context>
+          <context context-type="linenumber">42</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.ts</context>
+          <context context-type="linenumber">50</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="password.show" datatype="html">
+        <source>Show password</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/invites/claim.ts</context>
+          <context context-type="linenumber">50</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/login/login.ts</context>
+          <context context-type="linenumber">43</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.ts</context>
+          <context context-type="linenumber">50</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="claim.submit" datatype="html">
+        <source>Set password &amp; sign in</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/invites/claim.ts</context>
+          <context context-type="linenumber">52</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="login.title" datatype="html">
+        <source>Welcome back</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/login/login.html</context>
+          <context context-type="linenumber">5,6</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="login.subtitle" datatype="html">
+        <source>Sign in to your Keepr account.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/login/login.html</context>
+          <context context-type="linenumber">6,9</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="login.email.label" datatype="html">
+        <source>Email</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/login/login.html</context>
+          <context context-type="linenumber">11,13</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="login.email.placeholder" datatype="html">
+        <source>you@example.com</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/login/login.html</context>
+          <context context-type="linenumber">17,18</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/forgot-password.html</context>
+          <context context-type="linenumber">41,42</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="login.password.label" datatype="html">
+        <source>Password</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/login/login.html</context>
+          <context context-type="linenumber">24,26</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="login.forgot.link" datatype="html">
+        <source>Forgot password?</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/login/login.html</context>
+          <context context-type="linenumber">51,53</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="login.forgot.admin" datatype="html">
+        <source>Forgot your password? Contact your admin to reset it.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/login/login.html</context>
+          <context context-type="linenumber">53,57</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="login.no_account" datatype="html">
+        <source> Need an account? Ask a Keepr admin to set one up for you. </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/login/login.html</context>
+          <context context-type="linenumber">70,73</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="login.submit" datatype="html">
+        <source>Sign in</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/login/login.ts</context>
+          <context context-type="linenumber">39</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="forgot.loading" datatype="html">
+        <source>One moment…</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/forgot-password.html</context>
+          <context context-type="linenumber">4,5</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="forgot.title" datatype="html">
+        <source>Forgot your password?</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/forgot-password.html</context>
+          <context context-type="linenumber">8,9</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/forgot-password.html</context>
+          <context context-type="linenumber">29,30</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="forgot.noservice.sub" datatype="html">
+        <source>Resetting by email isn&apos;t available on this site. Contact your admin to reset your password.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/forgot-password.html</context>
+          <context context-type="linenumber">9,11</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="common.back_to_sign_in" datatype="html">
+        <source> Back to sign in </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/forgot-password.html</context>
+          <context context-type="linenumber">12,14</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/forgot-password.html</context>
+          <context context-type="linenumber">24,26</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/forgot-password.html</context>
+          <context context-type="linenumber">52,56</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.html</context>
+          <context context-type="linenumber">14,16</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="forgot.sent.title" datatype="html">
+        <source>Check your email</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/forgot-password.html</context>
+          <context context-type="linenumber">17,18</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="forgot.sent.sub" datatype="html">
+        <source> If an account with that email can be reset by email, we&apos;ve sent a link. Check your inbox (and spam) — the link expires soon. </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/forgot-password.html</context>
+          <context context-type="linenumber">19,21</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="forgot.form.sub" datatype="html">
+        <source>Enter your email and we&apos;ll send a link to reset it.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/forgot-password.html</context>
+          <context context-type="linenumber">30,33</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="field.email" datatype="html">
+        <source>Email</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/forgot-password.html</context>
+          <context context-type="linenumber">35,36</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="forgot.sending" datatype="html">
+        <source>Sending…</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/forgot-password.ts</context>
+          <context context-type="linenumber">35</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="forgot.send" datatype="html">
+        <source>Send reset link</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/forgot-password.ts</context>
+          <context context-type="linenumber">35</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="reset.invalid.sub" datatype="html">
+        <source>This reset link has expired or was already used. Request a new one to continue.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.html</context>
+          <context context-type="linenumber">9,11</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="reset.invalid.action" datatype="html">
+        <source> Request a new link </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.html</context>
+          <context context-type="linenumber">12,14</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="reset.title" datatype="html">
+        <source>Reset your password</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.html</context>
+          <context context-type="linenumber">18,19</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="reset.sub" datatype="html">
+        <source>Choose a new password for <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="INTERPOLATION" equiv-text="{{ email() }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.html</context>
+          <context context-type="linenumber">19,22</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="field.new_password" datatype="html">
+        <source>New password</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.html</context>
+          <context context-type="linenumber">24,26</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="reset.submit" datatype="html">
+        <source>Reset password &amp; sign in</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/password-reset/reset-password.ts</context>
+          <context context-type="linenumber">52</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="profile.language.title" datatype="html">
+        <source>Language</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/profile/profile.html</context>
+          <context context-type="linenumber">48,49</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="profile.language.sub" datatype="html">
+        <source>The language Keepr is shown in. Changing it reloads the app.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/profile/profile.html</context>
+          <context context-type="linenumber">49,50</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="profile.name.saved" datatype="html">
+        <source>Profile saved.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/features/profile/profile.ts</context>
+          <context context-type="linenumber">120</context>
+        </context-group>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

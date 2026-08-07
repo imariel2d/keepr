@@ -1,6 +1,8 @@
 using Keepr.Api.Data;
 using Keepr.Api.Features.Auth;
 using Keepr.Api.Features.Email;
+using Keepr.Api.Features.Localization;
+using Keepr.Api.Http;
 using Keepr.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,14 +22,18 @@ public record UsageResponse(long QuotaBytes, long UsedBytes, long RemainingBytes
 /// <summary>The signed-in account's profile. <paramref name="MustChangePassword"/> tells the SPA to
 /// route to the set-password step before anything else (§7.3). <paramref name="EmailVerified"/> and
 /// <paramref name="PendingEmail"/> drive the change-email panel (#27): whether to show a verified badge,
-/// and any in-flight change awaiting confirmation.</summary>
+/// and any in-flight change awaiting confirmation. <paramref name="PreferredLanguage"/> is the account's
+/// chosen UI locale ("en"/"es"/"fr"), or null for the default (#30).</summary>
 public record ProfileResponse(
     string Email, string? FirstName, string? LastName, string Role, bool MustChangePassword,
-    bool EmailVerified, string? PendingEmail);
+    bool EmailVerified, string? PendingEmail, string? PreferredLanguage);
 
 /// <param name="FirstName">Given name, or null/blank to clear it.</param>
 /// <param name="LastName">Family name, or null/blank to clear it.</param>
-public record UpdateProfileRequest(string? FirstName, string? LastName);
+/// <param name="PreferredLanguage">Preferred UI locale — "en", "es", or "fr", or null/blank to clear it
+/// back to the default (English). Any other value is rejected (400 <c>invalid_language</c>). Sent as
+/// part of the full-profile replace, like the name fields (#30).</param>
+public record UpdateProfileRequest(string? FirstName, string? LastName, string? PreferredLanguage);
 
 /// <param name="CurrentPassword">The existing password, re-verified before the change.</param>
 /// <param name="NewPassword">The replacement, held to the registration password rules.</param>
@@ -83,9 +89,11 @@ public class MeController(
         return await ToProfileAsync(user, ct);
     }
 
-    /// <summary>Updates the account's display name (#29). Blank fields clear the stored value.</summary>
+    /// <summary>Updates the account's display name (#29) and preferred UI language (#30). Blank fields
+    /// clear the stored value; an unsupported language is rejected.</summary>
     [HttpPatch("profile")]
     [ProducesResponseType<ProfileResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProfileResponse>> UpdateProfile(
         UpdateProfileRequest req, CancellationToken ct)
@@ -93,12 +101,19 @@ public class MeController(
         var user = await db.Users.FindAsync([User.UserId()], ct);
         if (user is null) return NotFound();
 
-        // Full replace of BOTH name fields, not a partial PATCH: a missing field and an explicitly
-        // cleared field both arrive as null, so every call must send the whole pair. A blank value
-        // clears the stored name by design. Don't "fix" a caller into sending only one field — that
-        // would silently wipe the other.
+        // Validate the language before touching anything: a blank value clears the preference (null →
+        // default English), any non-supported code is a 400 so an unknown locale never reaches the DB.
+        if (!SupportedLanguages.TryNormalize(req.PreferredLanguage, out var language))
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.InvalidLanguage,
+                "That isn't a supported language.");
+
+        // Full replace of the profile fields, not a partial PATCH: a missing field and an explicitly
+        // cleared field both arrive as null, so every call must send the whole set. A blank value
+        // clears the stored value by design. Don't "fix" a caller into sending only one field — that
+        // would silently wipe the others.
         user.FirstName = Normalize(req.FirstName);
         user.LastName = Normalize(req.LastName);
+        user.PreferredLanguage = language;
         await db.SaveChangesAsync(ct);
 
         return await ToProfileAsync(user, ct);
@@ -122,7 +137,8 @@ public class MeController(
         // A null hash means an unclaimed account (it shouldn't reach an authed endpoint), but guard
         // anyway so Verify never sees null.
         if (user.PasswordHash is null || !BCrypt.Net.BCrypt.Verify(req.CurrentPassword, user.PasswordHash))
-            return Problem("Your current password is incorrect.", statusCode: StatusCodes.Status400BadRequest);
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.PasswordIncorrect,
+                "Your current password is incorrect.");
 
         if (await credentials.ValidatePasswordAsync(req.NewPassword, user.Email, ct) is { } errors)
             return BadRequest(new ValidationProblemDetails(errors)
@@ -171,16 +187,17 @@ public class MeController(
         // Re-authenticate, exactly like change-password: a stolen session alone can't move the email,
         // which is what closes the change-email→reset takeover at step one (§1).
         if (user.PasswordHash is null || !BCrypt.Net.BCrypt.Verify(req.CurrentPassword, user.PasswordHash))
-            return Problem("Your current password is incorrect.", statusCode: StatusCodes.Status400BadRequest);
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.PasswordIncorrect,
+                "Your current password is incorrect.");
 
         var newEmail = (req.NewEmail ?? string.Empty).Trim().ToLowerInvariant();
 
         if (EmailPolicy.Validate(newEmail) is { } emailError)
             return BadRequest(FieldError("newEmail", emailError));
         if (newEmail == user.Email)
-            return Coded(StatusCodes.Status400BadRequest, "email_unchanged", "That's already your email.");
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.EmailUnchanged, "That's already your email.");
         if (await db.Users.AnyAsync(u => u.Email == newEmail && u.Id != user.Id, ct))
-            return Coded(StatusCodes.Status409Conflict, "email_in_use", "That email is already in use.");
+            return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailInUse, "That email is already in use.");
 
         // The AnyAsync check above isn't atomic with the write below, so a concurrent
         // registration/change can still take newEmail first; the unique Users.Email index then rejects
@@ -202,7 +219,7 @@ public class MeController(
             }
             catch (DbUpdateException)
             {
-                return Coded(StatusCodes.Status409Conflict, "email_in_use", "That email is already in use.");
+                return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailInUse, "That email is already in use.");
             }
             await tx.CommitAsync(ct);
             return Ok(await ToProfileAsync(user, ct));
@@ -224,7 +241,7 @@ public class MeController(
             {
                 // A concurrent request from the same account won the one-live-token slot (the partial
                 // unique index on EmailChangeTokens.UserId). The rollback preserves that live token.
-                return Coded(StatusCodes.Status409Conflict, "email_change_pending",
+                return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailChangePending,
                     "A change to your email is already pending. Cancel it or use the link we sent, then try again.");
             }
             await tx.CommitAsync(ct);
@@ -277,7 +294,7 @@ public class MeController(
 
         return new ProfileResponse(
             user.Email, user.FirstName, user.LastName, user.Role.ToString(), user.MustChangePassword,
-            user.EmailVerified, pending);
+            user.EmailVerified, pending, user.PreferredLanguage);
     }
 
     private static ValidationProblemDetails FieldError(string field, string message) =>
@@ -286,13 +303,6 @@ public class MeController(
             Status = StatusCodes.Status400BadRequest,
             Detail = message
         };
-
-    private ObjectResult Coded(int status, string code, string detail)
-    {
-        var pd = new ProblemDetails { Status = status, Detail = detail };
-        pd.Extensions["code"] = code;
-        return StatusCode(status, pd);
-    }
 
     private static string? Normalize(string? value)
     {
