@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0](https://github.com/imariel2d/keepr/compare/v1.1.0...v1.2.0) (2026-08-07)
+
+
+### Features
+
+* **api:** change email backend ([#27](https://github.com/imariel2d/keepr/issues/27)) ([a68f95a](https://github.com/imariel2d/keepr/commit/a68f95a12e4b6043d512570c3f9e51002f539a2a))
+* change email ([#27](https://github.com/imariel2d/keepr/issues/27)) — design + backend + UI ([f438217](https://github.com/imariel2d/keepr/commit/f438217fadb14af59c782423e1f161670127b991))
+* **client:** change email UI ([#27](https://github.com/imariel2d/keepr/issues/27)) ([a85ba1e](https://github.com/imariel2d/keepr/commit/a85ba1efa1f8d172bb725aea3c1624bc5077820d))
+
+
+### Bug Fixes
+
+* **api:** address CodeRabbit review on [#27](https://github.com/imariel2d/keepr/issues/27) change email ([131981c](https://github.com/imariel2d/keepr/commit/131981c4fdfb02254092700787f6985b11d326d8))
+
 ## [1.1.0](https://github.com/imariel2d/keepr/compare/v1.0.0...v1.1.0) (2026-08-03)
 
 
