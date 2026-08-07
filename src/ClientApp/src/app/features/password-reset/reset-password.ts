@@ -4,7 +4,7 @@ import { AuthService } from '../../core/auth.service';
 import { PasswordResetService } from '../../core/password-reset.service';
 import { ProfileStore } from '../../core/profile.store';
 import { MIN_PASSWORD_LENGTH } from '../../core/password-policy';
-import { problemDetail, problemStatus, validationErrors } from '../../core/problem-details';
+import { errorMessage, problemStatus, validationErrors } from '../../core/problem-details';
 import { ButtonComponent } from '../../cove/lib/button/button.component';
 import { InputComponent } from '../../cove/lib/input/input.component';
 import { IconComponent } from '../../cove/lib/icon/icon.component';
@@ -45,6 +45,11 @@ export class ResetPassword {
   protected readonly longEnough = computed(() => [...this.password()].length >= MIN_PASSWORD_LENGTH);
   protected readonly matches = computed(() => this.confirm().length > 0 && this.password() === this.confirm());
   protected readonly canSubmit = computed(() => this.longEnough() && this.matches());
+
+  protected readonly revealLabel = computed(() =>
+    this.showPassword() ? $localize`:@@password.hide:Hide password` : $localize`:@@password.show:Show password`);
+  protected readonly submitLabel = computed(() =>
+    this.busy() ? $localize`:@@common.please_wait:Please wait…` : $localize`:@@reset.submit:Reset password & sign in`);
 
   constructor() {
     void this.validate();
@@ -94,7 +99,7 @@ export class ResetPassword {
       if (Object.keys(fieldErrors).length > 0) {
         this.fieldErrors.set(fieldErrors);
       } else {
-        this.error.set(problemDetail(e, 'Could not reset your password. Try again.'));
+        this.error.set(errorMessage(e));
       }
       return;
     } finally {

@@ -18,13 +18,15 @@
 > `"localize": true` production build + polyfill + `$localize` types); `core/locale.ts` +
 > `LocaleService` (current locale, cookie-persisting `switchTo` that reloads into `/{locale}/`); a
 > shared `LanguageSwitcher`; `errorMessage()` in `problem-details.ts` (code → `$localize` copy, server
-> `detail` fallback). The **login screen is fully localized** and the **/profile language card** wires
-> the switcher to `PATCH /api/me/profile`. `es`/`fr` XLIFF catalogs (machine-translated,
-> `needs-review`) — the production build emits `browser/{en,es,fr}/` with the right base hrefs and
-> per-locale copy (verified, no English leak in `es`); the Dockerfile carries all three unchanged.
+> `detail` fallback). **Localized screens:** the whole **auth/entry flow** — login, forgot-password,
+> reset-password, claim, and confirm-email — plus the **/profile language card** (wires the switcher to
+> `PATCH /api/me/profile`). `es`/`fr` XLIFF catalogs (62 units, machine-translated, `needs-review`,
+> id-complete against the source) — the production build emits `browser/{en,es,fr}/` with the right
+> base hrefs and per-locale copy (verified, no English leak in `es`); the Dockerfile carries all three
+> unchanged.
 >
-> **Not built yet:** the remaining screens' copy (files, trash, admin, share viewer, the other auth
-> screens — still hardcoded English), the Phase-2 field-validation codes (§5.3), the client
+> **Not built yet:** the **authenticated screens' copy** (the app shell/chrome, files, trash, admin,
+> share viewer — still hardcoded English), the Phase-2 field-validation codes (§5.3), the client
 > bootstrap auto-redirect for a signed-in user whose account preference differs from the current build
 > (the server cookie redirect covers the same-browser case), and emails (§10 P3).
 >

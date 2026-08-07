@@ -1,30 +1,30 @@
 <section class="auth">
   <div class="auth-card">
     @if (loading()) {
-      <p class="loading">Checking your link…</p>
+      <p class="loading" i18n="@@common.checking_link">Checking your link…</p>
     } @else if (invalid()) {
       <div class="head">
         <img class="mark" src="cove-mark.svg" alt="" width="56" height="56" aria-hidden="true" />
-        <h1>Link not valid</h1>
-        <p class="sub">This confirmation link has expired or was already used. Start the change again
+        <h1 i18n="@@common.link_not_valid">Link not valid</h1>
+        <p class="sub" i18n="@@confirm_email.invalid.sub">This confirmation link has expired or was already used. Start the change again
           from your profile.</p>
       </div>
-      <p class="switch"><a routerLink="/files">Back to Keepr</a></p>
+      <p class="switch"><a routerLink="/files" i18n="@@confirm_email.back">Back to Keepr</a></p>
     } @else if (done()) {
       <div class="head">
         <img class="mark" src="cove-mark.svg" alt="" width="56" height="56" aria-hidden="true" />
-        <h1>Email confirmed</h1>
-        <p class="sub" role="status">Your email is now <strong>{{ newEmail() }}</strong>. Use it to
+        <h1 i18n="@@confirm_email.done.title">Email confirmed</h1>
+        <p class="sub" role="status" i18n="@@confirm_email.done.sub">Your email is now <strong>{{ newEmail() }}</strong>. Use it to
           sign in from now on.</p>
       </div>
-      <cove-button variant="primary" size="lg" class="submit" (click)="goToFiles()">
+      <cove-button variant="primary" size="lg" class="submit" (click)="goToFiles()" i18n="@@confirm_email.continue">
         Continue to Keepr
       </cove-button>
     } @else {
       <div class="head">
         <img class="mark" src="cove-mark.svg" alt="" width="56" height="56" aria-hidden="true" />
-        <h1>Confirm your new email</h1>
-        <p class="sub">Confirm <strong>{{ newEmail() }}</strong> to start using it to sign in to Keepr.</p>
+        <h1 i18n="@@confirm_email.title">Confirm your new email</h1>
+        <p class="sub" i18n="@@confirm_email.sub">Confirm <strong>{{ newEmail() }}</strong> to start using it to sign in to Keepr.</p>
       </div>
 
       @if (error()) {
@@ -35,9 +35,9 @@
       }
 
       <cove-button variant="primary" size="lg" [disabled]="busy()" class="submit" (click)="confirm()">
-        {{ busy() ? 'Please wait…' : 'Confirm this email' }}
+        {{ submitLabel() }}
       </cove-button>
-      <p class="switch"><a routerLink="/files">Not now</a></p>
+      <p class="switch"><a routerLink="/files" i18n="@@confirm_email.not_now">Not now</a></p>
     }
   </div>
 </section>
