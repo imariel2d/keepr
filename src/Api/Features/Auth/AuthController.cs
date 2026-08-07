@@ -1,5 +1,6 @@
 using Keepr.Api.Data;
 using Keepr.Api.Domain;
+using Keepr.Api.Http;
 using Keepr.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -45,7 +46,7 @@ public class AuthController(
         var decision = await registrationGate.EvaluateAsync(
             new RegistrationAttempt(email, req.InviteCode), ct);
         if (!decision.Allowed)
-            return Problem(decision.Reason, statusCode: decision.StatusCode);
+            return this.CodedProblem(decision.StatusCode, ErrorCodes.RegistrationClosed, decision.Reason!);
 
         if (await credentials.ValidateAsync(email, req.Password, ct) is { } errors)
             return BadRequest(new ValidationProblemDetails(errors)
@@ -55,7 +56,8 @@ public class AuthController(
             });
 
         if (await db.Users.AnyAsync(u => u.Email == email, ct))
-            return Problem("Email already registered.", statusCode: StatusCodes.Status409Conflict);
+            return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailRegistered,
+                "Email already registered.");
 
         var user = new User
         {
@@ -80,7 +82,8 @@ public class AuthController(
         // your account", so login stays a poor oracle for account state.
         if (user is null || user.PasswordHash is null
             || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
-            return Problem("Invalid credentials.", statusCode: StatusCodes.Status401Unauthorized);
+            return this.CodedProblem(StatusCodes.Status401Unauthorized, ErrorCodes.InvalidCredentials,
+                "Invalid credentials.");
 
         // Serialize issuing a session against a concurrent kick on the *same user row*. Without
         // this, a login that passed the deletion check could insert its session just after
@@ -100,7 +103,8 @@ public class AuthController(
         // invalid credentials, not "account removed", so the endpoint stays a poor oracle for
         // account state.
         if (locked is null || locked.DeletionRequestedAt is not null)
-            return Problem("Invalid credentials.", statusCode: StatusCodes.Status401Unauthorized);
+            return this.CodedProblem(StatusCodes.Status401Unauthorized, ErrorCodes.InvalidCredentials,
+                "Invalid credentials.");
 
         // The credential may have been rotated (a change-password or a reset) between the unlocked
         // read above and taking this lock. The hash we BCrypt-verified is then stale, so refuse —
@@ -109,7 +113,8 @@ public class AuthController(
         // second BCrypt; mirrors the DeletionRequestedAt recheck. The reset/direct-reset paths take
         // the same row lock, so the two serialize. See docs/feature-26-password-reset.md §5.3.
         if (locked.PasswordHash != user.PasswordHash)
-            return Problem("Invalid credentials.", statusCode: StatusCodes.Status401Unauthorized);
+            return this.CodedProblem(StatusCodes.Status401Unauthorized, ErrorCodes.InvalidCredentials,
+                "Invalid credentials.");
 
         var result = await StartSession(locked, ct);
         await tx.CommitAsync(ct);

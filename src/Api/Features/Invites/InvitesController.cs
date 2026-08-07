@@ -1,6 +1,7 @@
 using Keepr.Api.Data;
 using Keepr.Api.Domain;
 using Keepr.Api.Features.Auth;
+using Keepr.Api.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,7 +37,8 @@ public class InvitesController(
     {
         var invite = await invites.ResolveAsync(token, ct);
         if (invite is null)
-            return Problem("This invitation is no longer valid.", statusCode: StatusCodes.Status410Gone);
+            return this.CodedProblem(StatusCodes.Status410Gone, ErrorCodes.InviteLinkInvalid,
+                "This invitation is no longer valid.");
 
         return new InvitePreview(invite.User.Email);
     }
@@ -53,7 +55,8 @@ public class InvitesController(
     {
         var invite = await invites.ResolveAsync(token, ct);
         if (invite is null)
-            return Problem("This invitation is no longer valid.", statusCode: StatusCodes.Status410Gone);
+            return this.CodedProblem(StatusCodes.Status410Gone, ErrorCodes.InviteLinkInvalid,
+                "This invitation is no longer valid.");
 
         var user = invite.User;
 
@@ -74,7 +77,8 @@ public class InvitesController(
             .Where(i => i.Id == invite.Id && i.ClaimedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.ClaimedAt, clock.GetUtcNow()), ct);
         if (won == 0)
-            return Problem("This invitation is no longer valid.", statusCode: StatusCodes.Status410Gone);
+            return this.CodedProblem(StatusCodes.Status410Gone, ErrorCodes.InviteLinkInvalid,
+                "This invitation is no longer valid.");
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
         // The invitee chose this password themselves, so there is nothing to force-rotate.

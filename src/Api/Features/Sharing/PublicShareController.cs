@@ -1,3 +1,4 @@
+using Keepr.Api.Http;
 using Keepr.Api.Services;
 using Keepr.Api.Storage;
 using Microsoft.AspNetCore.Authorization;
@@ -82,8 +83,8 @@ public class PublicShareController(
 
         var serveAs = PreviewPolicy.ServeAs(file.ContentType);
         if (serveAs is null)
-            return Problem("This file type cannot be previewed; download it instead.",
-                statusCode: StatusCodes.Status415UnsupportedMediaType);
+            return this.CodedProblem(StatusCodes.Status415UnsupportedMediaType, ErrorCodes.PreviewUnsupported,
+                "This file type cannot be previewed; download it instead.");
 
         return Ok(new ShareDownloadUrlResponse(
             await storage.PresignGetUrlAsync(
@@ -97,7 +98,8 @@ public class PublicShareController(
     /// message the page can render directly.
     /// </summary>
     private IActionResult LinkNotFound() =>
-        Problem("This share link doesn't exist.", statusCode: StatusCodes.Status404NotFound);
+        this.CodedProblem(StatusCodes.Status404NotFound, ErrorCodes.ShareNotFound,
+            "This share link doesn't exist.");
 
     /// <summary>
     /// 410 Gone: the token was valid entropy but the link no longer works — expired, revoked, its
@@ -106,5 +108,6 @@ public class PublicShareController(
     /// the unguessable token makes safe to expose.
     /// </summary>
     private IActionResult LinkUnavailable() =>
-        Problem("This share link is no longer available.", statusCode: StatusCodes.Status410Gone);
+        this.CodedProblem(StatusCodes.Status410Gone, ErrorCodes.ShareUnavailable,
+            "This share link is no longer available.");
 }

@@ -3,6 +3,7 @@ using Keepr.Api.Domain;
 using Keepr.Api.Features.Auth;
 using Keepr.Api.Features.Email;
 using Keepr.Api.Features.Invites;
+using Keepr.Api.Http;
 using Keepr.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -146,7 +147,7 @@ public class AdminController(
         Guid id, UpdateQuotaRequest req, CancellationToken ct)
     {
         if (req.QuotaBytes < 0)
-            return Problem("Quota must be zero or greater.", statusCode: StatusCodes.Status400BadRequest);
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.QuotaInvalid, "Quota must be zero or greater.");
 
         var user = await db.Users.FindAsync([id], ct);
         if (user is null) return NotFound();
@@ -179,7 +180,7 @@ public class AdminController(
     public async Task<IActionResult> KickUser(Guid id, CancellationToken ct)
     {
         if (id == User.UserId())
-            return Problem("You cannot remove your own account.", statusCode: StatusCodes.Status400BadRequest);
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.CannotRemoveSelf, "You cannot remove your own account.");
 
         var user = await db.Users.FindAsync([id], ct);
         if (user is null) return NotFound();
@@ -216,7 +217,7 @@ public class AdminController(
             var otherAdmins = await db.Users.CountAsync(
                 u => u.Role == Role.Admin && u.Id != id && u.DeletionRequestedAt == null, ct);
             if (otherAdmins == 0)
-                return Problem("Cannot remove the last admin.", statusCode: StatusCodes.Status409Conflict);
+                return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.LastAdmin, "Cannot remove the last admin.");
         }
 
         // Access is gone the instant this commits, before a single byte is touched.
@@ -248,7 +249,7 @@ public class AdminController(
         var email = (req.Email ?? string.Empty).Trim().ToLowerInvariant();
 
         if (!Enum.TryParse<Role>(req.Role, ignoreCase: true, out var role) || !Enum.IsDefined(role))
-            return Problem("Role must be 'User' or 'Admin'.", statusCode: StatusCodes.Status400BadRequest);
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.RoleInvalid, "Role must be 'User' or 'Admin'.");
 
         if (req.SendInvite)
         {
@@ -256,15 +257,8 @@ public class AdminController(
             // with a machine-readable code so the client can tell this apart from the *other* 409
             // this endpoint returns (duplicate email) and show the right message.
             if (!await emailSettings.IsEnabledAsync(ct))
-            {
-                var pd = new ProblemDetails
-                {
-                    Status = StatusCodes.Status409Conflict,
-                    Detail = "Email delivery is not configured — set a password instead."
-                };
-                pd.Extensions["code"] = "email_not_configured";
-                return Conflict(pd);
-            }
+                return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailNotConfigured,
+                    "Email delivery is not configured — set a password instead.");
             if (EmailPolicy.Validate(email) is { } emailError)
                 return BadRequest(FieldError("email", emailError));
         }
@@ -278,7 +272,7 @@ public class AdminController(
         }
 
         if (await db.Users.AnyAsync(u => u.Email == email, ct))
-            return Problem("Email already registered.", statusCode: StatusCodes.Status409Conflict);
+            return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailRegistered, "Email already registered.");
 
         var user = new User
         {
@@ -311,7 +305,7 @@ public class AdminController(
         {
             // Lost the check-then-act race on the unique Email index (two concurrent creates, or an
             // impatient double-click). Report the same 409 the AnyAsync pre-check would, not a 500.
-            return Problem("Email already registered.", statusCode: StatusCodes.Status409Conflict);
+            return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailRegistered, "Email already registered.");
         }
 
         var emailSent = false;
@@ -351,10 +345,10 @@ public class AdminController(
         Guid id, UpdateRoleRequest req, CancellationToken ct)
     {
         if (!Enum.TryParse<Role>(req.Role, ignoreCase: true, out var newRole) || !Enum.IsDefined(newRole))
-            return Problem("Role must be 'User' or 'Admin'.", statusCode: StatusCodes.Status400BadRequest);
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.RoleInvalid, "Role must be 'User' or 'Admin'.");
 
         if (AdminInvariants.IsSelfDemotion(id == User.UserId(), newRole))
-            return Problem("You cannot demote your own account.", statusCode: StatusCodes.Status400BadRequest);
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.CannotDemoteSelf, "You cannot demote your own account.");
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
@@ -373,7 +367,7 @@ public class AdminController(
                 var otherAdmins = await db.Users.CountAsync(
                     u => u.Role == Role.Admin && u.Id != id && u.DeletionRequestedAt == null, ct);
                 if (AdminInvariants.WouldRemoveLastAdmin(user.Role, newRole, otherAdmins))
-                    return Problem("Cannot remove the last admin.", statusCode: StatusCodes.Status409Conflict);
+                    return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.LastAdmin, "Cannot remove the last admin.");
             }
 
             var from = user.Role;
@@ -399,14 +393,14 @@ public class AdminController(
     public async Task<IActionResult> ResendInvite(Guid id, CancellationToken ct)
     {
         if (!await emailSettings.IsEnabledAsync(ct))
-            return Problem("Email delivery is not configured.", statusCode: StatusCodes.Status409Conflict);
+            return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailNotConfigured, "Email delivery is not configured.");
 
         var user = await db.Users.FindAsync([id], ct);
         if (user is null || user.DeletionRequestedAt is not null) return NotFound();
 
         // Only an unclaimed account (null hash) has an invite to resend.
         if (user.PasswordHash is not null)
-            return Problem("This account has already been claimed.", statusCode: StatusCodes.Status409Conflict);
+            return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.AccountAlreadyClaimed, "This account has already been claimed.");
 
         await invites.RemoveExistingAsync(user.Id, ct);
         var (invite, token) = await invites.BuildAsync(user.Id, ct);
@@ -420,8 +414,8 @@ public class AdminController(
             // Lost a race with a concurrent resend: the one-live-invite-per-account unique index
             // rejected this second insert (the other request's link stands). Report it rather than
             // 500; the admin can retry. See docs/feature-36-account-provisioning.md §8.2/§8.5.
-            return Problem("Another invite for this account was just issued. Try again.",
-                statusCode: StatusCodes.Status409Conflict);
+            return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.InviteConflict,
+                "Another invite for this account was just issued. Try again.");
         }
 
         try
@@ -431,8 +425,8 @@ public class AdminController(
         catch (Exception ex)
         {
             log.LogError(ex, "Resent invite for {Email} failed to send.", user.Email);
-            return Problem("Could not send the invite email. Try again.",
-                statusCode: StatusCodes.Status502BadGateway);
+            return this.CodedProblem(StatusCodes.Status502BadGateway, ErrorCodes.InviteSendFailed,
+                "Could not send the invite email. Try again.");
         }
 
         return NoContent();
@@ -464,33 +458,19 @@ public class AdminController(
         // Only an active (claimed) account has a password to reset. A pending account (null hash) has
         // no password yet — it uses resend-invite, not reset.
         if (user.PasswordHash is null)
-            return Problem("This account hasn't been claimed yet — resend its invite instead.",
-                statusCode: StatusCodes.Status409Conflict);
+            return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.AccountNotClaimed,
+                "This account hasn't been claimed yet — resend its invite instead.");
 
         if (req.SendLink)
         {
             // Never silently no-op a link, and never send one to an unverified inbox. Both refusals
             // carry a machine-readable code so the client can tell them apart and show the right copy.
             if (!await emailSettings.IsEnabledAsync(ct))
-            {
-                var pd = new ProblemDetails
-                {
-                    Status = StatusCodes.Status409Conflict,
-                    Detail = "Email delivery is not configured — set a password instead."
-                };
-                pd.Extensions["code"] = "email_not_configured";
-                return Conflict(pd);
-            }
+                return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailNotConfigured,
+                    "Email delivery is not configured — set a password instead.");
             if (!user.EmailVerified)
-            {
-                var pd = new ProblemDetails
-                {
-                    Status = StatusCodes.Status409Conflict,
-                    Detail = "This account's email isn't verified — set a password directly instead."
-                };
-                pd.Extensions["code"] = "email_unverified";
-                return Conflict(pd);
-            }
+                return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailUnverified,
+                    "This account's email isn't verified — set a password directly instead.");
 
             await resets.RemoveExistingAsync(user.Id, ct);
             var (token, raw) = resets.Build(user.Id);
@@ -503,8 +483,8 @@ public class AdminController(
             catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
             {
                 // Lost a race with a concurrent reset: the one-live-token index rejected this insert.
-                return Problem("Another reset for this account was just issued. Try again.",
-                    statusCode: StatusCodes.Status409Conflict);
+                return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.ResetConflict,
+                    "Another reset for this account was just issued. Try again.");
             }
 
             try
@@ -515,8 +495,8 @@ public class AdminController(
             {
                 // The admin explicitly asked to send, so surface the failure (unlike self-service).
                 log.LogError(ex, "Admin-initiated reset email for {Email} failed to send.", user.Email);
-                return Problem("Could not send the reset email. Try again.",
-                    statusCode: StatusCodes.Status502BadGateway);
+                return this.CodedProblem(StatusCodes.Status502BadGateway, ErrorCodes.ResetSendFailed,
+                    "Could not send the reset email. Try again.");
             }
             return Accepted();
         }

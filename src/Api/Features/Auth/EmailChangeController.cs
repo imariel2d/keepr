@@ -1,4 +1,5 @@
 using Keepr.Api.Data;
+using Keepr.Api.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,7 +38,8 @@ public class EmailChangeController(
     {
         var row = await emailChanges.ResolveAsync(token, ct);
         if (row is null)
-            return Problem("This confirmation link is no longer valid.", statusCode: StatusCodes.Status410Gone);
+            return this.CodedProblem(StatusCodes.Status410Gone, ErrorCodes.ConfirmLinkInvalid,
+                "This confirmation link is no longer valid.");
 
         return new EmailChangePreview(row.NewEmail);
     }
@@ -56,7 +58,8 @@ public class EmailChangeController(
     {
         var row = await emailChanges.ResolveAsync(token, ct);
         if (row is null)
-            return Problem("This confirmation link is no longer valid.", statusCode: StatusCodes.Status410Gone);
+            return this.CodedProblem(StatusCodes.Status410Gone, ErrorCodes.ConfirmLinkInvalid,
+                "This confirmation link is no longer valid.");
 
         var user = row.User;
         var oldEmail = user.Email;
@@ -75,7 +78,8 @@ public class EmailChangeController(
             .Where(t => t.Id == row.Id && t.UsedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.UsedAt, clock.GetUtcNow()), ct);
         if (won == 0)
-            return Problem("This confirmation link is no longer valid.", statusCode: StatusCodes.Status410Gone);
+            return this.CodedProblem(StatusCodes.Status410Gone, ErrorCodes.ConfirmLinkInvalid,
+                "This confirmation link is no longer valid.");
 
         user.Email = row.NewEmail;
         // Confirming proves control of the new inbox — the only self-service path that verifies (§7).
@@ -122,14 +126,6 @@ public class EmailChangeController(
         });
     }
 
-    private ConflictObjectResult EmailInUse()
-    {
-        var pd = new ProblemDetails
-        {
-            Status = StatusCodes.Status409Conflict,
-            Detail = "That email is already in use."
-        };
-        pd.Extensions["code"] = "email_in_use";
-        return Conflict(pd);
-    }
+    private ObjectResult EmailInUse() =>
+        this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailInUse, "That email is already in use.");
 }

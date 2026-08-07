@@ -1,6 +1,7 @@
 using Keepr.Api.Data;
 using Keepr.Api.Domain;
 using Keepr.Api.Features.Media;
+using Keepr.Api.Http;
 using Keepr.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -50,7 +51,8 @@ public class SearchController(AppDbContext db) : ControllerBase
     {
         var term = q?.Trim();
         if (string.IsNullOrEmpty(term))
-            return Problem("A search term is required.", statusCode: StatusCodes.Status400BadRequest);
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.SearchTermRequired,
+                "A search term is required.");
 
         var userId = User.UserId();
         var pattern = $"%{LikeEscape.Escape(term)}%";

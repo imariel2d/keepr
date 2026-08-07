@@ -9,9 +9,11 @@
 > **Built so far (backend):** `User.PreferredLanguage` (nullable) + the `AddPreferredLanguage`
 > migration; `SupportedLanguages` (the pure `en`/`es`/`fr` validator, unit-tested); `ProfileResponse`
 > gains `preferredLanguage`; `PATCH /api/me/profile` accepts + validates it (`400 invalid_language`
-> on an unsupported code). **Not built yet:** the whole client (`@angular/localize` setup, catalogs,
-> switcher, locale serving in `Program.cs`), the server error-`code` sweep + `ErrorCodes` registry
-> (§5), and emails (§10 P3).
+> on an unsupported code). **The server error-`code` sweep is done** (§5): the `ErrorCodes` registry +
+> `CodedProblem` extension in `src/Api/Http/`, every problem+json error across the 15 controllers and
+> the folder/trash/quota service exceptions now coded, guarded by a uniqueness test. **Not built
+> yet:** the whole client (`@angular/localize` setup, catalogs, switcher, locale serving in
+> `Program.cs`), the Phase-2 field-validation codes (§5.3), and emails (§10 P3).
 >
 > Two load-bearing decisions the user made up front (see §2):
 >
@@ -224,32 +226,40 @@ Introduce one authoritative list so codes are discoverable and never silently di
 client:
 
 ```csharp
-// src/Api/Features/Shared/ErrorCodes.cs — the canonical set of user-facing error codes.
+// src/Api/Http/ErrorCodes.cs — the canonical set of user-facing error codes.
 public static class ErrorCodes
 {
     public const string EmailInUse = "email_in_use";
     public const string PasswordIncorrect = "password_incorrect";
-    public const string TokenInvalid = "token_invalid";
     public const string QuotaExceeded = "quota_exceeded";
     public const string InvalidLanguage = "invalid_language";
-    // …one per user-facing Problem() across the 15 controllers.
+    // …one per user-facing Problem() across the 15 controllers (~40 codes).
 }
 ```
 
-A small helper standardizes attaching a code to a problem (the repo already does this ad hoc):
+A shared extension standardizes attaching a code — it goes through the controller's
+`ProblemDetailsFactory`, so a coded response still gets Type/Title/traceId (strictly better than the
+ad-hoc `new ProblemDetails { … }` sites it replaced):
 
 ```csharp
-protected IActionResult CodedProblem(string code, string detail, int status) { … Extensions["code"] = code; … }
+// src/Api/Http/ControllerErrorExtensions.cs
+public static ObjectResult CodedProblem(this ControllerBase c, int status, string code, string detail);
 ```
 
-Each of the ~88 `Problem()` sites is swept to attach a code (existing `email_in_use`,
-`email_not_configured`, `email_unverified` already comply). The English `detail` stays as the
-fallback and as the API's own documentation of what the code means.
+Each user-facing `Problem()` site is swept to attach a code (existing `email_in_use`,
+`email_not_configured`, `email_unverified` keep their exact strings — the client branches on them).
+The English `detail` stays as the fallback and as the API's own documentation of what the code means.
+Service-layer errors carry the code too: `FolderException`/`TrashException` gained a `Code` (like the
+`StatusCode` they already carried), so the controllers that forward them (`Problem(ex.Message,
+ex.StatusCode)` → `CodedProblem(ex.StatusCode, ex.Code, ex.Message)`) localize for free.
 
-> **Status:** not started. The first new coded error, `invalid_language` (from the profile endpoint),
-> uses the **existing inline `Coded(...)` helper** in `MeController` (`pd.Extensions["code"] = …`) to
-> match the surrounding code — the `ErrorCodes` registry and the 15-controller sweep are a distinct
-> follow-up PR, not folded into the preferred-language slice.
+> **Status: done.** `ErrorCodes` (~40 constants) + the `CodedProblem` extension live in
+> `src/Api/Http/`; every problem+json `Problem()` across the 15 controllers and the 19 service-exception
+> throw sites now carry a stable code. A unit test asserts the code values are unique + snake_case.
+> **Deferred (Phase 2):** the `ValidationProblemDetails` field-error maps (password/email/register
+> validation stay English for now, §5.3) and the two bespoke non-problem+json shapes in
+> `UploadsController` (the anonymous `{ error }` guardrails and the `413` `{ error, remaining }`
+> quota body, which carries extra data).
 
 ### 5.2 Client-side rendering
 

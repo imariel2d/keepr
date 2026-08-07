@@ -1,17 +1,21 @@
 using Keepr.Api.Data;
 using Keepr.Api.Domain;
+using Keepr.Api.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace Keepr.Api.Services;
 
 /// <summary>
-/// A folder operation the caller can fix. <see cref="StatusCode"/> carries the HTTP meaning so
-/// controllers don't have to pattern-match on the message.
+/// A folder operation the caller can fix. <see cref="StatusCode"/> carries the HTTP meaning and
+/// <see cref="Code"/> the stable machine <c>code</c> (#30) so controllers don't have to pattern-match
+/// on the message — they forward both straight to <c>CodedProblem</c>.
 /// </summary>
-public class FolderException(string message, int statusCode = StatusCodes.Status400BadRequest)
+public class FolderException(
+    string message, int statusCode = StatusCodes.Status400BadRequest, string code = ErrorCodes.InvalidRequest)
     : Exception(message)
 {
     public int StatusCode { get; } = statusCode;
+    public string Code { get; } = code;
 }
 
 /// <summary>
@@ -121,9 +125,9 @@ public class FolderService(AppDbContext db)
             if (parentId is not null)
             {
                 var parent = await OwnedAsync(ownerId, parentId.Value, ct)
-                    ?? throw new FolderException("Parent folder not found.", StatusCodes.Status404NotFound);
+                    ?? throw new FolderException("Parent folder not found.", StatusCodes.Status404NotFound, ErrorCodes.FolderNotFound);
                 if (await DepthAsync(ownerId, parent.Id, ct) + 1 > MaxDepth)
-                    throw new FolderException($"Folder nesting is limited to {MaxDepth} levels.", StatusCodes.Status409Conflict);
+                    throw new FolderException($"Folder nesting is limited to {MaxDepth} levels.", StatusCodes.Status409Conflict, ErrorCodes.FolderDepthExceeded);
             }
 
             var folder = new Folder { OwnerId = ownerId, ParentId = parentId };
@@ -140,7 +144,7 @@ public class FolderService(AppDbContext db)
         {
             var clean = ValidateName(name);
             var folder = await OwnedAsync(ownerId, id, ct)
-                ?? throw new FolderException("Folder not found.", StatusCodes.Status404NotFound);
+                ?? throw new FolderException("Folder not found.", StatusCodes.Status404NotFound, ErrorCodes.FolderNotFound);
 
             if (!string.Equals(folder.Name, clean, StringComparison.Ordinal))
             {
@@ -159,26 +163,26 @@ public class FolderService(AppDbContext db)
         NameConflict.RetryAsync(db, async () =>
         {
             var folder = await OwnedAsync(ownerId, id, ct)
-                ?? throw new FolderException("Folder not found.", StatusCodes.Status404NotFound);
+                ?? throw new FolderException("Folder not found.", StatusCodes.Status404NotFound, ErrorCodes.FolderNotFound);
             if (folder.ParentId == newParentId) return folder;
 
             if (newParentId is not null)
             {
                 if (newParentId == id)
-                    throw new FolderException("A folder cannot be moved into itself.", StatusCodes.Status409Conflict);
+                    throw new FolderException("A folder cannot be moved into itself.", StatusCodes.Status409Conflict, ErrorCodes.FolderMoveIntoSelf);
 
                 _ = await OwnedAsync(ownerId, newParentId.Value, ct)
-                    ?? throw new FolderException("Destination folder not found.", StatusCodes.Status404NotFound);
+                    ?? throw new FolderException("Destination folder not found.", StatusCodes.Status404NotFound, ErrorCodes.FolderNotFound);
 
                 // Cycle check: the destination must not live inside the subtree being moved,
                 // or the branch would be spliced out of the tree entirely.
                 var subtree = await SubtreeIdsAsync(ownerId, id, ct);
                 if (subtree.Contains(newParentId.Value))
-                    throw new FolderException("A folder cannot be moved into one of its own subfolders.", StatusCodes.Status409Conflict);
+                    throw new FolderException("A folder cannot be moved into one of its own subfolders.", StatusCodes.Status409Conflict, ErrorCodes.FolderMoveIntoDescendant);
 
                 var height = await SubtreeHeightAsync(ownerId, id, ct);
                 if (await DepthAsync(ownerId, newParentId, ct) + height > MaxDepth)
-                    throw new FolderException($"That move would nest folders deeper than {MaxDepth} levels.", StatusCodes.Status409Conflict);
+                    throw new FolderException($"That move would nest folders deeper than {MaxDepth} levels.", StatusCodes.Status409Conflict, ErrorCodes.FolderDepthExceeded);
             }
 
             folder.ParentId = newParentId;
@@ -208,11 +212,11 @@ public class FolderService(AppDbContext db)
     public static string ValidateName(string name)
     {
         var clean = name?.Trim() ?? string.Empty;
-        if (clean.Length == 0) throw new FolderException("Name is required.");
-        if (clean.Length > 255) throw new FolderException("Name is limited to 255 characters.");
-        if (clean is "." or "..") throw new FolderException("Name cannot be \".\" or \"..\".");
+        if (clean.Length == 0) throw new FolderException("Name is required.", code: ErrorCodes.NameRequired);
+        if (clean.Length > 255) throw new FolderException("Name is limited to 255 characters.", code: ErrorCodes.NameTooLong);
+        if (clean is "." or "..") throw new FolderException("Name cannot be \".\" or \"..\".", code: ErrorCodes.NameInvalid);
         if (clean.Any(c => c is '/' or '\\' || char.IsControl(c)))
-            throw new FolderException("Name cannot contain slashes or control characters.");
+            throw new FolderException("Name cannot contain slashes or control characters.", code: ErrorCodes.NameInvalid);
         return clean;
     }
 }

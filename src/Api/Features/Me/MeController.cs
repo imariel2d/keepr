@@ -2,6 +2,7 @@ using Keepr.Api.Data;
 using Keepr.Api.Features.Auth;
 using Keepr.Api.Features.Email;
 using Keepr.Api.Features.Localization;
+using Keepr.Api.Http;
 using Keepr.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -103,7 +104,7 @@ public class MeController(
         // Validate the language before touching anything: a blank value clears the preference (null →
         // default English), any non-supported code is a 400 so an unknown locale never reaches the DB.
         if (!SupportedLanguages.TryNormalize(req.PreferredLanguage, out var language))
-            return Coded(StatusCodes.Status400BadRequest, "invalid_language",
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.InvalidLanguage,
                 "That isn't a supported language.");
 
         // Full replace of the profile fields, not a partial PATCH: a missing field and an explicitly
@@ -136,7 +137,8 @@ public class MeController(
         // A null hash means an unclaimed account (it shouldn't reach an authed endpoint), but guard
         // anyway so Verify never sees null.
         if (user.PasswordHash is null || !BCrypt.Net.BCrypt.Verify(req.CurrentPassword, user.PasswordHash))
-            return Problem("Your current password is incorrect.", statusCode: StatusCodes.Status400BadRequest);
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.PasswordIncorrect,
+                "Your current password is incorrect.");
 
         if (await credentials.ValidatePasswordAsync(req.NewPassword, user.Email, ct) is { } errors)
             return BadRequest(new ValidationProblemDetails(errors)
@@ -185,16 +187,17 @@ public class MeController(
         // Re-authenticate, exactly like change-password: a stolen session alone can't move the email,
         // which is what closes the change-email→reset takeover at step one (§1).
         if (user.PasswordHash is null || !BCrypt.Net.BCrypt.Verify(req.CurrentPassword, user.PasswordHash))
-            return Problem("Your current password is incorrect.", statusCode: StatusCodes.Status400BadRequest);
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.PasswordIncorrect,
+                "Your current password is incorrect.");
 
         var newEmail = (req.NewEmail ?? string.Empty).Trim().ToLowerInvariant();
 
         if (EmailPolicy.Validate(newEmail) is { } emailError)
             return BadRequest(FieldError("newEmail", emailError));
         if (newEmail == user.Email)
-            return Coded(StatusCodes.Status400BadRequest, "email_unchanged", "That's already your email.");
+            return this.CodedProblem(StatusCodes.Status400BadRequest, ErrorCodes.EmailUnchanged, "That's already your email.");
         if (await db.Users.AnyAsync(u => u.Email == newEmail && u.Id != user.Id, ct))
-            return Coded(StatusCodes.Status409Conflict, "email_in_use", "That email is already in use.");
+            return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailInUse, "That email is already in use.");
 
         // The AnyAsync check above isn't atomic with the write below, so a concurrent
         // registration/change can still take newEmail first; the unique Users.Email index then rejects
@@ -216,7 +219,7 @@ public class MeController(
             }
             catch (DbUpdateException)
             {
-                return Coded(StatusCodes.Status409Conflict, "email_in_use", "That email is already in use.");
+                return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailInUse, "That email is already in use.");
             }
             await tx.CommitAsync(ct);
             return Ok(await ToProfileAsync(user, ct));
@@ -238,7 +241,7 @@ public class MeController(
             {
                 // A concurrent request from the same account won the one-live-token slot (the partial
                 // unique index on EmailChangeTokens.UserId). The rollback preserves that live token.
-                return Coded(StatusCodes.Status409Conflict, "email_change_pending",
+                return this.CodedProblem(StatusCodes.Status409Conflict, ErrorCodes.EmailChangePending,
                     "A change to your email is already pending. Cancel it or use the link we sent, then try again.");
             }
             await tx.CommitAsync(ct);
@@ -300,13 +303,6 @@ public class MeController(
             Status = StatusCodes.Status400BadRequest,
             Detail = message
         };
-
-    private ObjectResult Coded(int status, string code, string detail)
-    {
-        var pd = new ProblemDetails { Status = status, Detail = detail };
-        pd.Extensions["code"] = code;
-        return StatusCode(status, pd);
-    }
 
     private static string? Normalize(string? value)
     {

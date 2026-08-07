@@ -1,5 +1,6 @@
 using Keepr.Api.Data;
 using Keepr.Api.Domain;
+using Keepr.Api.Http;
 using Keepr.Api.Services;
 using Keepr.Api.Storage;
 using Microsoft.AspNetCore.Authorization;
@@ -101,9 +102,8 @@ public class MediaController(
         // server refuses to mint an inline URL for anything not on it.
         var serveAs = PreviewPolicy.ServeAs(media.ContentType);
         if (serveAs is null)
-            return Problem(
-                "This file type cannot be previewed; download it instead.",
-                statusCode: StatusCodes.Status415UnsupportedMediaType);
+            return this.CodedProblem(StatusCodes.Status415UnsupportedMediaType, ErrorCodes.PreviewUnsupported,
+                "This file type cannot be previewed; download it instead.");
 
         return new DownloadUrlResponse(
             await storage.PresignGetUrlAsync(
@@ -132,7 +132,7 @@ public class MediaController(
         }
         catch (FolderException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.CodedProblem(ex.StatusCode, ex.Code, ex.Message);
         }
 
         return await NameConflict.RetryAsync(db, async () =>
@@ -161,7 +161,8 @@ public class MediaController(
         {
             var exists = await db.Folders.AnyAsync(
                 f => f.Id == req.FolderId && f.OwnerId == userId, ct);
-            if (!exists) return Problem("Destination folder not found.", statusCode: StatusCodes.Status404NotFound);
+            if (!exists) return this.CodedProblem(StatusCodes.Status404NotFound, ErrorCodes.FolderNotFound,
+                "Destination folder not found.");
         }
 
         return await NameConflict.RetryAsync(db, async () =>
@@ -193,7 +194,7 @@ public class MediaController(
         }
         catch (TrashException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.CodedProblem(ex.StatusCode, ex.Code, ex.Message);
         }
     }
 

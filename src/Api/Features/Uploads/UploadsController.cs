@@ -1,5 +1,6 @@
 using Keepr.Api.Data;
 using Keepr.Api.Domain;
+using Keepr.Api.Http;
 using Keepr.Api.Services;
 using Keepr.Api.Storage;
 using Microsoft.AspNetCore.Authorization;
@@ -56,12 +57,13 @@ public class UploadsController(
         }
         catch (FolderException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.CodedProblem(ex.StatusCode, ex.Code, ex.Message);
         }
 
         if (req.FolderId is not null &&
             !await db.Folders.AnyAsync(f => f.Id == req.FolderId && f.OwnerId == userId, ct))
-            return Problem("Destination folder not found.", statusCode: StatusCodes.Status404NotFound);
+            return this.CodedProblem(StatusCodes.Status404NotFound, ErrorCodes.FolderNotFound,
+                "Destination folder not found.");
 
         var ext = Path.GetExtension(desiredName);
         var key = $"{userId}/{Guid.NewGuid():N}{ext}";
