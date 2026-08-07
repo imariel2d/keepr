@@ -4,7 +4,7 @@ Tracking the planned feature set against what is actually implemented in the cod
 
 Keepr is a **personal media store** with a folder hierarchy, rename, and a 10-day trash:
 single-owner (no user-to-user sharing yet). Of the 38 planned features, **14 are complete**
-(backend + UI), 2 are partial (built, verification or per-screen work remaining), and 22 are not started.
+(backend + UI), 3 are partial (built, verification or per-screen work remaining), and 21 are not started.
 
 **Legend:** ✅ Done · 🟡 Partial · 📐 Designed (not built) · ❌ Not started
 
@@ -39,7 +39,7 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
 | 26 | Forgot / reset password | ✅ | **Built end-to-end (backend + UI + tests) and verified live — [feature-26-password-reset.md](feature-26-password-reset.md).** Two paths: **self-service email link** (gated on a mail provider being configured *and* the account being `EmailVerified`) and **admin manual reset** (direct-set or emailed link) — the fallback the *"Contact your admin"* login copy points at. Backend: `PasswordResetController` (forgot / preview / reset / capabilities) + `PasswordResetService`, a `PasswordResetTokens` table (twin of `AccountInvites`, 1-hour tokens) via the `AddPasswordReset` migration, and the app's **first rate limiter** (`RateLimiterPolicies`, per-IP). Completing a reset revokes all sessions then auto-signs-in ([feature-3-cookie-session.md](feature-3-cookie-session.md) Q-C3). The **email-verification blocker is resolved**: `User.EmailVerified` (Q-V6 / #36 §9 Q-P2), set only by proving inbox control, gates every email-based reset. UI: `/forgot-password` + `/reset-password/:token` screens and a "Forgot password?" link on login; admin gains a reset-password action. **Verified end-to-end:** Playwright **journey E** ([password-reset.spec.ts](../tests/e2e/tests/password-reset.spec.ts)) drives the whole self-service path against the Mailpit overlay — mint a verified account (invite→claim), request a reset from the login screen, read the reset email from Mailpit, set a new password and land signed in, then assert the old password is dead, the new one works, the used link `410`s, and an unknown address still returns the neutral `202` with no email. Runs in the `e2e` CI job on a fresh stack (default `Provider=None` → env-SMTP → Mailpit) and **confirmed green locally 2026-08-04**. The **admin manual-reset** path (§6) isn't in the journey yet but needs no email and is exercisable directly |
-| 27 | Change email | ❌ | `Email` is already unique + normalized (`AppDbContext`). A change must re-run `EmailPolicy` and, once #26's verification exists, re-verify the new address before it takes effect |
+| 27 | Change email | 🟡 | **Backend + Angular UI built and verified live — [feature-27-change-email.md](feature-27-change-email.md).** Self-service change on the `/profile` screen, re-authenticated by the current password, branching on whether mail is configured: **mail on → verify-before-commit** (a confirmation link to the *new* address; the change lands and the address becomes `EmailVerified` only on click — the old address keeps signing in until then) and **mail off → immediate but `EmailVerified = false`** (no channel to prove the new inbox). Reuses #26's `EmailVerified` invariant so the change-email→reset takeover stays closed for free, and emails the old address on completion. Backend: `EmailChangeTokens` table (twin of `PasswordResetTokens`) via the `AddEmailChange` migration, `POST`/`DELETE /api/me/email` (re-auth + per-user rate limit), anon `confirm-email/{token}` preview/confirm, two Cove email templates, and `ProfileResponse` gaining `emailVerified`/`pendingEmail`. **Verified end-to-end against the dockerised stack (2026-08-04):** request→202 (email stays old, profile shows pending), Mailpit confirm link, side-effect-free preview, confirm→email swapped + `EmailVerified`, single-use token (410 on reuse), new email signs in / old rejected, old-address heads-up, plus the edge paths (wrong password, unchanged, in-use, cancel). **UI:** a Change-email card on `/profile` (verified/unverified badge, new-email + current-password fields, pending/resend/cancel state, a mail-off note) and a public `/confirm-email/:token` page (`EmailChangeService` in the client). **Verified live through the real UI (2026-08-07):** the mail-on flow end-to-end (request → pending line → Mailpit confirm link → confirm page → email swapped + Verified badge, pending cleared), plus responsive (mobile/tablet/desktop, no horizontal scroll — also fixed a pre-existing long-email header overflow) and a11y (roles, labels, text-not-colour badges). **Remaining:** the automated Playwright **journey F**, the mail-off live run (manual), and admin direct-set (deferred, Q-27-5) |
 | 28 | Change password | ✅ | **Backend + UI done** as part of #36 ([feature-36-account-provisioning.md](feature-36-account-provisioning.md) §7.2): `POST /api/me/password` verifies the current password, re-runs `PasswordPolicy` + breach check, re-hashes with BCrypt, revokes the user's other sessions, and clears `MustChangePassword`; the change-password panel lives in the `/profile` screen. **Verified end-to-end against the dockerised stack (2026-07-31):** the forced first-login change (can't-skip guard redirects `/files` → `/profile?changePassword=1`), self-service change, other-sessions revocation (a second live session returned 401 after the change), and old-password rejection were all confirmed |
 | 29 | Profile: first & last name | ✅ | **Backend + UI done** as part of #36 ([feature-36-account-provisioning.md](feature-36-account-provisioning.md) §7). `User` gained `FirstName`/`LastName` (migration `AddAccountProvisioning`) plus `GET`/`PATCH /api/me/profile`, surfaced in the `/profile` screen (feeds `cove-avatar` initials). **Verified end-to-end against the dockerised stack (2026-07-31):** edit + save, persistence across a full reload (fields rehydrate from the server), and the avatar initials updating (`Q` → `QT`) were all confirmed |
 | 34 | Admin panel — account administration | ✅ | **Backend + Angular UI done.** Design: [feature-34-admin-console.md](feature-34-admin-console.md). Introduces the **role/authorization model** (`Role` enum on `User`, a `role` claim, an `"Admin"` policy) that was the hard prerequisite, plus an env-driven first-admin bootstrap (`AdminSeeder`). `AdminController` lists accounts, adjusts quota, and kicks (`DELETE` revokes sessions + marks for deletion; `AccountWipeService` then hard-deletes all files and the account). Audited to `AdminActionLogs`. Force sign-out as a standalone action is deferred (Q-A3); reset-password/disable are covered by the self-service items above. This is the account-focused slice of the broader **#21** admin console. **#36 extends this** with admin-created accounts + role assignment |
@@ -109,13 +109,16 @@ reset is really a Tier 2 usability concern; the profile edits are Tier 3.
 - **Done (14):** upload/download, auth, quota tracking, file+folder metadata, folder hierarchy,
   rename/delete, trash, in-browser preview, shareable links, admin account administration (#34),
   change-password (#28), profile names (#29), search by file name (#9), forgot/reset password (#26).
-- **Partial (2):** accessibility & mobile (#35) — foundation + drawer in, per-screen sweep remains;
+- **Partial (3):** change email (#27) — **backend + Angular UI built and verified live** (the mail-on
+  flow end-to-end through the real UI, plus responsive + a11y); the automated Playwright journey F and
+  the mail-off live run remain ([feature-27-change-email.md](feature-27-change-email.md));
+  accessibility & mobile (#35) — foundation + drawer in, per-screen sweep remains;
   admin-provisioned accounts & email invites (#36) — direct-provision + forced-change path
   live-verified and the email-invite/claim path now verified in CI via Playwright journey A against
   Mailpit; only the `/admin/email` runtime-provider **send** remains, and that can't be automated
   (Mailpit is SMTP-only; the stored providers are HTTP) — it needs a one-off manual live run against
   a real provider key.
-- **Not started (22):** everything else. **Tier 1 is complete.**
+- **Not started (21):** everything else. **Tier 1 is complete.**
 
 ### Next: Tier 2
 
@@ -132,10 +135,11 @@ ships, not after.
 **Account management (#26–29)** clusters around one prerequisite: **email verification** (Q-V6).
 Reset-password (#26) **is now done and verified** ([feature-26-password-reset.md](feature-26-password-reset.md)):
 it delivers the `EmailVerified` flag that unblocks the cluster, and its self-service flow is covered
-end-to-end by Playwright journey E against the Mailpit overlay. Change-email (#27) inherits that same
-flag when built. Change-password (#28) and
-profile names (#29) are already done. Sequence: #26 delivered verification → **#27 is next** and
-reuses it.
+end-to-end by Playwright journey E against the Mailpit overlay. Change-email (#27) now reuses that
+same flag (its backend is built + verified). Change-password (#28) and
+profile names (#29) are already done. Sequence: #26 delivered verification → **#27's backend + Angular
+UI are now built and verified live** ([feature-27-change-email.md](feature-27-change-email.md)); the
+automated **journey F** (mail-on, against Mailpit) **is next**.
 
 ### Known follow-ups
 

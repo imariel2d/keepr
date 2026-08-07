@@ -24,6 +24,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AdminActionLog> AdminActionLogs => Set<AdminActionLog>();
     public DbSet<AccountInvite> AccountInvites => Set<AccountInvite>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<EmailChangeToken> EmailChangeTokens => Set<EmailChangeToken>();
     public DbSet<EmailSettings> EmailSettings => Set<EmailSettings>();
 
     /// <summary>The Data Protection key ring (§4). Managed by the framework; we only host the table.</summary>
@@ -242,6 +243,34 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasIndex(x => x.UserId)
                 .IsUnique()
                 .HasFilter($"\"{nameof(PasswordResetToken.UsedAt)}\" IS NULL");
+        });
+
+        b.Entity<EmailChangeToken>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            // Every confirm resolves by this lookup, so it must be a unique index probe; unique also
+            // turns a token collision into a database error rather than an ambiguous match. 32 bytes
+            // = one SHA-256 digest, like PasswordResetToken.TokenHash.
+            e.HasIndex(x => x.TokenHash).IsUnique();
+            e.Property(x => x.TokenHash).HasMaxLength(32).IsRequired();
+
+            // The pending target address. Same 320 cap as User.Email.
+            e.Property(x => x.NewEmail).HasMaxLength(320).IsRequired();
+
+            // Cascade: a deleted (or kicked) account's pending change must not outlive it.
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // At most one *live* (unused) email change per account, enforced by the database — not just
+            // by a repeat request deleting before inserting. The filter excludes used rows so a
+            // completed change never conflicts. Also serves the by-user lookups (pending state, cancel).
+            // Mirrors the PasswordResetToken one-live index. See docs/feature-27-change-email.md §4.
+            e.HasIndex(x => x.UserId)
+                .IsUnique()
+                .HasFilter($"\"{nameof(EmailChangeToken.UsedAt)}\" IS NULL");
         });
 
         b.Entity<EmailSettings>(e =>

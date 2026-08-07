@@ -90,4 +90,58 @@ public class EmailTemplateTests
         Assert.Contains("ignore this email", content.TextBody);
         Assert.Contains("ignore this email", content.HtmlBody);
     }
+
+    private const string ConfirmUrl = "https://keepr.app/confirm-email/abc123";
+
+    [Fact]
+    public void ConfirmEmailChange_includes_the_confirm_url_in_both_bodies()
+    {
+        var content = EmailTemplates.ConfirmEmailChange(ConfirmUrl, expiryMinutes: 1440);
+
+        Assert.Contains(ConfirmUrl, content.HtmlBody);
+        Assert.Contains(ConfirmUrl, content.TextBody);
+        Assert.False(string.IsNullOrWhiteSpace(content.Subject));
+    }
+
+    [Fact]
+    public void ConfirmEmailChange_states_the_expiry_in_hours_when_it_divides_evenly()
+    {
+        // 1440 minutes must read "24 hours", not "1440 minutes"; 60 → "1 hour"; a non-hour value
+        // falls back to minutes.
+        Assert.Contains("24 hours", EmailTemplates.ConfirmEmailChange(ConfirmUrl, 1440).TextBody);
+        Assert.Contains("1 hour", EmailTemplates.ConfirmEmailChange(ConfirmUrl, 60).TextBody);
+        Assert.DoesNotContain("1 hours", EmailTemplates.ConfirmEmailChange(ConfirmUrl, 60).TextBody);
+        Assert.Contains("90 minutes", EmailTemplates.ConfirmEmailChange(ConfirmUrl, 90).TextBody);
+    }
+
+    [Fact]
+    public void ConfirmEmailChange_reassures_the_reader_they_can_ignore_it()
+    {
+        var content = EmailTemplates.ConfirmEmailChange(ConfirmUrl, 1440);
+        Assert.Contains("ignore this email", content.TextBody);
+        Assert.Contains("ignore this email", content.HtmlBody);
+    }
+
+    [Fact]
+    public void EmailChanged_names_the_masked_address_and_carries_no_link()
+    {
+        var content = EmailTemplates.EmailChanged("a•••@example.com");
+
+        Assert.Contains("a•••@example.com", content.HtmlBody);
+        Assert.Contains("a•••@example.com", content.TextBody);
+        // A heads-up has no action link — nothing to click, so no <a href> button/fallback.
+        Assert.DoesNotContain("<a href", content.HtmlBody);
+        Assert.Contains("contact your admin", content.TextBody);
+    }
+
+    [Fact]
+    public void EmailChanged_html_encodes_the_masked_address()
+    {
+        // The masked address is rendered into the HTML body, so a crafted value must be encoded and
+        // never land as live markup — the same guard the invite template has.
+        var content = EmailTemplates.EmailChanged("<script>x</script>");
+
+        Assert.DoesNotContain("<script>", content.HtmlBody);
+        Assert.Contains("&lt;script&gt;", content.HtmlBody);
+    }
 }

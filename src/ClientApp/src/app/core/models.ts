@@ -93,13 +93,29 @@ export interface PagedResponse<T> {
   pageSize: number;
 }
 
-/** The signed-in account's profile (#29). `mustChangePassword` forces the set-password step. */
+/** The signed-in account's profile (#29). `mustChangePassword` forces the set-password step.
+ *  `emailVerified` drives the verified badge; `pendingEmail` is any in-flight change awaiting
+ *  confirmation (#27), or null. */
 export interface ProfileResponse {
   email: string;
   firstName: string | null;
   lastName: string | null;
   role: Role;
   mustChangePassword: boolean;
+  emailVerified: boolean;
+  pendingEmail: string | null;
+}
+
+/** The staged (mail-on) change-email response: the address a confirmation link was sent to. The
+ *  change isn't applied until that link is confirmed (#27 §5.1). */
+export interface EmailChangePending {
+  pendingEmail: string;
+}
+
+/** The address a pending email change will move the account to, to prime the confirm form. 410 if
+ *  the token is unknown/expired/used. */
+export interface EmailChangePreview {
+  newEmail: string;
 }
 
 /** The invited email behind a claim token, to prime the claim form. */

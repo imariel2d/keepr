@@ -103,4 +103,79 @@
       </cove-button>
     </div>
   </div>
+
+  @if (!forced()) {
+    <!-- Email (#27) -->
+    <div class="card">
+      <h2>Email</h2>
+      <p class="card-sub">The address you use to sign in.</p>
+
+      @if (profile(); as p) {
+        <p class="current-email">
+          <span class="addr">{{ p.email }}</span>
+          @if (emailVerified()) {
+            <span class="verify verified"><cove-icon name="check" [size]="13" /> Verified</span>
+          } @else {
+            <span class="verify unverified"><cove-icon name="alert-circle" [size]="13" /> Unverified</span>
+          }
+        </p>
+      }
+
+      @if (pendingEmail(); as pending) {
+        <div class="pending" role="status">
+          <p class="pending-line">
+            <cove-icon name="mail" [size]="15" />
+            <span>Pending — confirm the link we sent to <strong>{{ pending }}</strong>.</span>
+          </p>
+          <p class="hint">Didn't arrive? Re-enter your current password below, then Resend.</p>
+          <div class="pending-actions">
+            <cove-button variant="secondary"
+                         [disabled]="changingEmail() || emailPassword().length === 0"
+                         (click)="resendEmailChange()">Resend</cove-button>
+            <cove-button variant="ghost" [disabled]="changingEmail()"
+                         (click)="cancelEmailChange()">Cancel</cove-button>
+          </div>
+        </div>
+      }
+
+      @if (!mailEnabled()) {
+        <p class="note" role="note">
+          <cove-icon name="info" [size]="14" />
+          Email delivery isn't set up, so a new address can't be verified — it'll change right away.
+        </p>
+      }
+
+      <div class="stack">
+        <label class="field">
+          <span>New email</span>
+          <cove-input type="email" autocomplete="email" placeholder="you@example.com"
+                      [value]="newEmail()" (valueChange)="newEmail.set($event)" />
+          @for (message of emailErrorsFor('newEmail'); track message) {
+            <p class="field-error">{{ message }}</p>
+          }
+        </label>
+        <label class="field">
+          <span>Current password</span>
+          <cove-input [type]="showEmailPassword() ? 'text' : 'password'" autocomplete="current-password"
+                      [value]="emailPassword()" (valueChange)="emailPassword.set($event)"
+                      (enter)="changeEmail()">
+            <button trailing type="button" class="reveal"
+                    [attr.aria-label]="showEmailPassword() ? 'Hide password' : 'Show password'"
+                    [attr.aria-pressed]="showEmailPassword()"
+                    (click)="showEmailPassword.set(!showEmailPassword())">
+              <cove-icon [name]="showEmailPassword() ? 'eye-off' : 'eye'" [size]="16" />
+            </button>
+          </cove-input>
+        </label>
+      </div>
+      @if (emailNotice()) { <p class="ok" role="status"><cove-icon name="check" [size]="14" /> {{ emailNotice() }}</p> }
+      @if (emailError()) { <p class="error" role="alert">{{ emailError() }}</p> }
+      <div class="actions">
+        <cove-button variant="primary" [disabled]="changingEmail() || !canChangeEmail()"
+                     (click)="changeEmail()">
+          {{ mailEnabled() ? 'Send confirmation' : 'Change email' }}
+        </cove-button>
+      </div>
+    </div>
+  }
 </section>

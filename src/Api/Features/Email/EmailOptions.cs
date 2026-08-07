@@ -35,6 +35,12 @@ public class EmailOptions
     /// <c>Email__ResetExpiryMinutes</c>), not a per-provider setting. See docs/feature-26-password-reset.md §4.</summary>
     public int ResetExpiryMinutes { get; set; } = 60;
 
+    /// <summary>How long an emailed change-email confirmation link stays usable, in minutes. Longer than
+    /// a reset link (24 h default) — confirming a new address is less time-critical and the user may not
+    /// check the new inbox immediately. A plain config knob (env <c>Email__EmailChangeExpiryMinutes</c>),
+    /// not a per-provider setting. See docs/feature-27-change-email.md §5.5.</summary>
+    public int EmailChangeExpiryMinutes { get; set; } = 1440;
+
     /// <summary>
     /// Whether a real sender is configured. Single source of truth for "email is on": Program.cs
     /// uses it to pick the sender, and the admin create path uses it to reject invite mode when no

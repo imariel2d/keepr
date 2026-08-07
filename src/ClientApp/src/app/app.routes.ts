@@ -31,6 +31,12 @@ export const routes: Routes = [
       import('./features/password-reset/reset-password').then((m) => m.ResetPassword),
   },
   {
+    // Public confirm-email page (#27) — the token in the URL is the authorization, like claim/reset.
+    path: 'confirm-email/:token',
+    loadComponent: () =>
+      import('./features/email-change/confirm-email').then((m) => m.ConfirmEmail),
+  },
+  {
     // The folder id is in the URL so a folder is linkable and the back button walks the tree.
     // No id = the owner's root, which has no row of its own server-side.
     path: 'files',
