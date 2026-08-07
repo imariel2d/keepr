@@ -1,12 +1,14 @@
 # Change Email — Design
 
-> Feature #27 in [feature-status.md](feature-status.md). Status: **backend built + verified; Angular
-> UI pending** (design proposed 2026-08-04, backend landed 2026-08-04). The backend implements §3–§11
-> (the `EmailChangeTokens` table + `AddEmailChange` migration, `POST`/`DELETE /api/me/email`, the anon
-> `confirm-email/{token}` preview/confirm, the two email templates, and the `ProfileResponse`
-> extension) and was verified end-to-end against the Mailpit stack (the §14.1 mail-on journey + the
-> §14.3 edge paths); the §12 Angular UI and the §14.2 mail-off live run remain. Builds directly on
-> #26's `EmailVerified` invariant and its token machinery, and on #36's email seam + Cove email template.
+> Feature #27 in [feature-status.md](feature-status.md). Status: **backend + Angular UI built and
+> verified live; automated e2e + mail-off run pending** (design 2026-08-04, backend 2026-08-04, UI
+> 2026-08-07). The backend implements §3–§11 (the `EmailChangeTokens` table + `AddEmailChange`
+> migration, `POST`/`DELETE /api/me/email`, the anon `confirm-email/{token}` preview/confirm, the two
+> email templates, and the `ProfileResponse` extension). The §12 UI is built — a Change-email card on
+> `/profile` and the public `/confirm-email/:token` page. Both were verified against the Mailpit stack:
+> the §14.1 mail-on journey (through the real UI) + the §14.3 edge paths, plus responsive/a11y. The
+> automated **journey F** and the §14.2 mail-off live run remain. Builds directly on #26's
+> `EmailVerified` invariant and its token machinery, and on #36's email seam + Cove email template.
 >
 > One capability: let a signed-in user change the address their account signs in with. The whole
 > design turns on a single question the user raised — **is a mail provider configured?** — because

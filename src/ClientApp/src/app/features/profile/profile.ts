@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ProfileService } from '../../core/profile.service';
 import { ProfileStore } from '../../core/profile.store';
+import { EmailChangeService } from '../../core/email-change.service';
 import { MIN_PASSWORD_LENGTH } from '../../core/password-policy';
 import { problemDetail, validationErrors } from '../../core/problem-details';
 import { ButtonComponent } from '../../cove/lib/button/button.component';
@@ -24,6 +25,7 @@ import { AvatarComponent } from '../../cove/lib/avatar/avatar.component';
 export class Profile {
   private readonly api = inject(ProfileService);
   private readonly store = inject(ProfileStore);
+  private readonly emailChanges = inject(EmailChangeService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -66,6 +68,22 @@ export class Profile {
   protected readonly canChangePassword = computed(
     () => this.currentPassword().length > 0 && this.newLongEnough() && this.confirmMatches());
 
+  // Email form (#27). Its own current-password field, separate from the password card's.
+  protected readonly mailEnabled = signal(true);
+  protected readonly newEmail = signal('');
+  protected readonly emailPassword = signal('');
+  protected readonly showEmailPassword = signal(false);
+  protected readonly changingEmail = signal(false);
+  protected readonly emailNotice = signal<string | null>(null);
+  protected readonly emailError = signal<string | null>(null);
+  protected readonly emailFieldErrors = signal<Record<string, string[]>>({});
+
+  protected readonly emailVerified = computed(() => this.profile()?.emailVerified ?? false);
+  /** Any in-flight change awaiting confirmation (mail-on), or null. */
+  protected readonly pendingEmail = computed(() => this.profile()?.pendingEmail ?? null);
+  protected readonly canChangeEmail = computed(
+    () => this.newEmail().trim().length > 0 && this.emailPassword().length > 0);
+
   constructor() {
     void this.init();
   }
@@ -75,6 +93,9 @@ export class Profile {
     const p = this.profile();
     this.firstName.set(p?.firstName ?? '');
     this.lastName.set(p?.lastName ?? '');
+    // Whether the deployment can send a confirmation link decides the card's copy (verify-before-
+    // commit vs. immediate). Fall back to "on" so a probe hiccup doesn't wrongly show the no-mail note.
+    this.emailChanges.mailEnabled().then((on) => this.mailEnabled.set(on)).catch(() => {});
   }
 
   protected errorsFor(field: string): string[] {
@@ -124,6 +145,77 @@ export class Profile {
       }
     } finally {
       this.savingPassword.set(false);
+    }
+  }
+
+  protected emailErrorsFor(field: string): string[] {
+    return this.emailFieldErrors()[field] ?? [];
+  }
+
+  protected async changeEmail(): Promise<void> {
+    if (!this.canChangeEmail() || this.changingEmail()) return;
+    this.changingEmail.set(true);
+    this.emailNotice.set(null);
+    this.emailError.set(null);
+    this.emailFieldErrors.set({});
+    try {
+      const result = await this.emailChanges.request(this.newEmail().trim(), this.emailPassword());
+      this.emailPassword.set('');
+      this.newEmail.set('');
+      if (result.kind === 'applied') {
+        // Mail off: the change is live now. Adopt the returned profile (email + verified badge update).
+        this.store.set(result.profile);
+        this.emailNotice.set(`Your email is now ${result.profile.email}.`);
+      } else {
+        // Mail on: staged. Refresh so the pending line appears from the server's truth.
+        await this.store.refresh();
+        this.emailNotice.set(
+          `Confirm the link we sent to ${result.pendingEmail} to finish the change.`);
+      }
+    } catch (e) {
+      const fieldErrors = validationErrors(e);
+      if (Object.keys(fieldErrors).length > 0) {
+        this.emailFieldErrors.set(fieldErrors);
+      } else {
+        this.emailError.set(problemDetail(e, 'Could not change your email.'));
+      }
+    } finally {
+      this.changingEmail.set(false);
+    }
+  }
+
+  /** Re-sends the confirmation to the pending address; re-authenticated, so the password field must
+   *  be filled (the button is disabled otherwise). Supersedes the previous link. */
+  protected async resendEmailChange(): Promise<void> {
+    const target = this.pendingEmail();
+    if (!target || this.emailPassword().length === 0 || this.changingEmail()) return;
+    this.changingEmail.set(true);
+    this.emailNotice.set(null);
+    this.emailError.set(null);
+    try {
+      await this.emailChanges.request(target, this.emailPassword());
+      this.emailPassword.set('');
+      this.emailNotice.set(`Confirmation resent to ${target}.`);
+    } catch (e) {
+      this.emailError.set(problemDetail(e, 'Could not resend the confirmation.'));
+    } finally {
+      this.changingEmail.set(false);
+    }
+  }
+
+  protected async cancelEmailChange(): Promise<void> {
+    if (this.changingEmail()) return;
+    this.changingEmail.set(true);
+    this.emailNotice.set(null);
+    this.emailError.set(null);
+    try {
+      await this.emailChanges.cancel();
+      await this.store.refresh();
+      this.emailNotice.set('Pending email change cancelled.');
+    } catch (e) {
+      this.emailError.set(problemDetail(e, 'Could not cancel the change.'));
+    } finally {
+      this.changingEmail.set(false);
     }
   }
 }
